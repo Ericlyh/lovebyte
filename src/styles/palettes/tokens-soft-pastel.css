@@ -1,0 +1,25 @@
+/* LoveByte — Soft Pastel palette (alternative)
+ * Drop-in replacement for tokens-warm-romantic.css.
+ * Lavender accent broadens the audience (not just romantic gifting).
+ */
+
+:root {
+  --lb-primary:        #f7a4a4;
+  --lb-primary-deep:   #d78282;  /* Use this for AA-pass CTAs — see README §2 */
+
+  --lb-accent:         #c4b5e2;  /* Lavender signature */
+  --lb-blush:          #fbe5e5;
+  --lb-honey:          #fcf3dd;
+  --lb-sage:           #bcd9b9;
+  --lb-sky:            #cad9e8;
+
+  --lb-ink:            #3d2e3a;  /* Cool plum-black */
+  --lb-ink-soft:       #6e5868;
+
+  --lb-surface:        #fbf7f7;
+  --lb-surface-raised: #ffffff;
+
+  --lb-danger:         #c87878;
+
+  /* Same typography + spacing scale as Warm Romantic — only colors differ. */
+}

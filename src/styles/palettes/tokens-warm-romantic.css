@@ -1,0 +1,66 @@
+/* LoveByte — Warm Romantic palette
+ * Default direction (per design/01-brand/README.md §1).
+ * Slide-deck palette matured: coral + blush + amber + sage + sky.
+ *
+ * Use this file as the root :root tokens for any LoveByte surface.
+ * Tailwind theme tokens should mirror these 1:1 in the implementation phase.
+ */
+
+:root {
+  /* Action / CTA */
+  --lb-primary:        #fc6b6b;  /* Send gift, Continue, primary CTA */
+  --lb-primary-deep:   #cc5858;  /* Hover / pressed */
+
+  /* Accents */
+  --lb-accent:         #ffce6c;  /* Highlight, ribbons, badges, success */
+  --lb-blush:          #ffe8e7;  /* Soft surface — cards, hero */
+  --lb-honey:          #fff1d6;  /* Warm surface — envelopes, card backs */
+  --lb-sage:           #a7ce49;  /* Affirm — correct, saved, memory found */
+  --lb-sky:            #b4e3ed;  /* Cool surface — info, recipient ambient */
+
+  /* Ink / text */
+  --lb-ink:            #3a1f1f;  /* Primary text (warm dark) */
+  --lb-ink-soft:       #6b4a4a;  /* Secondary text */
+
+  /* Surfaces */
+  --lb-surface:        #fffaf7;  /* Page background (warm off-white) */
+  --lb-surface-raised: #ffffff;  /* Card surface */
+
+  /* Semantic */
+  --lb-danger:         #d94545;
+  --lb-success:        var(--lb-sage);
+
+  /* Typography (per slide deck hints — Norican + Overlock from Google Fonts) */
+  --lb-font-display: "Norican", "Brush Script MT", "PingFang TC", cursive;
+  --lb-font-body:    "Overlock", "Iowan Old Style", "PingFang TC", "Microsoft JhengHei",
+                     ui-serif, Georgia, serif;
+
+  /* Spacing scale (8pt grid) */
+  --lb-space-1: 4px;
+  --lb-space-2: 8px;
+  --lb-space-3: 12px;
+  --lb-space-4: 16px;
+  --lb-space-5: 24px;
+  --lb-space-6: 32px;
+  --lb-space-8: 48px;
+  --lb-space-10: 64px;
+  --lb-space-12: 96px;
+
+  /* Radius */
+  --lb-radius-sm: 6px;
+  --lb-radius-md: 12px;
+  --lb-radius-lg: 20px;
+  --lb-radius-pill: 999px;
+
+  /* Shadow (warm-tinted, not pure black) */
+  --lb-shadow-sm: 0 1px 2px rgba(58, 31, 31, 0.06);
+  --lb-shadow-md: 0 4px 16px rgba(58, 31, 31, 0.08);
+  --lb-shadow-lg: 0 12px 40px rgba(58, 31, 31, 0.10);
+
+  /* Motion */
+  --lb-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lb-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --lb-dur-fast: 150ms;
+  --lb-dur-base: 250ms;
+  --lb-dur-slow: 450ms;
+}

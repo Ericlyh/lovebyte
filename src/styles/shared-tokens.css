@@ -1,0 +1,183 @@
+/* LoveByte — shared tokens (entry file for the palette)
+ *
+ * Three palettes ship with the project:
+ *   Warm Romantic   (default) — coral / blush / amber / sage / sky
+ *   Soft Pastel                 — softer, more pastel variants
+ *   Modern Minimal              — higher contrast, more neutral
+ *
+ * Source of truth for the palettes lives in
+ *   design/01-brand/  (in the Paperclip project workspace)
+ * and is mirrored here under  src/styles/palettes/  so the Next.js app
+ * can `@import` them without crossing the workspace boundary.
+ *
+ * To switch palettes, change the ACTIVE line below.
+ * Tailwind utilities (`bg-lb-primary`, `text-lb-ink`, etc.) automatically
+ * follow because they are mapped to these vars in src/app/globals.css.
+ */
+
+/* === ACTIVE PALETTE — change the uncommented line to re-skin ============ */
+@import "./palettes/tokens-warm-romantic.css";
+/* @import "./palettes/tokens-soft-pastel.css"; */
+/* @import "./palettes/tokens-modern-minimal.css"; */
+
+/* === Mockup-only reset + shared component classes ========================
+ * Mirrored from design/03-mockups/shared-tokens.css so that the design
+ * mockups and the production app share one set of utility classes. */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  font-family: var(--lb-font-body);
+  color: var(--lb-ink);
+  background: var(--lb-surface);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--lb-primary); text-decoration: none; }
+a:hover { color: var(--lb-primary-deep); }
+
+.lb-container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+.lb-container--narrow { max-width: 720px; margin: 0 auto; padding: 0 24px; }
+
+.lb-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 22px; border-radius: var(--lb-radius-pill);
+  font-family: var(--lb-font-body); font-weight: 700; font-size: 15px;
+  cursor: pointer; border: none;
+  transition: transform var(--lb-dur-fast) var(--lb-ease-out),
+              box-shadow var(--lb-dur-fast) var(--lb-ease-out),
+              background var(--lb-dur-fast) var(--lb-ease-out);
+}
+.lb-btn--primary { background: var(--lb-primary); color: #fff; box-shadow: var(--lb-shadow-md); }
+.lb-btn--primary:hover { background: var(--lb-primary-deep); transform: translateY(-1px); box-shadow: var(--lb-shadow-lg); }
+.lb-btn--ghost { background: transparent; color: var(--lb-ink); border: 1.5px solid var(--lb-ink-soft); }
+.lb-btn--ghost:hover { background: var(--lb-blush); }
+.lb-btn--accent { background: var(--lb-accent); color: var(--lb-ink); }
+.lb-btn--sm { padding: 8px 14px; font-size: 13px; }
+
+.lb-card {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-5);
+  box-shadow: var(--lb-shadow-md);
+}
+
+.lb-input, .lb-textarea, .lb-select {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--lb-radius-md);
+  border: 1.5px solid #e8d8d6;
+  background: #fff;
+  font-family: var(--lb-font-body);
+  font-size: 15px;
+  color: var(--lb-ink);
+  transition: border-color var(--lb-dur-fast);
+}
+.lb-input:focus, .lb-textarea:focus, .lb-select:focus {
+  outline: none; border-color: var(--lb-primary);
+}
+
+.lb-label {
+  display: block;
+  font-size: 13px; font-weight: 600;
+  color: var(--lb-ink-soft);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+
+.lb-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 32px;
+  background: rgba(255, 250, 247, 0.85);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0;
+  z-index: 50;
+  border-bottom: 1px solid #f3e6e3;
+}
+.lb-nav__brand {
+  font-family: var(--lb-font-display);
+  font-size: 28px;
+  color: var(--lb-primary);
+}
+.lb-nav__links { display: flex; gap: 28px; align-items: center; }
+.lb-nav__links a { color: var(--lb-ink); font-size: 14px; font-weight: 600; }
+
+.lb-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--lb-radius-pill);
+  background: var(--lb-blush);
+  color: var(--lb-primary-deep);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.lb-divider {
+  height: 1px; background: #f3e6e3; margin: var(--lb-space-5) 0;
+}
+
+.lb-hero {
+  padding: var(--lb-space-10) 0 var(--lb-space-8);
+  text-align: center;
+}
+
+.lb-hero h1 {
+  font-family: var(--lb-font-display);
+  font-size: clamp(48px, 8vw, 96px);
+  color: var(--lb-primary);
+  line-height: 1.05;
+  margin-bottom: var(--lb-space-3);
+}
+.lb-hero p {
+  font-size: 18px; color: var(--lb-ink-soft);
+  max-width: 580px; margin: 0 auto var(--lb-space-5);
+}
+
+.lb-lang-toggle {
+  display: inline-flex;
+  background: var(--lb-blush);
+  border-radius: var(--lb-radius-pill);
+  padding: 4px;
+}
+.lb-lang-toggle button {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--lb-radius-pill);
+  font-family: var(--lb-font-body);
+  font-size: 13px; font-weight: 600;
+  color: var(--lb-ink-soft);
+  cursor: pointer;
+}
+.lb-lang-toggle button.is-active {
+  background: #fff;
+  color: var(--lb-primary);
+  box-shadow: var(--lb-shadow-sm);
+}
+
+.lb-grid { display: grid; gap: var(--lb-space-4); }
+.lb-grid--2 { grid-template-columns: repeat(2, 1fr); }
+.lb-grid--3 { grid-template-columns: repeat(3, 1fr); }
+.lb-grid--4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 768px) {
+  .lb-grid--2, .lb-grid--3, .lb-grid--4 { grid-template-columns: 1fr; }
+}
+
+.lb-gift-icon {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  background: var(--lb-blush);
+  border-radius: var(--lb-radius-lg);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--lb-dur-fast);
+  text-align: center;
+  font-family: var(--lb-font-body);
+  font-weight: 700;
+  color: var(--lb-ink);
+}
+.lb-gift-icon:hover { border-color: var(--lb-primary); background: #fff; transform: translateY(-2px); }
+.lb-gift-icon__emoji { font-size: 48px; line-height: 1; }
+.lb-gift-icon__name { font-size: 14px; }

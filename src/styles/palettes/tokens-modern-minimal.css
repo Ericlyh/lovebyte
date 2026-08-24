@@ -1,0 +1,23 @@
+/* LoveByte — Modern Minimal palette (alternative)
+ * Editorial / Stripe-meets-Linear.
+ * Right pick only if LoveByte pivots toward B2B / wedding-planner SaaS.
+ */
+
+:root {
+  --lb-primary:        #1a1a1a;  /* Near-black */
+  --lb-primary-deep:   #000000;
+
+  --lb-accent:         #ff5e5e;  /* Single hot accent — use sparingly */
+  --lb-blush:          #f5f5f5;
+  --lb-honey:          #fafafa;
+  --lb-sage:           #d4e8c8;
+  --lb-sky:            #d8e6ec;
+
+  --lb-ink:            #0a0a0a;
+  --lb-ink-soft:       #555555;
+
+  --lb-surface:        #ffffff;
+  --lb-surface-raised: #ffffff;
+
+  --lb-danger:         #c62828;
+}
