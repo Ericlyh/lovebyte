@@ -9,5 +9,66 @@
     "subtitle": "Scaffold is live. Phase 2 wires the full landing page; Phase 3 ships the recipient envelope; Phases 4–8 add the five gift builders.",
     "checklist_heading": "What's in this scaffold",
     "footer": "Made with care in Hong Kong · 為香港而設"
+  },
+  "Landing": {
+    "brand": "LoveByte",
+    "nav": {
+      "signin": "Sign in",
+      "startFree": "Start free"
+    },
+    "hero": {
+      "tag": "Made in Hong Kong · 為香港而設",
+      "line1": "Send a feeling,",
+      "line2": "not just a gift.",
+      "lede": "LoveByte turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they'd know how to pass.",
+      "ctaPrimary": "Start your gift →",
+      "ctaSecondary": "See an example"
+    },
+    "features": {
+      "heading": "Five gift formats",
+      "cards": {
+        "title": "Memory card game",
+        "body": "Pick photos. We turn them into a matching game. Every match unlocks a memory."
+      },
+      "puzzle": {
+        "title": "Photo puzzle",
+        "body": "Drag tiles back into place. The picture they were missing is the point."
+      },
+      "quiz": {
+        "title": "\"How well do you know me?\" quiz",
+        "body": "Multiple-choice questions only they'd get right. Wrong answers are funny. Right answers are sweet."
+      },
+      "collage": {
+        "title": "Multimedia collage",
+        "body": "Photos, short video, a song, your captions. Browsable, not just scrolled past."
+      },
+      "letter": {
+        "title": "Animated letter",
+        "body": "A scroll-reveal letter that opens like a real envelope. Photos and voice notes drop in as you read."
+      }
+    },
+    "how": {
+      "heading": "How it works",
+      "title": "Three steps.",
+      "steps": {
+        "1": {
+          "title": "Pick a format",
+          "body": "Five gift types to choose from. Each one designed for a different kind of \"I love you\"."
+        },
+        "2": {
+          "title": "Add the personal bits",
+          "body": "Photos, a voice note, your words. We help you arrange them so the moment hits right."
+        },
+        "3": {
+          "title": "Send the link",
+          "body": "One link, one QR code. Open it on their phone, they get the whole experience."
+        }
+      }
+    },
+    "footer": {
+      "line": "LoveByte · Made with care in Hong Kong",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
   }
 }
