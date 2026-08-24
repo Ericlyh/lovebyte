@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
-    "dev": "^0.1.5",
     "next": "16.3.2",
     "next-intl": "^4.13.7",
     "react": "19.2.8",
