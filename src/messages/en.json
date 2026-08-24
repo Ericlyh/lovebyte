@@ -70,5 +70,18 @@
       "privacy": "Privacy",
       "terms": "Terms"
     }
+  },
+  "Recipient": {
+    "heading": "{name} sent you something.",
+    "openCta": "Open your gift",
+    "saveForLater": "Save for later",
+    "reportLabel": "Report"
+  },
+  "Open": {
+    "letterTag": "A letter for you",
+    "fromLine": "from {name}",
+    "letterFoot": "Sent with LoveByte · 為香港而設",
+    "notShippedYet": "This gift type hasn't been built yet — check back soon.",
+    "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave."
   }
 }

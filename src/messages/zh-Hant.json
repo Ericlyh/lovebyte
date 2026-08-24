@@ -70,5 +70,18 @@
       "privacy": "私隱",
       "terms": "條款"
     }
+  },
+  "Recipient": {
+    "heading": "{name} 送咗嘢畀你。",
+    "openCta": "打開你嘅禮物",
+    "saveForLater": "遲啲先睇",
+    "reportLabel": "檢舉"
+  },
+  "Open": {
+    "letterTag": "一封寫畀你嘅信",
+    "fromLine": "由 {name} 寫",
+    "letterFoot": "經 LoveByte 寄出 · 為香港而設",
+    "notShippedYet": "呢種禮物仲未整好，遲啲再嚟睇。",
+    "schemaMismatch": "禮物內容格式不符，請傳話者重新儲存。"
   }
 }

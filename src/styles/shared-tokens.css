@@ -265,3 +265,211 @@ a:hover { color: var(--lb-primary-deep); }
   color: var(--lb-ink-soft);
   font-size: 14px;
 }
+
+/* === Recipient envelope (Phase 3) ========================================
+ * Full-bleed, no nav — this is the most-shared surface (design/03-mockups/
+ * recipient-view.html). */
+
+.lb-recipient-page {
+  min-height: 100vh;
+  background: var(--lb-honey);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.lb-recipient {
+  max-width: 640px;
+  width: 100%;
+  background: var(--lb-surface);
+  border-radius: var(--lb-radius-lg);
+  box-shadow: var(--lb-shadow-lg);
+  overflow: hidden;
+  text-align: center;
+  padding: 64px 48px;
+}
+@media (max-width: 540px) {
+  .lb-recipient { padding: 40px 24px; }
+}
+
+.lb-envelope {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 24px;
+  background: var(--lb-primary);
+  border-radius: var(--lb-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  box-shadow: var(--lb-shadow-md);
+  animation: lb-bob 3s ease-in-out infinite;
+}
+@keyframes lb-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-8px) rotate(3deg); }
+}
+
+.lb-recipient h1 {
+  font-family: var(--lb-font-display);
+  font-size: 48px;
+  color: var(--lb-primary);
+  margin-bottom: 12px;
+  line-height: 1.1;
+}
+@media (max-width: 540px) {
+  .lb-recipient h1 { font-size: 36px; }
+}
+
+.lb-recipient p.from {
+  color: var(--lb-ink-soft);
+  margin-bottom: 32px;
+  font-size: 15px;
+}
+.lb-recipient p.from b {
+  color: var(--lb-ink);
+}
+
+.lb-recipient__cover {
+  background: linear-gradient(135deg, #ffe8e7, #fff1d6);
+  border-radius: var(--lb-radius-md);
+  padding: 32px;
+  margin-bottom: 32px;
+  font-size: 15px;
+  color: var(--lb-ink);
+  line-height: 1.6;
+  font-style: italic;
+  border: none;
+}
+
+.lb-cta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.lb-cta-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 32px;
+  background: var(--lb-primary);
+  color: #fff;
+  border-radius: var(--lb-radius-pill);
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: var(--lb-shadow-md);
+  transition: all var(--lb-dur-fast);
+  text-decoration: none;
+}
+.lb-cta-primary:hover {
+  background: var(--lb-primary-deep);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.lb-recipient__saveforlater {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+}
+
+.lb-recipient__foot {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #f3e6e3;
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+}
+.lb-recipient__foot a { color: var(--lb-primary); }
+
+/* === In-experience: animated_letter (Phase 3) ===========================
+ * Scroll-reveal letter with paper-background variants. */
+
+.lb-letter-page {
+  min-height: 100vh;
+  background: var(--lb-honey);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.lb-letter {
+  max-width: 640px;
+  width: 100%;
+  background: var(--lb-surface);
+  border-radius: var(--lb-radius-lg);
+  padding: 64px 56px;
+  box-shadow: var(--lb-shadow-lg);
+  font-family: var(--lb-font-display);
+  font-size: 22px;
+  line-height: 1.7;
+  color: var(--lb-ink);
+}
+@media (max-width: 540px) {
+  .lb-letter { padding: 40px 28px; font-size: 19px; }
+}
+
+.lb-letter--paper-cream { background: #fffaf0; }
+.lb-letter--paper-kraft { background: #d8b78e; }
+.lb-letter--paper-lined {
+  background: repeating-linear-gradient(
+    0deg,
+    #ffffff 0,
+    #ffffff 28px,
+    #d4e8c8 28px,
+    #d4e8c8 29px
+  );
+}
+
+.lb-letter__head {
+  margin-bottom: 32px;
+  font-family: var(--lb-font-body);
+}
+.lb-letter__from {
+  color: var(--lb-ink-soft);
+  font-size: 14px;
+  margin-top: 12px;
+}
+
+.lb-letter__body { margin-bottom: 32px; }
+
+.lb-letter__paragraph {
+  margin-bottom: 24px;
+  white-space: pre-wrap;
+}
+.lb-letter__paragraph:last-child { margin-bottom: 0; }
+
+.lb-inline-media {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+  padding: 0;
+  font-family: var(--lb-font-body);
+  font-size: 13px;
+}
+.lb-inline-media__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--lb-blush);
+  color: var(--lb-primary-deep);
+  border-radius: var(--lb-radius-pill);
+  font-weight: 600;
+}
+
+.lb-letter__foot {
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid #f3e6e3;
+  font-family: var(--lb-font-body);
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  text-align: center;
+}
