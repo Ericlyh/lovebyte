@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# supabase CLI transient cache (created by `supabase init`, etc.)
+/supabase/.temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
