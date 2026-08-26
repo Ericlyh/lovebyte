@@ -510,3 +510,95 @@ a:hover { color: var(--lb-primary-deep); }
   color: var(--lb-ink-soft);
   text-align: center;
 }
+
+/* === Auth + Onboarding forms (M-B, OOP-4274) ===========================
+ * /login, /signup, /onboarding render a stacked field form inside a card.
+ * Each <label.lb-field> is a vertical stack: <span>label text</span> then
+ * an <input> / <textarea>. The form itself is a vertical flex column with
+ * a 16px gap so the cards breathe without each field needing a margin. */
+
+.lb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: var(--lb-space-4);
+}
+
+.lb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lb-field > span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lb-ink-soft);
+  letter-spacing: 0.02em;
+}
+.lb-field input,
+.lb-field textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--lb-radius-md);
+  border: 1.5px solid #e8d8d6;
+  background: #fff;
+  font-family: var(--lb-font-body);
+  font-size: 15px;
+  color: var(--lb-ink);
+  transition: border-color var(--lb-dur-fast);
+}
+.lb-field input:focus,
+.lb-field textarea:focus {
+  outline: none;
+  border-color: var(--lb-primary);
+}
+.lb-field small {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+
+.lb-auth-card,
+.lb-onboarding-card {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-6);
+  box-shadow: var(--lb-shadow-md);
+  max-width: 440px;
+  width: calc(100% - 32px);
+  margin: var(--lb-space-8) auto;
+}
+.lb-auth-card h1,
+.lb-onboarding-card h1 {
+  font-family: var(--lb-font-display);
+  font-size: 32px;
+  color: var(--lb-ink);
+  margin-bottom: 8px;
+  line-height: 1.15;
+}
+.lb-auth-card p.lede,
+.lb-onboarding-card p.lede {
+  color: var(--lb-ink-soft);
+  margin-bottom: var(--lb-space-4);
+}
+
+.lb-auth-foot {
+  margin-top: var(--lb-space-5);
+  text-align: center;
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+}
+.lb-auth-foot a {
+  font-weight: 600;
+}
+
+@media (max-width: 540px) {
+  .lb-auth-card,
+  .lb-onboarding-card {
+    padding: var(--lb-space-5);
+    margin: var(--lb-space-5) auto;
+  }
+  .lb-auth-card h1,
+  .lb-onboarding-card h1 {
+    font-size: 26px;
+  }
+}
