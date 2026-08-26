@@ -83,5 +83,52 @@
     "letterFoot": "經 LoveByte 寄出 · 為香港而設",
     "notShippedYet": "呢種禮物仲未整好，遲啲再嚟睇。",
     "schemaMismatch": "禮物內容格式不符，請傳話者重新儲存。"
+  },
+  "Auth": {
+    "signup": {
+      "heading": "開個新帳戶",
+      "lede": "註冊就可以開始整禮物，再放上巿集賣。",
+      "email": "電郵",
+      "password": "密碼",
+      "submit": "開個帳戶",
+      "haveAccount": "已經有帳戶？",
+      "signinLink": "登入"
+    },
+    "login": {
+      "heading": "歡迎返嚟",
+      "lede": "登入就可以繼續整禮物。",
+      "email": "電郵",
+      "password": "密碼",
+      "submit": "登入",
+      "noAccount": "仲未有帳戶？",
+      "signupLink": "註冊"
+    }
+  },
+  "Onboarding": {
+    "heading": "整好你嘅創作人檔案",
+    "lede": "揀個 handle、上傳頭像、寫段自介、加啲連結。買家會喺你嘅公開檔案見到。",
+    "handle": {
+      "label": "Handle",
+      "hint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 lovebyte.app/u/<handle>。"
+    },
+    "avatar": {
+      "label": "頭像"
+    },
+    "bio": {
+      "label": "自介"
+    },
+    "links": {
+      "label": "連結",
+      "placeholder": "每行一個 URL，例如 https://instagram.com/you"
+    },
+    "submit": "儲存並預覽檔案"
+  },
+  "Profile": {
+    "joinCta": "免費開個帳戶",
+    "tabsAria": "檔案分區",
+    "collection": "作品",
+    "about": "關於",
+    "placeholderBio": "@{handle} 嘅創作人檔案。完整讀取下次心跳先做，依家先鎖定排版。",
+    "emptyCollection": "仲未有上架嘅禮物。"
   }
 }

@@ -83,5 +83,52 @@
     "letterFoot": "Sent with LoveByte · 為香港而設",
     "notShippedYet": "This gift type hasn't been built yet — check back soon.",
     "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave."
+  },
+  "Auth": {
+    "signup": {
+      "heading": "Create your account",
+      "lede": "Sign up to start building gifts and listing them on the marketplace.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "signinLink": "Sign in"
+    },
+    "login": {
+      "heading": "Welcome back",
+      "lede": "Sign in to keep building.",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in",
+      "noAccount": "Don't have an account yet?",
+      "signupLink": "Sign up"
+    }
+  },
+  "Onboarding": {
+    "heading": "Set up your creator profile",
+    "lede": "Pick a handle, an avatar, a bio, and links. Buyers will see this on your public profile.",
+    "handle": {
+      "label": "Handle",
+      "hint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/<handle>."
+    },
+    "avatar": {
+      "label": "Avatar"
+    },
+    "bio": {
+      "label": "Bio"
+    },
+    "links": {
+      "label": "Links",
+      "placeholder": "One URL per line, e.g. https://instagram.com/you"
+    },
+    "submit": "Save and preview profile"
+  },
+  "Profile": {
+    "joinCta": "Join free",
+    "tabsAria": "Profile sections",
+    "collection": "Collection",
+    "about": "About",
+    "placeholderBio": "Creator profile for @{handle}. The full read lands in the next heartbeat — for now this is the layout lock.",
+    "emptyCollection": "No listed gifts yet."
   }
 }
