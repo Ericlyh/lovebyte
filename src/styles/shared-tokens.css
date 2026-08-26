@@ -34,6 +34,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Safety net: even if some component miscalculates its width,
+ * never let the document produce a horizontal scrollbar. */
+body { overflow-x: hidden; }
+
 a { color: var(--lb-primary); text-decoration: none; }
 a:hover { color: var(--lb-primary-deep); }
 
@@ -264,6 +268,39 @@ a:hover { color: var(--lb-primary-deep); }
   padding: 60px 24px 40px;
   color: var(--lb-ink-soft);
   font-size: 14px;
+}
+
+/* === Responsive (mobile-first) ============================================
+ * Nav + hero + features/steps all reflow below 640px so the nav does not
+ * force horizontal overflow. The recipient/letter pages already define
+ * their own ≤540px overrides above — those still apply. */
+
+@media (max-width: 640px) {
+  /* Nav — shrink brand, tighten gaps, smaller button so it never overflows */
+  .lb-nav { padding: 14px 18px; gap: 8px; }
+  .lb-nav__brand { font-size: 22px; }
+  .lb-nav__links { gap: 10px; }
+  .lb-nav__links a:not(.lb-btn) { font-size: 13px; }
+  .lb-btn--sm { padding: 6px 12px; font-size: 12px; }
+  .lb-lang-toggle { padding: 3px; }
+  .lb-lang-toggle button { padding: 5px 9px; font-size: 12px; }
+
+  /* Hero — smaller padding, the title clamp already works */
+  .lb-landing-hero { padding: 64px 20px 48px; }
+  .lb-landing-hero h1 { font-size: clamp(36px, 11vw, 72px); }
+  .lb-landing-hero p.lede { font-size: 16px; }
+
+  /* Features — force single column on phones, even though auto-fit already
+   * collapses at 260px min — defense in depth */
+  .lb-features { grid-template-columns: 1fr; padding: 48px 20px; gap: 16px; }
+
+  /* How-it-works — single column, tighter spacing */
+  .lb-how-it-works { padding: 48px 20px; }
+  .lb-how-it-works h2 { font-size: 32px; margin-bottom: 32px; }
+  .lb-steps { grid-template-columns: 1fr; gap: 28px; }
+
+  /* Footer */
+  .lb-landing-foot { padding: 40px 20px 24px; font-size: 13px; }
 }
 
 /* === Recipient envelope (Phase 3) ========================================
