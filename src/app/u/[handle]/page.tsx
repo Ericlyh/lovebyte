@@ -3,18 +3,19 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { getProfileByHandle } from '@/lib/profiles/query';
+import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
 
 /**
- * /u/[handle] — M-B step 1 of 4 (OOP-4274).
+ * /u/[handle] — public creator profile (OOP-4274 M-B).
  *
- * Public creator profile (anon-readable via `profiles_public` view from
- * M-A). Stub: greps the handle param and renders a placeholder hero +
- * tabs. The actual data fetch + RLS-scoped read goes through
- * `getProfileByHandle()` (to be added) which queries the
- * `profiles_public` view — server-side, anon-safe.
+ * Edge-runtime safe: data fetch goes through `profiles_public`
+ * (anon-readable view from M-A). The authed follow action lands in
+ * the next heartbeat (OOP-4280) — for now the page is read-only.
  *
- * Edge-runtime safe: no Supabase server client (that needs cookies());
- * the public view is readable from the edge with the anon key alone.
+ * The handle param is validated here as a 404 guard before we touch
+ * the DB. The DB-side CHECK constraint is the source of truth; this
+ * guard just keeps us from echoing malformed handles back to the URL.
  */
 type Props = {
   params: Promise<{ handle: string }>;
@@ -22,22 +23,39 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
+  const profile = await getProfileByHandle(handle);
+  const name = profile?.display_name ?? `@${handle}`;
   return {
-    title: `@${handle} — LoveByte`,
-    description: `Creator profile @${handle} on LoveByte.`,
+    title: `${name} — LoveByte`,
+    description: profile?.bio ?? `Creator profile @${handle} on LoveByte.`,
   };
 }
 
 export default async function CreatorProfilePage({ params }: Props) {
   const { handle } = await params;
-  const t = await getTranslations('Profile');
 
-  // M-B spec — kebab-case handle, 3–20 chars. Reject anything else with
-  // a 404 rather than 500. The hard validation lives server-side in the
-  // upsert; this guard exists so we don't echo garbage back to the user.
-  if (!/^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(handle) || handle.length < 3 || handle.length > 20) {
+  // Reject malformed handles with a 404 rather than 500. Mirrors the
+  // DB CHECK constraint — if the handle passes this regex it would
+  // round-trip the profiles_public view safely.
+  if (
+    !handle ||
+    handle.length < 3 ||
+    handle.length > HANDLE_MAX_LENGTH ||
+    !HANDLE_REGEX.test(handle)
+  ) {
     notFound();
   }
+
+  const profile = await getProfileByHandle(handle);
+  if (!profile) notFound();
+
+  const t = await getTranslations('Profile');
+  const displayName = profile.display_name ?? `@${profile.handle}`;
+  const links = Array.isArray(profile.links)
+    ? (profile.links as unknown[]).filter(
+        (l): l is string => typeof l === 'string' && /^https?:\/\//.test(l),
+      )
+    : [];
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -52,8 +70,24 @@ export default async function CreatorProfilePage({ params }: Props) {
       </nav>
 
       <section className="lb-profile-hero">
-        <h1>@{handle}</h1>
-        <p className="lede">{t('placeholderBio', { handle })}</p>
+        <h1>{displayName}</h1>
+        <p className="lb-profile-handle">@{profile.handle}</p>
+        {profile.bio ? <p className="lede">{profile.bio}</p> : null}
+        {links.length > 0 ? (
+          <ul className="lb-profile-links">
+            {links.map((url) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="lb-profile-follow-stub">
+          {/* Follow action lands in OOP-4280. Stub copy keeps the layout locked. */}
+          {t('followPlaceholder')}
+        </p>
       </section>
 
       <section className="lb-profile-tabs" aria-label={t('tabsAria')}>

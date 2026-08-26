@@ -128,7 +128,8 @@
     "tabsAria": "檔案分區",
     "collection": "作品",
     "about": "關於",
-    "placeholderBio": "@{handle} 嘅創作人檔案。完整讀取下次心跳先做，依家先鎖定排版。",
-    "emptyCollection": "仲未有上架嘅禮物。"
+    "emptyCollection": "仲未有上架嘅禮物。",
+    "notFound": "�唔到呢個創作人（可能未開戶）。",
+    "followPlaceholder": "登入就可以追蹤 @{handle}。"
   }
 }

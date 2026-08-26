@@ -128,7 +128,8 @@
     "tabsAria": "Profile sections",
     "collection": "Collection",
     "about": "About",
-    "placeholderBio": "Creator profile for @{handle}. The full read lands in the next heartbeat — for now this is the layout lock.",
-    "emptyCollection": "No listed gifts yet."
+    "emptyCollection": "No listed gifts yet.",
+    "notFound": "This creator doesn't exist (yet).",
+    "followPlaceholder": "Sign in to follow @{handle}."
   }
 }
