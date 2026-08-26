@@ -24,6 +24,10 @@ export type PublicProfile = {
  * handle doesn't exist; the caller decides between `notFound()` (page)
  * and a 404 response (route handler).
  *
+ * PostgREST note: with `limit=1` a missing row returns `[]` (empty
+ * array), NOT `null`. We unwrap that here so callers get a single
+ * nullable row, not an array.
+ *
  * Note: this does NOT return collection items. That's M-C's job —
  * `gifts` rows with `is_listed = true` for the creator. The /u/[handle]
  * page renders an empty Collection tab until M-C ships.
@@ -44,5 +48,7 @@ export async function getProfileByHandle(
     console.error('[getProfileByHandle] postgrest error', error);
     return null;
   }
-  return (data as PublicProfile | null) ?? null;
+  if (data == null) return null;
+  if (Array.isArray(data)) return data[0] ?? null;
+  return data;
 }
