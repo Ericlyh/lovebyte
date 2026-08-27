@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
   signUpAction,
@@ -156,7 +157,16 @@ export function SignupForm() {
 
       {state?.ok === false && (
         <p role="alert" className="lb-form__error">
-          {state.error === 'EMAIL_EXISTS' ? tErr('emailExists') : state.error || tErr('generic')}
+          {state.error === 'EMAIL_VERIFIED' ? (
+            <>
+              {tErr('emailVerified')}{' '}
+              <Link href="/login">{t('signinLink')}</Link>.
+            </>
+          ) : state.error === 'EMAIL_EXISTS' ? (
+            tErr('emailExists')
+          ) : (
+            state.error || tErr('generic')
+          )}
         </p>
       )}
     </form>

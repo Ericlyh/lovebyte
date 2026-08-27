@@ -88,7 +88,8 @@
     "errors": {
       "generic": "Something went wrong. Try again.",
       "wrongCredentials": "Wrong email or password.",
-      "emailExists": "This email is already registered. If it's yours, sign in instead — or use Forgot password on the sign-in page to get a fresh link."
+      "emailExists": "This email is already registered. If it's yours, sign in instead — or use Forgot password on the sign-in page to get a fresh link.",
+      "emailVerified": "This email is already registered and verified. Sign in instead."
     },
     "signup": {
       "heading": "Create your account",

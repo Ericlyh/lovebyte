@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { postgrest } from '@/lib/supabase/anon';
+import { lookupEmail } from '@/lib/supabase/admin';
 import {
   validateHandle,
   HANDLE_MAX_LENGTH,
@@ -116,7 +117,53 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     return badInput(path, issue?.message ?? 'Invalid input.');
   }
 
+  // Pre-check: is this email already registered? (OOP-4284 user report.)
+  //
+  // Supabase signUp behaviour for an existing email is split by state:
+  //   - Verified account: returns `error.code === 'user_already_exists'`
+  //     (recent SDKs) OR silently succeeds with the existing user echoed
+  //     back. Either way no new email is sent.
+  //   - Pending account (signed up but didn't click the link): recent
+  //     SDKs ALSO return `user_already_exists` and do NOT resend — the
+  //     user is stuck wondering why their inbox is empty.
+  //
+  // Distinguish the two with a GoTrue admin lookup before calling signUp
+  // so we can route each case to the right UX:
+  //   - verified  → tell the user to sign in instead (EMAIL_VERIFIED).
+  //   - pending   → call resend() to fire a fresh confirmation email,
+  //                  then redirect to the check-email banner.
+  //   - not_found → normal signUp.
+  const lookup = await lookupEmail(parsed.data.email);
   const supabase = await createClient();
+  if (lookup.error) {
+    // Admin lookup failed — log and fall through to normal signUp. The
+    // post-signUp detection below still catches the verified case.
+    console.warn('[auth/signUp] admin lookup failed, falling through', lookup.error.message);
+  } else if (lookup.data.state === 'verified') {
+    console.warn('[auth/signUp] email already verified', parsed.data.email);
+    return { ok: false, error: 'EMAIL_VERIFIED', field: 'email' };
+  } else if (lookup.data.state === 'pending') {
+    // Resend the confirmation email. This calls GoTrue's /auth/v1/resend
+    // endpoint under the hood, which generates a fresh token and emails
+    // it. Works without an active session.
+    const { error: resendErr } = await supabase.auth.resend({
+      type: 'signup',
+      email: parsed.data.email,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/onboarding`,
+      },
+    });
+    if (resendErr) {
+      console.error('[auth/signUp] resend failed', resendErr.message);
+      // Fall through to signUp anyway — worst case the user gets the
+      // original confirmation link (if it's still valid) or the standard
+      // signUp error.
+    } else {
+      const q = new URLSearchParams({ email: parsed.data.email });
+      redirect(`/signup/check-email?${q.toString()}`);
+    }
+  }
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -129,22 +176,12 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     },
   });
 
-  // Duplicate-email detection (M-B follow-up, OOP-4284 user report).
-  //
-  // Supabase Auth signUp behaviour for an email that's already registered:
-  //   - Recent SDKs (>=2.45): returns `error.code === 'user_already_exists'`.
-  //   - Older SDKs (and some GoTrue paths): returns no error, with
-  //     `data.user.email_confirmed_at` already populated — Supabase silently
-  //     acknowledges the existing user and does NOT send a new confirmation
-  //     email (nothing to confirm: the user is already confirmed).
-  //
-  // Either way the user experience is the same: they hit "Create account",
-  // no email arrives, they think the system is broken. Surface that as a
-  // field-level error pointing at the email input — the form already wires
-  // `state.field === 'email'` to `aria-invalid` on the email <input>, and
-  // the "Sign in" link below the submit button already exists.
+  // Post-signUp duplicate detection — defence in depth in case the
+  // pre-check above was unavailable (admin lookup failed) or raced a
+  // concurrent signUp. Both shapes mean the same thing to the user: no
+  // new email will arrive.
   if (error && (error.code === 'user_already_exists' || /already.*registered/i.test(error.message))) {
-    console.warn('[auth/signUp] duplicate email', parsed.data.email);
+    console.warn('[auth/signUp] duplicate email (post-check)', parsed.data.email);
     return { ok: false, error: 'EMAIL_EXISTS', field: 'email' };
   }
   if (error) {
@@ -152,12 +189,11 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     return { ok: false, error: error.message };
   }
 
-  // No error, but the returned user is already confirmed → signUp was a
-  // silent no-op against an existing confirmed account. Same UX outcome as
-  // the explicit `user_already_exists` path above: no new email is sent.
   if (data.session == null && data.user?.email_confirmed_at) {
+    // Silent no-op against an already-confirmed account. The pre-check
+    // should have caught this; if we got here, treat the same way.
     console.warn('[auth/signUp] silent duplicate (already confirmed)', parsed.data.email);
-    return { ok: false, error: 'EMAIL_EXISTS', field: 'email' };
+    return { ok: false, error: 'EMAIL_VERIFIED', field: 'email' };
   }
 
   // Edge case: email-confirmation flow disabled, but no session returned.
@@ -165,7 +201,8 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
   // the error so the user can retry.
   if (data.session == null) {
     // Email confirmation likely required. Redirect to a banner page.
-    redirect('/signup/check-email');
+    const q = new URLSearchParams({ email: parsed.data.email });
+    redirect(`/signup/check-email?${q.toString()}`);
   }
 
   revalidatePath('/', 'layout');
