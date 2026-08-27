@@ -591,6 +591,16 @@ a:hover { color: var(--lb-primary-deep); }
   font-weight: 600;
 }
 
+/* Auth form CTA: narrower than the card, horizontally centered, with the
+ * label centered inside the pill. Overrides the default flex-column stretch
+ * on .lb-form children so the submit button doesn't fill the card width. */
+.lb-form .lb-btn {
+  align-self: center;
+  min-width: 220px;
+  margin-top: var(--lb-space-2);
+  justify-content: center;
+}
+
 @media (max-width: 540px) {
   .lb-auth-card,
   .lb-onboarding-card {
