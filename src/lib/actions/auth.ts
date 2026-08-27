@@ -129,9 +129,35 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     },
   });
 
+  // Duplicate-email detection (M-B follow-up, OOP-4284 user report).
+  //
+  // Supabase Auth signUp behaviour for an email that's already registered:
+  //   - Recent SDKs (>=2.45): returns `error.code === 'user_already_exists'`.
+  //   - Older SDKs (and some GoTrue paths): returns no error, with
+  //     `data.user.email_confirmed_at` already populated — Supabase silently
+  //     acknowledges the existing user and does NOT send a new confirmation
+  //     email (nothing to confirm: the user is already confirmed).
+  //
+  // Either way the user experience is the same: they hit "Create account",
+  // no email arrives, they think the system is broken. Surface that as a
+  // field-level error pointing at the email input — the form already wires
+  // `state.field === 'email'` to `aria-invalid` on the email <input>, and
+  // the "Sign in" link below the submit button already exists.
+  if (error && (error.code === 'user_already_exists' || /already.*registered/i.test(error.message))) {
+    console.warn('[auth/signUp] duplicate email', parsed.data.email);
+    return { ok: false, error: 'EMAIL_EXISTS', field: 'email' };
+  }
   if (error) {
     console.error('[auth/signUp]', error.message);
     return { ok: false, error: error.message };
+  }
+
+  // No error, but the returned user is already confirmed → signUp was a
+  // silent no-op against an existing confirmed account. Same UX outcome as
+  // the explicit `user_already_exists` path above: no new email is sent.
+  if (data.session == null && data.user?.email_confirmed_at) {
+    console.warn('[auth/signUp] silent duplicate (already confirmed)', parsed.data.email);
+    return { ok: false, error: 'EMAIL_EXISTS', field: 'email' };
   }
 
   // Edge case: email-confirmation flow disabled, but no session returned.

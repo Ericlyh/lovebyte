@@ -87,7 +87,8 @@
   "Auth": {
     "errors": {
       "generic": "Something went wrong. Try again.",
-      "wrongCredentials": "Wrong email or password."
+      "wrongCredentials": "Wrong email or password.",
+      "emailExists": "This email is already registered. If it's yours, sign in instead — or use Forgot password on the sign-in page to get a fresh link."
     },
     "signup": {
       "heading": "Create your account",

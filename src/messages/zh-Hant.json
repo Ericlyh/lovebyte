@@ -87,7 +87,8 @@
   "Auth": {
     "errors": {
       "generic": "出咗啲事，再試多次。",
-      "wrongCredentials": "電郵或密碼錯咗。"
+      "wrongCredentials": "電郵或密碼錯咗。",
+      "emailExists": "呢個電郵已經註冊咗。如果係你嘅，去登入；或者喺登入頁面用「忘記密碼」攞條新連結。"
     },
     "signup": {
       "heading": "開個新帳戶",

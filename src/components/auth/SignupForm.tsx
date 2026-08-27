@@ -156,7 +156,7 @@ export function SignupForm() {
 
       {state?.ok === false && (
         <p role="alert" className="lb-form__error">
-          {state.error || tErr('generic')}
+          {state.error === 'EMAIL_EXISTS' ? tErr('emailExists') : state.error || tErr('generic')}
         </p>
       )}
     </form>
