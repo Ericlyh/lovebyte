@@ -552,9 +552,82 @@ a:hover { color: var(--lb-primary-deep); }
   outline: none;
   border-color: var(--lb-primary);
 }
+/* Invalid inputs (live client-side validation failed or server returned
+ * a field-specific error). Keep the change subtle so the form stays warm. */
+.lb-field input[aria-invalid="true"],
+.lb-field textarea[aria-invalid="true"] {
+  border-color: var(--lb-danger);
+}
 .lb-field small {
   font-size: 12px;
   color: var(--lb-ink-soft);
+}
+
+/* Status hints under each field — used by the live validators on
+ * /signup and /onboarding. Same color story as the slide deck: sage
+ * for ok, danger for bad, ink-soft for "still checking". */
+.lb-field__status {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.lb-field__status--ok {
+  color: var(--lb-success);
+}
+.lb-field__status--bad {
+  color: var(--lb-danger);
+}
+.lb-field__status--checking {
+  color: var(--lb-ink-soft);
+}
+
+/* Password rules checklist — one row per requirement, ticking from
+ * "pending" to "ok" as the user types. Stays under the password field
+ * so the user never loses context. */
+.lb-field__rules {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+.lb-field__rule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lb-field__rule--ok {
+  color: var(--lb-success);
+}
+.lb-field__rule::before {
+  content: '○';
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  font-size: 12px;
+}
+.lb-field__rule--ok::before {
+  content: '✓';
+}
+
+/* Server / submit-level error and success banners. */
+.lb-form__error {
+  margin-top: var(--lb-space-2);
+  padding: 10px 14px;
+  border-radius: var(--lb-radius-md);
+  background: #fdecea;
+  color: #922521;
+  font-size: 14px;
+}
+.lb-form__success {
+  margin-top: var(--lb-space-2);
+  padding: 10px 14px;
+  border-radius: var(--lb-radius-md);
+  background: #e6f4ea;
+  color: #1e6b3a;
+  font-size: 14px;
 }
 
 .lb-auth-card,

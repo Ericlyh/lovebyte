@@ -99,7 +99,18 @@
       "submit": "Create account",
       "submitting": "Creating account…",
       "haveAccount": "Already have an account?",
-      "signinLink": "Sign in"
+      "signinLink": "Sign in",
+      "passwordRules": {
+        "minLength": "At least 8 characters",
+        "maxLength": "72 characters or fewer"
+      },
+      "handleStates": {
+        "checking": "Checking…",
+        "available": "Available",
+        "taken": "That handle is already taken.",
+        "invalid": "Lowercase letters, digits, and dashes only."
+      },
+      "handleEmpty": "Optional — leave blank to set it up later."
     },
     "login": {
       "heading": "Welcome back",

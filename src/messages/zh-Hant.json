@@ -99,7 +99,18 @@
       "submit": "開個帳戶",
       "submitting": "開緊帳戶…",
       "haveAccount": "已經有帳戶？",
-      "signinLink": "登入"
+      "signinLink": "登入",
+      "passwordRules": {
+        "minLength": "至少 8 個字元",
+        "maxLength": "唔多過 72 個字元"
+      },
+      "handleStates": {
+        "checking": "檢查緊…",
+        "available": "可以用",
+        "taken": "呢個 handle 已經俾人用咗。",
+        "invalid": "只接受細楷英文字母、數字同橫線。"
+      },
+      "handleEmpty": "可以留空，之後先去 onboarding 揀。"
     },
     "login": {
       "heading": "歡迎返嚟",
