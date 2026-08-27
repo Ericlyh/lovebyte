@@ -157,7 +157,12 @@
     "submitting": "Saving…",
     "saved": "Profile saved. Taking you to your page…",
     "authRequired": "Sign in to set up your creator profile.",
-    "signInCta": "Sign in"
+    "signInCta": "Sign in",
+    "expiredLink": {
+      "title": "Your confirmation link expired",
+      "body": "Email links are valid for one hour. Sign in with the email you used to sign up — if your email isn't confirmed yet, we'll send you a new link.",
+      "resendCta": "Sign in to resend"
+    }
   },
   "Profile": {
     "joinCta": "Join free",

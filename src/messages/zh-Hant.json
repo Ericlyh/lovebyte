@@ -157,7 +157,12 @@
     "submitting": "儲存緊…",
     "saved": "檔案儲存咗，而家帶你去睇下。",
     "authRequired": "登入就可以整你嘅創作人檔案。",
-    "signInCta": "登入"
+    "signInCta": "登入",
+    "expiredLink": {
+      "title": "你嘅確認連結已經過咗期",
+      "body": "確認連結一個鐘之後就會失效。用你註冊嘅電郵登入 — 如果你仲未確認電郵，我哋會再 send 一條新連結畀你。",
+      "resendCta": "登入重新寄送"
+    }
   },
   "Profile": {
     "joinCta": "免費開個帳戶",
