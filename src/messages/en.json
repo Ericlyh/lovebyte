@@ -85,12 +85,19 @@
     "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave."
   },
   "Auth": {
+    "errors": {
+      "generic": "Something went wrong. Try again.",
+      "wrongCredentials": "Wrong email or password."
+    },
     "signup": {
       "heading": "Create your account",
       "lede": "Sign up to start building gifts and listing them on the marketplace.",
+      "displayName": "Display name",
+      "handle": "Handle (optional — pick one now or set it up later)",
       "email": "Email",
       "password": "Password",
       "submit": "Create account",
+      "submitting": "Creating account…",
       "haveAccount": "Already have an account?",
       "signinLink": "Sign in"
     },
@@ -100,8 +107,13 @@
       "email": "Email",
       "password": "Password",
       "submit": "Sign in",
+      "submitting": "Signing in…",
       "noAccount": "Don't have an account yet?",
       "signupLink": "Sign up"
+    },
+    "checkEmail": {
+      "heading": "Check your inbox",
+      "body": "We've sent a confirmation link to {email}. Click it to finish setting up your account, then come back to pick your handle."
     }
   },
   "Onboarding": {
@@ -109,19 +121,32 @@
     "lede": "Pick a handle, an avatar, a bio, and links. Buyers will see this on your public profile.",
     "handle": {
       "label": "Handle",
-      "hint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/<handle>."
+      "hint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/<handle>.",
+      "checking": "Checking…",
+      "available": "Available",
+      "taken": "That handle is already taken.",
+      "invalid": "Lowercase letters, digits, and dashes only."
     },
     "avatar": {
-      "label": "Avatar"
+      "label": "Avatar",
+      "hint": "PNG or JPG, up to 2 MB. Coming soon — uploads not enabled yet."
+    },
+    "displayName": {
+      "label": "Display name"
     },
     "bio": {
-      "label": "Bio"
+      "label": "Bio",
+      "hint": "Up to 600 characters."
     },
     "links": {
       "label": "Links",
       "placeholder": "One URL per line, e.g. https://instagram.com/you"
     },
-    "submit": "Save and preview profile"
+    "submit": "Save and preview profile",
+    "submitting": "Saving…",
+    "saved": "Profile saved. Taking you to your page…",
+    "authRequired": "Sign in to set up your creator profile.",
+    "signInCta": "Sign in"
   },
   "Profile": {
     "joinCta": "Join free",

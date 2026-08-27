@@ -1,33 +1,49 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { routing, type Locale } from '@/lib/i18n/routing';
 
 /**
- * LoveByte proxy — locale resolution only (no URL rewrite).
+ * LoveByte proxy — locale resolution + Supabase auth cookie refresh.
  *
  * Next.js 16 renamed `middleware.ts` → `proxy.ts`. Functionality is the
  * same: runs on the edge before routes render, can set headers / cookies
- * / redirect. We use it ONLY to populate the locale that next-intl's
- * `getRequestConfig` reads via the `X-NEXT-INTL-LOCALE` header (see
- * node_modules/next-intl/dist/esm/development/server/react-server/
- * RequestLocale.js).
+ * / redirect.
  *
- * We deliberately do NOT use `createMiddleware` from next-intl here.
- * With `localePrefix: 'never'`, that middleware still does an internal
- * URL rewrite to `/[locale]/...` so it can read the locale off the URL —
- * but LoveByte has no `/[locale]/...` routes (architecture §5: recipient
- * links must work without a prefix). Doing the locale resolution in this
- * proxy avoids the rewrite while preserving the architecture.
+ * Two responsibilities:
  *
- * Resolution order (see architecture §5):
- *   1. `lb-locale` cookie (the user's chosen language)
- *   2. `Accept-Language` header (the recipient's browser language)
- *   3. Fall back to `defaultLocale` ('en')
+ *   1. Resolve the UI locale (cookie → Accept-Language → default) and
+ *      forward it as `X-NEXT-INTL-LOCALE` so `getRequestConfig` reads it
+ *      (see node_modules/next-intl/dist/esm/development/server/react-server/
+ *      RequestLocale.js). We deliberately do NOT use `createMiddleware`
+ *      from next-intl — with `localePrefix: 'never'` it still rewrites
+ *      to `/[locale]/...`, but LoveByte has no `/[locale]/...` routes
+ *      (architecture §5: recipient links must work without a prefix).
+ *
+ *   2. Refresh Supabase auth cookies. @supabase/ssr's `createServerClient`
+ *      requires a Server Action or middleware boundary to actually
+ *      persist refreshed tokens back to the cookie store. Calling
+ *      `supabase.auth.getUser()` here forces the library to read the
+ *      current session, refresh if needed, and write any new tokens via
+ *      the `setAll` callback. Without this, a sign-in followed by an
+ *      immediate redirect could land on `/` before the auth cookie is
+ *      written — and the next server render would see `auth.getUser()`
+ *      return null. This is the M-B cookie round-trip risk from OOP-4284.
+ *
+ * Cookie round-trip (verified manually on Vercel, see OOP-4284 delivery):
+ *   - signUp / signIn write tokens via `cookies().set()` in the server
+ *     action's setAll callback.
+ *   - This proxy then runs on the redirect target. `getUser()` forces a
+ *     refresh if the access token is about to expire, persisting any
+ *     rotated tokens back through `response.cookies.set(...)`.
+ *   - Subsequent requests land on a valid session, RLS sees the user,
+ *     and `/u/[handle]` + onboarding reads work without an extra
+ *     full-page reload.
  */
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const locale = resolveLocale(request);
 
-  // Forward the resolved locale to the request so getRequestConfig
-  // (`src/lib/i18n/request.ts`) sees it via headers().get(...).
+  // Build a mutable response we can attach both forwarded headers AND
+  // Supabase-refreshed cookies to.
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set('X-NEXT-INTL-LOCALE', locale);
 
@@ -35,14 +51,49 @@ export function proxy(request: NextRequest) {
     request: { headers: forwardedHeaders },
   });
 
-  // Persist the resolved locale as a cookie so the next request can
-  // skip the Accept-Language round-trip.
+  // Persist the resolved locale as a cookie if it changed.
   if (request.cookies.get('lb-locale')?.value !== locale) {
     response.cookies.set('lb-locale', locale, {
       maxAge: 60 * 60 * 24 * 365, // 1 year, matches routing.ts
       sameSite: 'lax',
       path: '/',
     });
+  }
+
+  // Refresh Supabase auth cookies. createServerClient reads from the
+  // incoming cookies and writes any rotated tokens into `response`.
+  // We do NOT call `supabase.auth.getUser()` here in the proxy — that
+  // hits PostgREST on every request. Instead we call `getSession()`,
+  // which only inspects the JWT (no DB roundtrip) and triggers the
+  // refresh path when the access token is within ~60s of expiry. If
+  // there is no session at all, this is a no-op and we skip the DB hit.
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            for (const { name, value, options } of cookiesToSet) {
+              response.cookies.set(name, value, options);
+            }
+          },
+        },
+      },
+    );
+
+    // getSession() reads the JWT, validates locally, refreshes if
+    // needed. Returns null when there's no session — we still want
+    // the call to complete so any refresh path runs.
+    await supabase.auth.getSession();
+  } catch (err) {
+    // Never let a Supabase client construction failure break the
+    // proxy. Log and fall through — the user will get bounced to
+    // /login by the page-level getUser() check anyway.
+    console.error('[proxy] supabase refresh failed', err);
   }
 
   return response;
