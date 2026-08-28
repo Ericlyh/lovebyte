@@ -155,18 +155,24 @@ export function SignupForm() {
         {isPending ? t('submitting') : t('submit')}
       </button>
 
-      {state?.ok === false && (
+      {state?.ok === false && state.error === 'EMAIL_VERIFIED' && (
+        // CTA card (OOP-4284 follow-up, comment 339c9a62): the previous
+        // inline text + link was too understated and the user read it as
+        // "the form is broken". A primary-styled link is harder to miss.
+        <div role="alert" className="lb-form__error lb-form__error--card">
+          <p className="lb-form__error-title">{tErr('emailVerified')}</p>
+          <p className="lb-form__error-hint">{tErr('emailVerifiedHint')}</p>
+          <Link className="lb-btn lb-btn--primary lb-btn--block" href="/login">
+            {t('signinLink')}
+          </Link>
+        </div>
+      )}
+
+      {state?.ok === false && state.error !== 'EMAIL_VERIFIED' && (
         <p role="alert" className="lb-form__error">
-          {state.error === 'EMAIL_VERIFIED' ? (
-            <>
-              {tErr('emailVerified')}{' '}
-              <Link href="/login">{t('signinLink')}</Link>.
-            </>
-          ) : state.error === 'EMAIL_EXISTS' ? (
-            tErr('emailExists')
-          ) : (
-            state.error || tErr('generic')
-          )}
+          {state.error === 'EMAIL_EXISTS'
+            ? tErr('emailExists')
+            : state.error || tErr('generic')}
         </p>
       )}
     </form>
@@ -210,19 +216,38 @@ function HandleStatus({
  * Live handle availability probe. Mirrors the pattern in OnboardingForm:
  * debounced 250 ms, format-check first, server probe second.
  *
- *   - empty       → `empty` (handle is optional at signup, no hint yet)
+ *   - empty       → `empty` (no hint yet; /signup now requires the handle
+ *     before submit, so the empty hint points the user at the format rules)
  *   - bad format  → `invalid` (skip the roundtrip — the server will say
  *     the same thing)
  *   - good format → server probe → `available` / `taken` / `error`
+ *
+ * **Frozen-on-checking fix (OOP-4284 follow-up, comment 339c9a62):** the
+ * previous version set `state={kind:'checking'}` BEFORE the early-return
+ * guard for cached values. Sequence: type "foo" → "bar" → backspace to
+ * "foo" → guard fires → but state stayed at "checking" from the "bar"
+ * step. Fix: put the cached-value guard FIRST and explicitly restore the
+ * `available` state on hit. `abortRef` discards stale probe responses
+ * that resolve after the user has already moved on.
  */
 function useHandleAvailability(rawHandle: string): HandleState {
   const [state, setState] = useState<HandleState>({ kind: 'empty' });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCheckedRef = useRef<string>('');
+  const abortRef = useRef(0);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    abortRef.current += 1;
     const trimmed = normalizeHandle(rawHandle);
+
+    // Cached-value guard runs FIRST so a value we already probed flips
+    // straight back to `available` (not stuck at `checking` from the
+    // previous keystroke).
+    if (trimmed === lastCheckedRef.current && trimmed.length > 0) {
+      setState({ kind: 'available' });
+      return;
+    }
 
     if (trimmed.length === 0) {
       setState({ kind: 'empty' });
@@ -232,15 +257,14 @@ function useHandleAvailability(rawHandle: string): HandleState {
       setState({ kind: 'invalid' });
       return;
     }
-    if (trimmed === lastCheckedRef.current) {
-      return;
-    }
     setState({ kind: 'checking' });
 
+    const abortAt = abortRef.current;
     debounceRef.current = setTimeout(async () => {
       const res = await checkHandleAvailableAction(trimmed);
-      lastCheckedRef.current = trimmed;
+      if (abortAt !== abortRef.current) return; // stale probe, drop
       if (res.ok) {
+        lastCheckedRef.current = trimmed;
         setState(res.available ? { kind: 'available' } : { kind: 'taken' });
       } else {
         setState({ kind: 'error' });

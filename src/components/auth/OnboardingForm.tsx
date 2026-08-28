@@ -58,12 +58,24 @@ export function OnboardingForm({
   const [result, setResult] = useState<UpsertProfileResult | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastCheckedRef = useRef<string>(initialHandle);
+  const abortRef = useRef(0);
 
   // Debounced handle availability probe. 250ms per OOP-4284.
+  //
+  // Frozen-on-checking fix (OOP-4284 follow-up, comment 339c9a62):
+  // cached-value guard runs FIRST and explicitly restores `available`,
+  // not leaving the state stuck at `checking` from a previous keystroke.
+  // `abortRef` discards stale probe responses that resolve after the
+  // user has already moved on.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    abortRef.current += 1;
     const trimmed = handle.trim().toLowerCase();
-    if (trimmed === lastCheckedRef.current) return;
+
+    if (trimmed === lastCheckedRef.current && trimmed.length > 0) {
+      setHandleState({ kind: 'available' });
+      return;
+    }
 
     if (trimmed.length === 0) {
       setHandleState({ kind: 'idle' });
@@ -75,10 +87,12 @@ export function OnboardingForm({
     }
     setHandleState({ kind: 'checking' });
 
+    const abortAt = abortRef.current;
     debounceRef.current = setTimeout(async () => {
       const res = await checkHandleAvailableAction(trimmed);
-      lastCheckedRef.current = trimmed;
+      if (abortAt !== abortRef.current) return; // stale probe, drop
       if (res.ok) {
+        lastCheckedRef.current = trimmed;
         setHandleState(res.available ? { kind: 'available' } : { kind: 'taken' });
       } else {
         setHandleState({ kind: 'error' });

@@ -621,6 +621,27 @@ a:hover { color: var(--lb-primary-deep); }
   color: #922521;
   font-size: 14px;
 }
+/* CTA-card variant: used when the form action returns a routing-style
+ * error (e.g. EMAIL_VERIFIED → "go to /login"). Renders a title, a hint
+ * paragraph, and a primary button, instead of a flat inline string.
+ * (OOP-4284 follow-up, comment 339c9a62.) */
+.lb-form__error--card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+}
+.lb-form__error--card .lb-form__error-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin: 0;
+}
+.lb-form__error--card .lb-form__error-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #6b3431;
+}
 .lb-form__success {
   margin-top: var(--lb-space-2);
   padding: 10px 14px;

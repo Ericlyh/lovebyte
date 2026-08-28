@@ -89,7 +89,8 @@
       "generic": "Something went wrong. Try again.",
       "wrongCredentials": "Wrong email or password.",
       "emailExists": "This email is already registered. If it's yours, sign in instead — or use Forgot password on the sign-in page to get a fresh link.",
-      "emailVerified": "This email is already registered and verified. Sign in instead."
+      "emailVerified": "This email is already registered and verified.",
+      "emailVerifiedHint": "Sign in below, or use Forgot password if you've forgotten it."
     },
     "signup": {
       "heading": "Create your account",
