@@ -96,7 +96,8 @@
       "heading": "Create your account",
       "lede": "Sign up to start building gifts and listing them on the marketplace.",
       "displayName": "Display name",
-      "handle": "Handle (optional — leave blank and we'll ask on the next step)",
+      "handle": "Pick a handle",
+      "handleHint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/<handle>.",
       "email": "Email",
       "password": "Password",
       "submit": "Create account",
@@ -113,7 +114,7 @@
         "taken": "That handle is already taken.",
         "invalid": "Lowercase letters, digits, and dashes only."
       },
-      "handleEmpty": "Optional. You can pick it on the next step (right after you verify your email)."
+      "handleEmpty": "Pick a handle to continue."
     },
     "login": {
       "heading": "Welcome back",

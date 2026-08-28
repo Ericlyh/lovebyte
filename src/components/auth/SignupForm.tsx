@@ -69,11 +69,14 @@ export function SignupForm() {
 
   // Submit is blocked when the live checks fail. We don't block on the
   // still-pending debounced probe (the user gets feedback in the hint);
-  // server is the final arbiter of handle uniqueness anyway.
+  // server is the final arbiter of handle uniqueness anyway. `empty`
+  // gates the required-handle-at-signup decision from the plan
+  // (OOP-4284 follow-up).
   const submitBlocked =
     !passwordOk ||
     handleState.kind === 'invalid' ||
-    handleState.kind === 'taken';
+    handleState.kind === 'taken' ||
+    handleState.kind === 'empty';
 
   return (
     <form className="lb-form" action={action} noValidate>
@@ -98,6 +101,7 @@ export function SignupForm() {
           minLength={HANDLE_MIN_LENGTH}
           maxLength={HANDLE_MAX_LENGTH}
           pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+          required
           value={handle}
           onChange={(e) => setHandle(e.target.value)}
           aria-invalid={
@@ -108,7 +112,7 @@ export function SignupForm() {
               : undefined
           }
         />
-        <HandleStatus state={handleState} emptyHint={t('handleEmpty')} t={tHandle} />
+        <HandleStatus state={handleState} emptyHint={t('handleHint')} t={tHandle} />
       </label>
 
       <label className="lb-field">

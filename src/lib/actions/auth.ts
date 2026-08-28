@@ -8,7 +8,10 @@ import { postgrest } from '@/lib/supabase/anon';
 import { lookupEmail } from '@/lib/supabase/admin';
 import {
   validateHandle,
+  handleReasonText,
+  HANDLE_MIN_LENGTH,
   HANDLE_MAX_LENGTH,
+  HANDLE_REGEX,
 } from '@/lib/profiles/handle';
 
 /**
@@ -82,7 +85,12 @@ const signUpSchema = z.object({
   email: z.string().trim().regex(EMAIL_RE, 'Enter a valid email address.'),
   password: passwordSchema,
   display_name: displayNameSchema,
-  handle: z.string().trim().max(HANDLE_MAX_LENGTH),
+  handle: z
+    .string()
+    .trim()
+    .min(HANDLE_MIN_LENGTH, `Handle must be at least ${HANDLE_MIN_LENGTH} characters.`)
+    .max(HANDLE_MAX_LENGTH, `Handle must be at most ${HANDLE_MAX_LENGTH} characters.`)
+    .regex(HANDLE_REGEX, 'Lowercase letters, digits, and dashes only.'),
 });
 
 /**
@@ -115,6 +123,15 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     const issue = parsed.error.issues[0];
     const path = issue?.path[0] as 'email' | 'password' | 'display_name' | 'handle' | undefined;
     return badInput(path, issue?.message ?? 'Invalid input.');
+  }
+
+  // Defence-in-depth: re-run the format check via `validateHandle` even
+  // though the zod regex should catch it. The lib is the canonical source
+  // of truth (also used by the handle-history RPC) — keep both paths in
+  // sync by routing through it. (Part B of the OOP-4284 reviewed flow.)
+  const hv = validateHandle(parsed.data.handle);
+  if (!hv.ok) {
+    return { ok: false, error: handleReasonText(hv.reason), field: 'handle' };
   }
 
   // Pre-check: is this email already registered? (OOP-4284 user report.)

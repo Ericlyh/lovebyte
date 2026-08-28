@@ -96,7 +96,8 @@
       "heading": "開個新帳戶",
       "lede": "註冊就可以開始整禮物，再放上巿集賣。",
       "displayName": "顯示名稱",
-      "handle": "Handle（可以而家揀，留空嘅話下一步就會問你）",
+      "handle": "揀個 handle",
+      "handleHint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 lovebyte.app/u/<handle>。",
       "email": "電郵",
       "password": "密碼",
       "submit": "開個帳戶",
@@ -113,7 +114,7 @@
         "taken": "呢個 handle 已經俾人用咗。",
         "invalid": "只接受細楷英文字母、數字同橫線。"
       },
-      "handleEmpty": "可以留空。確認電郵之後，下一步就會問你。"
+      "handleEmpty": "揀個 handle 先可以繼續。"
     },
     "login": {
       "heading": "歡迎返嚟",
