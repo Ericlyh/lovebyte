@@ -412,3 +412,119 @@ export async function upsertProfileAction(formData: FormData): Promise<UpsertPro
   revalidatePath('/onboarding');
   return { ok: true, handle: hv.handle };
 }
+
+// ---- changeHandle ------------------------------------------------------------
+
+export type ChangeHandleResult =
+  | { ok: true; handle: string }
+  | { ok: false; error: string; reason?: 'format' | 'taken' | 'cooldown' | 'unauthenticated'; field?: 'handle'; retryAt?: string };
+
+/**
+ * changeHandleAction(formData)
+ *
+ * Authenticated handle change with a 30-day cooldown (Part C of the
+ * OOP-4284 reviewed flow). The RPC `public.change_handle` is the
+ * canonical enforcement point — it checks the cooldown, normalises
+ * the handle, appends a numeric suffix on collision, and the trigger
+ * writes the history row + bumps `handle_changed_at`.
+ *
+ * The cooldown is also checked client-side so the form can show a
+ * "you can change again in N days" countdown before the user even
+ * tries to save.
+ */
+export async function changeHandleAction(formData: FormData): Promise<ChangeHandleResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
+  if (userErr || !user) {
+    return { ok: false, error: 'Sign in to change your handle.', reason: 'unauthenticated' };
+  }
+
+  const rawHandle = formData.get('handle');
+  if (typeof rawHandle !== 'string') {
+    return { ok: false, error: 'Pick a handle.', reason: 'format', field: 'handle' };
+  }
+  const hv = validateHandle(rawHandle);
+  if (!hv.ok) {
+    return { ok: false, error: handleReasonText(hv.reason), reason: 'format', field: 'handle' };
+  }
+
+  // Cooldown pre-check (mirrors the RPC, which is the canonical check).
+  // Reads profiles via the authed client; RLS lets the user see their
+  // own row.
+  const { data: row, error: rowErr } = await supabase
+    .from('profiles')
+    .select('handle, handle_changed_at')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (rowErr) {
+    console.error('[auth/changeHandle] profile read failed', rowErr.message);
+    return { ok: false, error: 'Could not check your cooldown right now. Try again.' };
+  }
+  if (row && row.handle === hv.handle) {
+    return { ok: true, handle: hv.handle };
+  }
+  if (row?.handle_changed_at) {
+    const changedAt = new Date(row.handle_changed_at);
+    const cooldownEnd = new Date(changedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    if (cooldownEnd > new Date()) {
+      return {
+        ok: false,
+        error: 'You changed your handle recently. Try again later.',
+        reason: 'cooldown',
+        retryAt: cooldownEnd.toISOString(),
+      };
+    }
+  }
+
+  // Uniqueness probe (defence-in-depth — the RPC's collision-append
+  // loop is the canonical enforcement, but failing fast here gives a
+  // friendlier error message).
+  const probe = await checkHandleAvailableAction(hv.handle);
+  if (!probe.ok) {
+    return { ok: false, error: probe.reason };
+  }
+  if (!probe.available) {
+    return {
+      ok: false,
+      error: `Handle "${hv.handle}" is already taken. Try another.`,
+      reason: 'taken',
+      field: 'handle',
+    };
+  }
+
+  // Apply via RPC. `rpc` runs as the authenticated user (their JWT);
+  // the function is `security definer` so it can write to handle_history
+  // and bypass the RLS-free insert.
+  const { data: rpcHandle, error: rpcErr } = await supabase.rpc('change_handle', {
+    p_id: user.id,
+    p_new_handle: hv.handle,
+  });
+  if (rpcErr) {
+    console.error('[auth/changeHandle] rpc failed', rpcErr.message);
+    // Map Postgres error codes back to friendly reasons. The RPC
+    // raises 'cooldown_active' (P0001) and 'invalid_handle' (22023).
+    if (/cooldown/i.test(rpcErr.message)) {
+      return {
+        ok: false,
+        error: 'You changed your handle recently. Try again later.',
+        reason: 'cooldown',
+        retryAt: row?.handle_changed_at
+          ? new Date(new Date(row.handle_changed_at).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          : undefined,
+      };
+    }
+    if (/invalid_handle/i.test(rpcErr.message)) {
+      return { ok: false, error: handleReasonText('format'), reason: 'format', field: 'handle' };
+    }
+    return { ok: false, error: 'Could not change your handle right now. Try again.' };
+  }
+
+  const newHandle = (rpcHandle as string | null) ?? hv.handle;
+  revalidatePath(`/u/${newHandle}`);
+  if (row?.handle) revalidatePath(`/u/${row.handle}`);
+  revalidatePath('/onboarding');
+  return { ok: true, handle: newHandle };
+}

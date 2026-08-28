@@ -1,9 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { LanguageToggle } from '@/components/LanguageToggle';
-import { getProfileByHandle } from '@/lib/profiles/query';
+import {
+  getProfileByHandle,
+  getRedirectForOldHandle,
+} from '@/lib/profiles/query';
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
 
 /**
@@ -12,6 +15,11 @@ import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
  * Edge-runtime safe: data fetch goes through `profiles_public`
  * (anon-readable view from M-A). The authed follow action lands in
  * the next heartbeat (OOP-4280) — for now the page is read-only.
+ *
+ * **Handle-change redirect (OOP-4284 Part C):** if the requested
+ * handle doesn't exist in `profiles_public`, we look up
+ * `handle_history.old_handle` and 301-redirect to the new handle so
+ * stale links keep working after a rename.
  *
  * The handle param is validated here as a 404 guard before we touch
  * the DB. The DB-side CHECK constraint is the source of truth; this
@@ -47,7 +55,15 @@ export default async function CreatorProfilePage({ params }: Props) {
   }
 
   const profile = await getProfileByHandle(handle);
-  if (!profile) notFound();
+  if (!profile) {
+    // Handle changed at some point. Look up the history and 301 to
+    // the new handle. If no history row exists, it's a real 404.
+    const redirectTarget = await getRedirectForOldHandle(handle);
+    if (redirectTarget) {
+      redirect(`/u/${redirectTarget.newHandle}`);
+    }
+    notFound();
+  }
 
   const t = await getTranslations('Profile');
   const displayName = profile.display_name ?? `@${profile.handle}`;

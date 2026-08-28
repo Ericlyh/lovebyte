@@ -52,3 +52,33 @@ export async function getProfileByHandle(
   if (Array.isArray(data)) return data[0] ?? null;
   return data;
 }
+
+/**
+ * Look up the *current* handle for a row that used to belong to the
+ * given (old) handle. Returns `null` if no history row matches — the
+ * caller treats that as a 404.
+ *
+ * Used by `/u/[handle]/page.tsx` to issue a permanent redirect when a
+ * visitor lands on an old handle URL after the creator has renamed.
+ * Part C of the OOP-4284 reviewed flow.
+ *
+ * Reads `handle_history.old_handle` (UNIQUE index → O(1) lookup).
+ * RLS: the table is anon-SELECT-enabled; handles are public via
+ * profiles_public so there's no privacy concern.
+ */
+export async function getRedirectForOldHandle(
+  oldHandle: string,
+): Promise<{ newHandle: string } | null> {
+  const { data, error } = await postgrest<{ new_handle: string }>('handle_history', {
+    select: 'new_handle',
+    filters: { old_handle: oldHandle },
+    limitToOne: true,
+  });
+  if (error) {
+    console.error('[getRedirectForOldHandle] postgrest error', error);
+    return null;
+  }
+  if (data == null) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row?.new_handle ? { newHandle: row.new_handle } : null;
+}
