@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getLocale, getTranslations } from 'next-intl/server';
+import { Nav } from '@/components/Nav';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { signOutAction } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -64,12 +65,7 @@ export default async function SettingsPage() {
 
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
-        <div className="lb-nav__links">
-          <LanguageToggle />
-        </div>
-      </nav>
+      <Nav />
 
       <section className="lb-settings-card">
         <h1>{t('heading')}</h1>

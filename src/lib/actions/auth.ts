@@ -325,11 +325,19 @@ const upsertProfileSchema = z.object({
   display_name: displayNameSchema,
   bio: bioSchema,
   links: z.string().max(2000),
+  // Avatar upload is staged separately (see /api/upload/avatar + OOP-4310):
+  // the client uploads the bytes, gets a `gift_media.id`, then passes it
+  // here. Optional — omitted form fields collapse to `undefined`.
+  avatar_media_id: z
+    .string()
+    .uuid('avatar_media_id must be a UUID.')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
 });
 
 export type UpsertProfileResult =
   | { ok: true; handle: string }
-  | { ok: false; error: string; field?: 'handle' | 'display_name' | 'bio' | 'links' };
+  | { ok: false; error: string; field?: 'handle' | 'display_name' | 'bio' | 'links' | 'avatar_media_id' };
 
 /**
  * upsertProfileAction(formData)
@@ -349,6 +357,7 @@ export async function upsertProfileAction(formData: FormData): Promise<UpsertPro
     display_name: formData.get('display_name'),
     bio: formData.get('bio'),
     links: formData.get('links') ?? '',
+    avatar_media_id: formData.get('avatar_media_id') ?? undefined,
   });
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -393,14 +402,24 @@ export async function upsertProfileAction(formData: FormData): Promise<UpsertPro
     };
   }
 
+  // Build the update payload. We only set `avatar_media_id` when the
+  // caller passed one — an empty field means "leave the existing avatar
+  // alone", which matters because /onboarding re-submits the whole form
+  // every time (the user might tweak bio without intending to drop the
+  // avatar).
+  const updatePayload: Record<string, unknown> = {
+    handle: hv.handle,
+    display_name: parsed.data.display_name,
+    bio: parsed.data.bio,
+    links: links.links,
+  };
+  if (parsed.data.avatar_media_id) {
+    updatePayload.avatar_media_id = parsed.data.avatar_media_id;
+  }
+
   const { error: updateErr } = await supabase
     .from('profiles')
-    .update({
-      handle: hv.handle,
-      display_name: parsed.data.display_name,
-      bio: parsed.data.bio,
-      links: links.links,
-    })
+    .update(updatePayload)
     .eq('id', user.id);
 
   if (updateErr) {

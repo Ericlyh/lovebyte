@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
-import { LanguageToggle } from '@/components/LanguageToggle';
+import { Nav } from '@/components/Nav';
 import { FollowButton } from '@/components/profile/FollowButton';
 import {
   getProfileByHandle,
@@ -76,15 +75,7 @@ export default async function CreatorProfilePage({ params }: Props) {
 
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
-        <div className="lb-nav__links">
-          <LanguageToggle />
-          <Link href="/signup" className="lb-btn lb-btn--primary lb-btn--sm">
-            {t('joinCta')}
-          </Link>
-        </div>
-      </nav>
+      <Nav />
 
       <section className="lb-profile-hero">
         <h1>{displayName}</h1>

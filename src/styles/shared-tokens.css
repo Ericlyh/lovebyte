@@ -106,6 +106,10 @@ a:hover { color: var(--lb-primary-deep); }
 }
 .lb-nav__links { display: flex; gap: 28px; align-items: center; }
 .lb-nav__links a { color: var(--lb-ink); font-size: 14px; font-weight: 600; }
+/* Sign-out is rendered as a tiny inline form next to the other nav
+ * links (OOP-4310). No margin so the `gap: 28px` above stays the
+ * rhythm — we just reset the default form spacing. */
+.lb-nav__signout-form { margin: 0; display: inline-flex; }
 
 .lb-tag {
   display: inline-block;
@@ -516,6 +520,48 @@ a:hover { color: var(--lb-primary-deep); }
  * Each <label.lb-field> is a vertical stack: <span>label text</span> then
  * an <input> / <textarea>. The form itself is a vertical flex column with
  * a 16px gap so the cards breathe without each field needing a margin. */
+
+/* Avatar picker — preview + file input side-by-side (OOP-4310). The
+ * preview is a 72px circle; the empty state shows a soft placeholder so
+ * the layout doesn't shift when the user picks a file. */
+.lb-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.lb-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--lb-blush);
+  flex-shrink: 0;
+  box-shadow: var(--lb-shadow-sm);
+}
+.lb-avatar-preview--empty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  border: 1.5px dashed #e8d8d6;
+  background: var(--lb-surface);
+}
+.lb-avatar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.lb-avatar-controls input[type="file"] {
+  font-family: var(--lb-font-body);
+  font-size: 13px;
+  color: var(--lb-ink);
+}
+@media (max-width: 380px) {
+  .lb-avatar-row { flex-direction: column; align-items: flex-start; }
+}
 
 .lb-form {
   display: flex;

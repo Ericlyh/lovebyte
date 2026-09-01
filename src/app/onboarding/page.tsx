@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
-import { LanguageToggle } from '@/components/LanguageToggle';
+import { Nav } from '@/components/Nav';
 import { OnboardingForm } from '@/components/auth/OnboardingForm';
 import { createClient } from '@/lib/supabase/server';
 
@@ -51,12 +51,7 @@ export default async function OnboardingPage({
     if (params.error_code === 'otp_expired') {
       return (
         <main className="min-h-screen flex flex-col">
-          <nav className="lb-nav">
-            <Link href="/" className="lb-nav__brand">LoveByte</Link>
-            <div className="lb-nav__links">
-              <LanguageToggle />
-            </div>
-          </nav>
+          <Nav />
 
           <section className="lb-onboarding-card">
             <h1>{t('expiredLink.title')}</h1>
@@ -74,7 +69,7 @@ export default async function OnboardingPage({
 
   const { data: profile, error: profileErr } = await supabase
     .from('profiles')
-    .select('handle, display_name, bio, links')
+    .select('handle, display_name, bio, links, avatar_media_id')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -84,12 +79,7 @@ export default async function OnboardingPage({
     console.error('[onboarding] profile read failed', profileErr.message);
     return (
       <main className="min-h-screen flex flex-col">
-        <nav className="lb-nav">
-          <Link href="/" className="lb-nav__brand">LoveByte</Link>
-          <div className="lb-nav__links">
-            <LanguageToggle />
-          </div>
-        </nav>
+        <Nav />
         <section className="lb-onboarding-card">
           <h1>{t('heading')}</h1>
           <p role="alert" className="lb-form__error">
@@ -109,15 +99,32 @@ export default async function OnboardingPage({
   const initialLinks = Array.isArray(profile?.links)
     ? (profile!.links as unknown[]).map(String)
     : [];
+  const initialMediaId = (profile?.avatar_media_id as string | null) ?? null;
+
+  // Resolve the avatar's public URL server-side (OOP-4310). The
+  // `avatars/` prefix is publicly readable per
+  // `media_avatars_public_select` in 0004_avatar_storage.sql, so
+  // getPublicUrl is the right shape here — no per-request signing.
+  let initialAvatarUrl: string | null = null;
+  if (initialMediaId) {
+    const { data: mediaRow, error: mediaErr } = await supabase
+      .from('gift_media')
+      .select('storage_path')
+      .eq('id', initialMediaId)
+      .maybeSingle();
+    if (mediaErr) {
+      console.warn('[onboarding] avatar media read failed', mediaErr.message);
+    } else if (mediaRow?.storage_path) {
+      const { data: pub } = supabase.storage
+        .from('lovebyte-media')
+        .getPublicUrl(mediaRow.storage_path as string);
+      initialAvatarUrl = pub.publicUrl;
+    }
+  }
 
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
-        <div className="lb-nav__links">
-          <LanguageToggle />
-        </div>
-      </nav>
+      <Nav />
 
       <section className="lb-onboarding-card">
         <h1>{t('heading')}</h1>
@@ -128,6 +135,8 @@ export default async function OnboardingPage({
           initialDisplayName={initialDisplayName}
           initialBio={initialBio}
           initialLinks={initialLinks}
+          initialMediaId={initialMediaId}
+          initialAvatarUrl={initialAvatarUrl}
         />
       </section>
     </main>
