@@ -2,6 +2,12 @@
   "Brand": {
     "name": "LoveByte"
   },
+  "Nav": {
+    "brand": "LoveByte",
+    "viewProfile": "View profile",
+    "finishProfile": "Finish profile",
+    "signOut": "Sign out"
+  },
   "Scaffold": {
     "brand": "LoveByte",
     "phase": "Phase 1 · scaffold ready",
@@ -144,7 +150,16 @@
     },
     "avatar": {
       "label": "Avatar",
-      "hint": "PNG or JPG, up to 2 MB. Coming soon — uploads not enabled yet."
+      "hint": "PNG, JPG, WEBP, or GIF — up to 2 MB.",
+      "previewAlt": "Your avatar preview",
+      "placeholder": "Add a photo",
+      "uploading": "Uploading…",
+      "uploaded": "Avatar uploaded.",
+      "stillUploading": "Wait for your avatar to finish uploading.",
+      "tooLarge": "That image is over 2 MB. Try a smaller one.",
+      "badType": "PNG, JPG, WEBP, or GIF only.",
+      "networkError": "Couldn't reach the upload server. Try again.",
+      "uploadFailed": "Avatar upload failed. Try again."
     },
     "displayName": {
       "label": "Display name"
@@ -183,6 +198,45 @@
       "submitting": "…",
       "self": "This is you",
       "error": "Couldn't update. Try again."
+    },
+    "edit": {
+      "heading": "Edit your profile",
+      "lede": "Update your bio, links, and handle. Changes show up on your public profile right away.",
+      "authRequired": "Sign in to edit your profile.",
+      "signInCta": "Sign in",
+      "notOwner": "That's not your profile — only the owner can edit it.",
+      "displayName": "Display name",
+      "bio": {
+        "label": "Bio",
+        "hint": "Up to 600 characters."
+      },
+      "links": {
+        "label": "Links",
+        "placeholder": "One URL per line, e.g. https://instagram.com/you"
+      },
+      "avatar": {
+        "label": "Avatar",
+        "hint": "PNG or JPG, up to 2 MB. Coming soon — uploads not enabled yet."
+      },
+      "handle": {
+        "label": "Handle",
+        "hint": "3–20 characters. Lowercase letters, digits, and dashes.",
+        "checking": "Checking…",
+        "available": "Available",
+        "taken": "That handle is already taken.",
+        "invalid": "Lowercase letters, digits, and dashes only.",
+        "cooldown": "You can change your handle again in {days} days.",
+        "cooldownToday": "You can change your handle again tomorrow.",
+        "currentLabel": "Current handle: @{handle}"
+      },
+      "saveProfile": "Save profile",
+      "savingProfile": "Saving…",
+      "profileSaved": "Profile saved.",
+      "changeHandle": "Change handle",
+      "changingHandle": "Changing…",
+      "handleChanged": "Handle changed. Taking you to your new page…",
+      "previewLink": "View profile",
+      "signOut": "Sign out"
     }
   },
   "Settings": {

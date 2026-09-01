@@ -1,26 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
-  checkHandleAvailableAction,
   upsertProfileAction,
   type UpsertProfileResult,
 } from '@/lib/actions/auth';
 import {
-  isValidHandle,
   HANDLE_MIN_LENGTH,
   HANDLE_MAX_LENGTH,
 } from '@/lib/profiles/handle';
-
-type HandleState =
-  | { kind: 'idle' }
-  | { kind: 'checking' }
-  | { kind: 'available' }
-  | { kind: 'taken' }
-  | { kind: 'invalid' }
-  | { kind: 'error' };
+import {
+  useHandleAvailability,
+  type HandleState,
+} from '@/lib/hooks/useHandleAvailability';
 
 /**
  * /onboarding form (M-B step 3, OOP-4284).
@@ -52,57 +46,8 @@ export function OnboardingForm({
   const [isPending, startTransition] = useTransition();
 
   const [handle, setHandle] = useState(initialHandle);
-  const [handleState, setHandleState] = useState<HandleState>(
-    isValidHandle(initialHandle) ? { kind: 'available' } : { kind: 'idle' },
-  );
+  const handleState = useHandleAvailability(handle, { initialHandle });
   const [result, setResult] = useState<UpsertProfileResult | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastCheckedRef = useRef<string>(initialHandle);
-  const abortRef = useRef(0);
-
-  // Debounced handle availability probe. 250ms per OOP-4284.
-  //
-  // Frozen-on-checking fix (OOP-4284 follow-up, comment 339c9a62):
-  // cached-value guard runs FIRST and explicitly restores `available`,
-  // not leaving the state stuck at `checking` from a previous keystroke.
-  // `abortRef` discards stale probe responses that resolve after the
-  // user has already moved on.
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    abortRef.current += 1;
-    const trimmed = handle.trim().toLowerCase();
-
-    if (trimmed === lastCheckedRef.current && trimmed.length > 0) {
-      setHandleState({ kind: 'available' });
-      return;
-    }
-
-    if (trimmed.length === 0) {
-      setHandleState({ kind: 'idle' });
-      return;
-    }
-    if (!isValidHandle(trimmed)) {
-      setHandleState({ kind: 'invalid' });
-      return;
-    }
-    setHandleState({ kind: 'checking' });
-
-    const abortAt = abortRef.current;
-    debounceRef.current = setTimeout(async () => {
-      const res = await checkHandleAvailableAction(trimmed);
-      if (abortAt !== abortRef.current) return; // stale probe, drop
-      if (res.ok) {
-        lastCheckedRef.current = trimmed;
-        setHandleState(res.available ? { kind: 'available' } : { kind: 'taken' });
-      } else {
-        setHandleState({ kind: 'error' });
-      }
-    }, 250);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [handle]);
 
   function handleSubmit(formData: FormData) {
     startTransition(async () => {
@@ -209,7 +154,7 @@ export function OnboardingForm({
 function HandleStatus({ state }: { state: HandleState }) {
   const t = useTranslations('Onboarding.handle');
   switch (state.kind) {
-    case 'idle':
+    case 'empty':
       return null;
     case 'checking':
       return <small className="lb-field__status lb-field__status--checking">{t('checking')}</small>;

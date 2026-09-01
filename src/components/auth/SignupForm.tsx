@@ -1,16 +1,13 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
   signUpAction,
-  checkHandleAvailableAction,
   type AuthActionResult,
 } from '@/lib/actions/auth';
 import {
-  isValidHandle,
-  normalizeHandle,
   HANDLE_MIN_LENGTH,
   HANDLE_MAX_LENGTH,
 } from '@/lib/profiles/handle';
@@ -20,14 +17,10 @@ import {
   PASSWORD_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
 } from '@/lib/forms/password';
-
-type HandleState =
-  | { kind: 'empty' }
-  | { kind: 'invalid' }
-  | { kind: 'checking' }
-  | { kind: 'available' }
-  | { kind: 'taken' }
-  | { kind: 'error' };
+import {
+  useHandleAvailability,
+  type HandleState,
+} from '@/lib/hooks/useHandleAvailability';
 
 /**
  * /signup form (M-B step 3, OOP-4284; OOP-4284 follow-up: live validation).
@@ -214,71 +207,4 @@ function HandleStatus({
     case 'error':
       return null;
   }
-}
-
-/**
- * Live handle availability probe. Mirrors the pattern in OnboardingForm:
- * debounced 250 ms, format-check first, server probe second.
- *
- *   - empty       → `empty` (no hint yet; /signup now requires the handle
- *     before submit, so the empty hint points the user at the format rules)
- *   - bad format  → `invalid` (skip the roundtrip — the server will say
- *     the same thing)
- *   - good format → server probe → `available` / `taken` / `error`
- *
- * **Frozen-on-checking fix (OOP-4284 follow-up, comment 339c9a62):** the
- * previous version set `state={kind:'checking'}` BEFORE the early-return
- * guard for cached values. Sequence: type "foo" → "bar" → backspace to
- * "foo" → guard fires → but state stayed at "checking" from the "bar"
- * step. Fix: put the cached-value guard FIRST and explicitly restore the
- * `available` state on hit. `abortRef` discards stale probe responses
- * that resolve after the user has already moved on.
- */
-function useHandleAvailability(rawHandle: string): HandleState {
-  const [state, setState] = useState<HandleState>({ kind: 'empty' });
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastCheckedRef = useRef<string>('');
-  const abortRef = useRef(0);
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    abortRef.current += 1;
-    const trimmed = normalizeHandle(rawHandle);
-
-    // Cached-value guard runs FIRST so a value we already probed flips
-    // straight back to `available` (not stuck at `checking` from the
-    // previous keystroke).
-    if (trimmed === lastCheckedRef.current && trimmed.length > 0) {
-      setState({ kind: 'available' });
-      return;
-    }
-
-    if (trimmed.length === 0) {
-      setState({ kind: 'empty' });
-      return;
-    }
-    if (!isValidHandle(trimmed)) {
-      setState({ kind: 'invalid' });
-      return;
-    }
-    setState({ kind: 'checking' });
-
-    const abortAt = abortRef.current;
-    debounceRef.current = setTimeout(async () => {
-      const res = await checkHandleAvailableAction(trimmed);
-      if (abortAt !== abortRef.current) return; // stale probe, drop
-      if (res.ok) {
-        lastCheckedRef.current = trimmed;
-        setState(res.available ? { kind: 'available' } : { kind: 'taken' });
-      } else {
-        setState({ kind: 'error' });
-      }
-    }, 250);
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [rawHandle]);
-
-  return state;
 }

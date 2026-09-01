@@ -2,6 +2,12 @@
   "Brand": {
     "name": "LoveByte"
   },
+  "Nav": {
+    "brand": "LoveByte",
+    "viewProfile": "睇主頁",
+    "finishProfile": "完成設定",
+    "signOut": "登出"
+  },
   "Scaffold": {
     "brand": "LoveByte",
     "phase": "第一階段 · 框架就緒",
@@ -144,7 +150,16 @@
     },
     "avatar": {
       "label": "頭像",
-      "hint": "PNG 或者 JPG，最多 2 MB。上傳功能就嚟就到。"
+      "hint": "PNG、JPG、WEBP 或 GIF，2 MB 以內。",
+      "previewAlt": "頭像預覽",
+      "placeholder": "新增相片",
+      "uploading": "上傳中…",
+      "uploaded": "頭像已上傳。",
+      "stillUploading": "請等頭像上傳完成。",
+      "tooLarge": "圖片超過咗 2 MB，揀張細啲嘅啦。",
+      "badType": "只接受 PNG、JPG、WEBP 或 GIF。",
+      "networkError": "連唔到上傳伺服器，試多次。",
+      "uploadFailed": "頭像上傳失敗，試多次。"
     },
     "displayName": {
       "label": "顯示名稱"
@@ -183,6 +198,45 @@
       "submitting": "…",
       "self": "呢個係你",
       "error": "更新唔到，再試多次。"
+    },
+    "edit": {
+      "heading": "編輯你嘅檔案",
+      "lede": "更新自介、連結同 handle。改完即刻喺公開檔案睇到。",
+      "authRequired": "登入就可以編輯你嘅檔案。",
+      "signInCta": "登入",
+      "notOwner": "呢個唔係你嘅檔案——只有本人先改得。",
+      "displayName": "顯示名稱",
+      "bio": {
+        "label": "自介",
+        "hint": "最多 600 個字元。"
+      },
+      "links": {
+        "label": "連結",
+        "placeholder": "每行一個 URL，例如 https://instagram.com/you"
+      },
+      "avatar": {
+        "label": "頭像",
+        "hint": "PNG 或者 JPG，最多 2 MB。上傳功能就嚟就到。"
+      },
+      "handle": {
+        "label": "Handle",
+        "hint": "3–20 個字元，細楷英文字母、數字、橫線。",
+        "checking": "檢查緊…",
+        "available": "可以用",
+        "taken": "呢個 handle 已經俾人用咗。",
+        "invalid": "只接受細楷英文字母、數字同橫線。",
+        "cooldown": "{days} 日之後就可以再改 handle。",
+        "cooldownToday": "聽日就可以再改 handle。",
+        "currentLabel": "現時 handle：@{handle}"
+      },
+      "saveProfile": "儲存檔案",
+      "savingProfile": "儲存緊…",
+      "profileSaved": "檔案已儲存。",
+      "changeHandle": "更改 handle",
+      "changingHandle": "更改緊…",
+      "handleChanged": "Handle 已更改，而家帶你去新頁面。",
+      "previewLink": "睇下檔案",
+      "signOut": "登出"
     }
   },
   "Settings": {
