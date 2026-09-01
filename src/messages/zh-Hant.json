@@ -184,5 +184,33 @@
       "self": "呢個係你",
       "error": "更新唔到，再試多次。"
     }
+  },
+  "Settings": {
+    "heading": "設定",
+    "lede": "帳戶、語言同登入狀態嘅控制台。通知偏好設定會喺通知中心推出後搬過嚟。",
+    "account": {
+      "title": "帳戶",
+      "emailLabel": "電郵",
+      "emailHint": "電郵已經鎖咗喺呢個帳戶，要改請聯絡支援。"
+    },
+    "language": {
+      "title": "語言",
+      "current": "現時語言：{locale}",
+      "hint": "切換語言會即時更新你喺 LoveByte 睇到嘅所有文字。"
+    },
+    "notifications": {
+      "title": "通知",
+      "stub": "通知偏好設定會喺通知中心推出之後擺喺呢度。"
+    },
+    "session": {
+      "title": "登入狀態",
+      "signOut": "登出"
+    },
+    "danger": {
+      "title": "刪除帳戶",
+      "stub": "帳戶刪除功能會暫停，直至我哋落實資料保留政策。",
+      "cta": "刪除帳戶",
+      "comingSoon": "就嚟就到"
+    }
   }
 }

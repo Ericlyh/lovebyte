@@ -579,6 +579,33 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-field__status--checking {
   color: var(--lb-ink-soft);
 }
+.lb-field__status--warn {
+  color: var(--lb-danger);
+}
+
+/* Section heading inside a form — separates "Profile fields" from
+ * "Handle rename" on /u/[handle]/edit. (OOP-4340.) */
+.lb-form__section-heading {
+  font-family: var(--lb-font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--lb-ink);
+  margin-top: var(--lb-space-3);
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3e6e3;
+}
+
+/* Live char countdown next to a textarea — e.g. bio (600). Inline-flex
+ * so it sits to the right of the hint without breaking the vertical
+ * stack on narrow screens. (OOP-4340.) */
+.lb-field__countdown {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.lb-field__countdown--warn {
+  color: var(--lb-danger);
+}
 
 /* Password rules checklist — one row per requirement, ticking from
  * "pending" to "ok" as the user types. Stays under the password field
@@ -703,6 +730,93 @@ a:hover { color: var(--lb-primary-deep); }
   }
   .lb-auth-card h1,
   .lb-onboarding-card h1 {
+    font-size: 26px;
+  }
+}
+
+/* === Settings page (M-B, OOP-4341) =====================================
+ * Same card shape as the auth/onboarding cards (so the user lands on
+ * something familiar) but wider — settings has multiple sections and
+ * each section has a heading + body, not just a single form. */
+
+.lb-settings-card {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-6);
+  box-shadow: var(--lb-shadow-md);
+  max-width: 640px;
+  width: calc(100% - 32px);
+  margin: var(--lb-space-8) auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-5);
+}
+.lb-settings-card h1 {
+  font-family: var(--lb-font-display);
+  font-size: 32px;
+  color: var(--lb-ink);
+  margin-bottom: 4px;
+  line-height: 1.15;
+}
+.lb-settings-card p.lede {
+  color: var(--lb-ink-soft);
+  margin-bottom: 0;
+}
+
+.lb-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: var(--lb-space-4);
+  border-top: 1px solid #f3e6e3;
+}
+.lb-settings-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
+}
+.lb-settings-section h2 {
+  font-family: var(--lb-font-body);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lb-ink-soft);
+  margin: 0;
+}
+
+.lb-settings-current {
+  font-size: 15px;
+  color: var(--lb-ink);
+  margin: 0;
+}
+.lb-settings-hint {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+.lb-settings-stub {
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lb-settings-section--danger h2 {
+  color: var(--lb-danger);
+}
+.lb-settings-section--danger .lb-btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+
+@media (max-width: 540px) {
+  .lb-settings-card {
+    padding: var(--lb-space-5);
+    margin: var(--lb-space-5) auto;
+    gap: var(--lb-space-4);
+  }
+  .lb-settings-card h1 {
     font-size: 26px;
   }
 }

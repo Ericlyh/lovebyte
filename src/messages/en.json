@@ -184,5 +184,33 @@
       "self": "This is you",
       "error": "Couldn't update. Try again."
     }
+  },
+  "Settings": {
+    "heading": "Settings",
+    "lede": "Account, language, and session controls. Notification preferences will land here once the notification centre ships.",
+    "account": {
+      "title": "Account",
+      "emailLabel": "Email",
+      "emailHint": "Email is locked to this account. Contact support to change it."
+    },
+    "language": {
+      "title": "Language",
+      "current": "Current language: {locale}",
+      "hint": "The toggle updates the language for everything you see on LoveByte."
+    },
+    "notifications": {
+      "title": "Notifications",
+      "stub": "Notification preferences will live here once the notification centre ships."
+    },
+    "session": {
+      "title": "Session",
+      "signOut": "Sign out"
+    },
+    "danger": {
+      "title": "Delete account",
+      "stub": "Account deletion is paused while we finalise our data-retention policy.",
+      "cta": "Delete account",
+      "comingSoon": "Coming soon"
+    }
   }
 }
