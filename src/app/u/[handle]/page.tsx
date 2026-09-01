@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { FollowButton } from '@/components/profile/FollowButton';
 import {
   getProfileByHandle,
   getRedirectForOldHandle,
@@ -100,10 +101,10 @@ export default async function CreatorProfilePage({ params }: Props) {
             ))}
           </ul>
         ) : null}
-        <p className="lb-profile-follow-stub">
-          {/* Follow action lands in OOP-4280. Stub copy keeps the layout locked. */}
-          {t('followPlaceholder')}
-        </p>
+        <FollowButton
+          creatorId={profile.id}
+          handle={profile.handle}
+        />
       </section>
 
       <section className="lb-profile-tabs" aria-label={t('tabsAria')}>

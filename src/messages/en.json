@@ -175,6 +175,14 @@
     "about": "About",
     "emptyCollection": "No listed gifts yet.",
     "notFound": "This creator doesn't exist (yet).",
-    "followPlaceholder": "Sign in to follow @{handle}."
+    "followButton": {
+      "loading": "…",
+      "signIn": "Sign in to follow @{handle}",
+      "follow": "Follow",
+      "unfollow": "Following",
+      "submitting": "…",
+      "self": "This is you",
+      "error": "Couldn't update. Try again."
+    }
   }
 }

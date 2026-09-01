@@ -175,6 +175,14 @@
     "about": "關於",
     "emptyCollection": "仲未有上架嘅禮物。",
     "notFound": "�唔到呢個創作人（可能未開戶）。",
-    "followPlaceholder": "登入就可以追蹤 @{handle}。"
+    "followButton": {
+      "loading": "…",
+      "signIn": "登入就可以追蹤 @{handle}",
+      "follow": "追蹤",
+      "unfollow": "已追蹤",
+      "submitting": "…",
+      "self": "呢個係你",
+      "error": "更新唔到，再試多次。"
+    }
   }
 }
