@@ -3,6 +3,9 @@
 Send a feeling, not just a gift. The implementation of the LoveByte MVP
 that was scoped in OOP-4206 (Study) and kicked off in OOP-4211.
 
+<!-- 2026-09-02: no-op to retrigger Vercel deploy (OOP-4267). main was already
+     at 2996d21 with the OOP-4274 handle-check fixes — webhook had stopped firing. -->
+
 ## Source of truth — the design pack
 
 All design artifacts live in the Paperclip project workspace, not in this
