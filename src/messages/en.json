@@ -130,8 +130,8 @@
           "cta": "Sign in"
         },
         "pending": {
-          "title": "We just sent another confirmation email.",
-          "body": "Check your inbox (and spam folder) for the link. You can also open the latest confirmation page.",
+          "title": "This email is registered but not confirmed yet.",
+          "body": "Check your inbox (and spam folder) for the original confirmation link. If you can't find it, open the confirmation page to send a fresh one.",
           "cta": "Open confirmation page"
         },
         "error": "Couldn't check right now — submit and we'll re-check."
@@ -149,7 +149,13 @@
     },
     "checkEmail": {
       "heading": "Check your inbox",
-      "body": "We've sent a confirmation link to {email}. Click it to finish setting up your account, then come back to pick your handle."
+      "body": "We've sent a confirmation link to {email}. Click it to finish setting up your account, then come back to pick your handle.",
+      "missingHint": "Can't find the email?",
+      "resendButton": "Send another confirmation email",
+      "resendSending": "Sending…",
+      "resendSent": "Sent. Check your inbox (and spam folder).",
+      "resendRateLimited": "You've asked for too many resends recently. Wait a few minutes and try again.",
+      "resendError": "Couldn't send right now. Try again in a moment."
     }
   },
   "Onboarding": {

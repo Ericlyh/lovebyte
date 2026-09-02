@@ -245,9 +245,13 @@ export type CheckEmailResult =
  *
  * Three states, mirroring the post-submit branches in `signUpAction`:
  *   - verified  → user is confirmed; CTA → /login.
- *   - pending   → user signed up but didn't click the link; fire a fresh
- *                 resend (so the user's inbox isn't empty) and hint them
- *                 to /signup/check-email.
+ *   - pending   → user signed up but didn't click the link; hint them
+ *                 to /signup/check-email where an explicit "Resend" button
+ *                 is available. We no longer auto-fire a resend here
+ *                 (comment 9fc72202 / OOP-4274): that was a hidden side
+ *                 effect of typing into the field, and a failed resend
+ *                 (rate limit, network) used to silently leave the copy
+ *                 claiming "we just sent" — a lie the user spotted.
  *   - not_found → normal signup, no visible state.
  *
  * Privacy note: this endpoint discloses whether an email is registered.
@@ -278,24 +282,55 @@ export async function checkEmailAction(rawEmail: string): Promise<CheckEmailResu
     return { ok: false, error: lookup.error.message };
   }
 
-  if (lookup.data.state === 'pending') {
-    // Fire-and-forget resend so the user's inbox isn't empty while they
-    // sit on the "already pending" hint. Errors are logged but never
-    // surfaced — this is a UX nicety, not a hard requirement.
-    const supabase = await createClient();
-    const { error: resendErr } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/onboarding`,
-      },
-    });
-    if (resendErr) {
-      console.warn('[auth/checkEmail] resend failed', resendErr.message);
-    }
+  return { ok: true, state: lookup.data.state };
+}
+
+// ---- resendConfirmation ------------------------------------------------------
+
+export type ResendConfirmationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+/**
+ * resendConfirmationAction(formData)
+ *
+ * Explicit "send another confirmation email" action for users stuck in
+ * the `pending` state (OOP-4274, comment 9fc72202). Wired into the
+ * `/signup/check-email` page as a primary button — replaces the silent
+ * pre-submit resend that used to fire on every email-field probe and
+ * then lied to the user when it failed.
+ *
+ * Reads `email` from form data. Validates format. Calls GoTrue's
+ * `/auth/v1/resend` (type `signup`). On any error — including Supabase's
+ * 30/hr OTP rate limit (`over_email_send_rate_limit`) — we surface the
+ * error so the user knows nothing was sent, instead of pretending
+ * otherwise.
+ */
+export async function resendConfirmationAction(
+  formData: FormData,
+): Promise<ResendConfirmationResult> {
+  const raw = formData.get('email');
+  const email = typeof raw === 'string' ? raw.trim() : '';
+  if (!email || !EMAIL_RE.test(email)) {
+    return { ok: false, error: 'Enter the email you signed up with.' };
   }
 
-  return { ok: true, state: lookup.data.state };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/onboarding`,
+    },
+  });
+  if (error) {
+    console.warn('[auth/resendConfirmation]', error.message);
+    if (/rate.?limit|over_email_send/i.test(error.message)) {
+      return { ok: false, error: 'rate_limited' };
+    }
+    return { ok: false, error: 'generic' };
+  }
+  return { ok: true };
 }
 
 // ---- signIn ------------------------------------------------------------------

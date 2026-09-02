@@ -130,8 +130,8 @@
           "cta": "去登入"
         },
         "pending": {
-          "title": "我哋再 send 多一次確認電郵畀你。",
-          "body": "睇下你 inbox（連垃圾郵件）入面條連結。你亦可以打開確認頁睇最新狀況。",
+          "title": "呢個電郵已經註冊咗，但仲未確認。",
+          "body": "睇下你 inbox（連垃圾郵件）入面原本嗰條確認連結。如果搵唔到，可以去確認頁重新 send 多次。",
           "cta": "打開確認頁"
         },
         "error": "依家check唔到——交表嘅時候我哋會再check多次。"
@@ -149,7 +149,13 @@
     },
     "checkEmail": {
       "heading": "睇下你嘅 inbox",
-      "body": "我哋已經 send 咗一條確認連結去 {email}。撳一下就完成開戶，再返嚟揀你嘅 handle。"
+      "body": "我哋已經 send 咗一條確認連結去 {email}。撳一下就完成開戶，再返嚟揀你嘅 handle。",
+      "missingHint": "搵唔到電郵？",
+      "resendButton": "重新 send 確認電郵",
+      "resendSending": "傳送緊…",
+      "resendSent": "已 send 咗，睇下你 inbox（連垃圾郵件）。",
+      "resendRateLimited": "你最近 request 太多次 resend。等幾分鐘再試。",
+      "resendError": "依家 send 唔到，等陣再試。"
     }
   },
   "Onboarding": {
