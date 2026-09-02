@@ -87,7 +87,22 @@ export function useHandleAvailability(
     debounceRef.current = setTimeout(async () => {
       let res;
       try {
-        res = await checkHandleAvailableAction(trimmed);
+        // Race the probe against a hard 8s client-side timeout. The server
+        // action doesn't carry its own timeout — if Supabase is slow or
+        // the edge is wedged, `checkHandleAvailableAction` will sit
+        // pending indefinitely and the UI would be stuck on "Checking…"
+        // forever (the `error` branch from `87b54fe` only fires when the
+        // promise rejects, not when it hangs). 8s is well above any
+        // healthy p50; a probe that hits it is broken, not slow.
+        res = await Promise.race([
+          checkHandleAvailableAction(trimmed),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error('checkHandleAvailableAction timed out (8s)')),
+              8000,
+            ),
+          ),
+        ]);
       } catch (e) {
         // The action can reject (HTTP 500 on the deployed edge if env vars
         // are missing, network blip, etc.). Without this catch the abort
