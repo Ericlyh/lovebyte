@@ -121,7 +121,21 @@
         "invalid": "Lowercase letters, digits, and dashes only.",
         "error": "Couldn't check right now — submit and we'll re-check."
       },
-      "handleEmpty": "Pick a handle to continue."
+      "handleEmpty": "Pick a handle to continue.",
+      "emailStates": {
+        "checking": "Checking…",
+        "verified": {
+          "title": "This email is already registered and verified.",
+          "body": "Sign in instead, or use Forgot password if you've forgotten it.",
+          "cta": "Sign in"
+        },
+        "pending": {
+          "title": "We just sent another confirmation email.",
+          "body": "Check your inbox (and spam folder) for the link. You can also open the latest confirmation page.",
+          "cta": "Open confirmation page"
+        },
+        "error": "Couldn't check right now — submit and we'll re-check."
+      }
     },
     "login": {
       "heading": "Welcome back",

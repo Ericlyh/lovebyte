@@ -121,7 +121,21 @@
         "invalid": "只接受細楷英文字母、數字同橫線。",
         "error": "依家check唔到——交表嘅時候我哋會再check多次。"
       },
-      "handleEmpty": "揀個 handle 先可以繼續。"
+      "handleEmpty": "揀個 handle 先可以繼續。",
+      "emailStates": {
+        "checking": "檢查緊…",
+        "verified": {
+          "title": "呢個電郵已經註冊同確認咗。",
+          "body": "直接去登入，或者用「忘記密碼」攞條新連結。",
+          "cta": "去登入"
+        },
+        "pending": {
+          "title": "我哋再 send 多一次確認電郵畀你。",
+          "body": "睇下你 inbox（連垃圾郵件）入面條連結。你亦可以打開確認頁睇最新狀況。",
+          "cta": "打開確認頁"
+        },
+        "error": "依家check唔到——交表嘅時候我哋會再check多次。"
+      }
     },
     "login": {
       "heading": "歡迎返嚟",

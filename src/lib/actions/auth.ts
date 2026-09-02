@@ -226,6 +226,78 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
   redirect('/onboarding');
 }
 
+// ---- checkEmail --------------------------------------------------------------
+
+export type CheckEmailResult =
+  | { ok: true; state: 'verified' | 'pending' | 'not_found' }
+  | { ok: false; error: string };
+
+/**
+ * checkEmailAction(rawEmail)
+ *
+ * Pre-submit probe for the /signup form's email field (OOP-4274 follow-up
+ * to comment 5291bacf). The post-submit `signUpAction` already detects
+ * an already-verified email and shows the EMAIL_VERIFIED card, but the
+ * user has to fill in name + handle + password before they hit "Create
+ * account" — they don't know their email is verified until then. This
+ * probe lets the form show the same "already registered, sign in instead"
+ * message inline as soon as the email field looks well-formed.
+ *
+ * Three states, mirroring the post-submit branches in `signUpAction`:
+ *   - verified  → user is confirmed; CTA → /login.
+ *   - pending   → user signed up but didn't click the link; fire a fresh
+ *                 resend (so the user's inbox isn't empty) and hint them
+ *                 to /signup/check-email.
+ *   - not_found → normal signup, no visible state.
+ *
+ * Privacy note: this endpoint discloses whether an email is registered.
+ * That disclosure already happens on submit (`signUpAction` returns
+ * `EMAIL_VERIFIED` vs `EMAIL_EXISTS`), so moving it earlier does not
+ * increase the disclosure surface — it just makes the form friendlier.
+ * If we ever want to lock enumeration down, the right move is to gate
+ * this on the same OTP rate-limit bucket the project already applies to
+ * `/auth/v1/resend` (30/hr), not to remove the check.
+ */
+export async function checkEmailAction(rawEmail: string): Promise<CheckEmailResult> {
+  const email = (rawEmail ?? '').trim();
+  if (!email) {
+    return { ok: false, error: 'empty' };
+  }
+  if (!EMAIL_RE.test(email)) {
+    // Don't waste a GoTrue admin roundtrip on a malformed input — the
+    // email field's own aria-invalid is enough feedback.
+    return { ok: false, error: 'invalid_format' };
+  }
+
+  const lookup = await lookupEmail(email);
+  if (lookup.error) {
+    // Mirror `signUpAction`: log the failure, fall through to not_found
+    // so the form can submit. The post-submit duplicate detection will
+    // still catch the verified case if the user actually has an account.
+    console.warn('[auth/checkEmail] admin lookup failed', lookup.error.message);
+    return { ok: false, error: lookup.error.message };
+  }
+
+  if (lookup.data.state === 'pending') {
+    // Fire-and-forget resend so the user's inbox isn't empty while they
+    // sit on the "already pending" hint. Errors are logged but never
+    // surfaced — this is a UX nicety, not a hard requirement.
+    const supabase = await createClient();
+    const { error: resendErr } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/onboarding`,
+      },
+    });
+    if (resendErr) {
+      console.warn('[auth/checkEmail] resend failed', resendErr.message);
+    }
+  }
+
+  return { ok: true, state: lookup.data.state };
+}
+
 // ---- signIn ------------------------------------------------------------------
 
 const signInSchema = z.object({
