@@ -118,7 +118,8 @@
         "checking": "檢查緊…",
         "available": "可以用",
         "taken": "呢個 handle 已經俾人用咗。",
-        "invalid": "只接受細楷英文字母、數字同橫線。"
+        "invalid": "只接受細楷英文字母、數字同橫線。",
+        "error": "依家check唔到——交表嘅時候我哋會再check多次。"
       },
       "handleEmpty": "揀個 handle 先可以繼續。"
     },
@@ -146,7 +147,8 @@
       "checking": "檢查緊…",
       "available": "可以用",
       "taken": "呢個 handle 已經俾人用咗。",
-      "invalid": "只接受細楷英文字母、數字同橫線。"
+      "invalid": "只接受細楷英文字母、數字同橫線。",
+      "error": "依家check唔到——儲存嘅時候我哋會再check多次。"
     },
     "avatar": {
       "label": "頭像",
@@ -225,6 +227,7 @@
         "available": "可以用",
         "taken": "呢個 handle 已經俾人用咗。",
         "invalid": "只接受細楷英文字母、數字同橫線。",
+        "error": "依家check唔到——再打一個字就會再試。",
         "cooldown": "{days} 日之後就可以再改 handle。",
         "cooldownToday": "聽日就可以再改 handle。",
         "currentLabel": "現時 handle：@{handle}"

@@ -191,7 +191,7 @@ function HandleStatus({
 }: {
   state: HandleState;
   emptyHint: string;
-  t: (key: 'checking' | 'available' | 'taken' | 'invalid') => string;
+  t: (key: 'checking' | 'available' | 'taken' | 'invalid' | 'error') => string;
 }) {
   switch (state.kind) {
     case 'empty':
@@ -205,6 +205,10 @@ function HandleStatus({
     case 'invalid':
       return <small className="lb-field__status lb-field__status--bad">{t('invalid')}</small>;
     case 'error':
-      return null;
+      // Visible — the server probe failed (HTTP 500 on the deployed edge
+      // if env vars went missing, network blip, etc.). Don't hide it: the
+      // user needs to know the live check is down so they don't think the
+      // page is broken. The form action still re-runs the check on submit.
+      return <small className="lb-field__status lb-field__status--warn">{t('error')}</small>;
   }
 }

@@ -32,6 +32,14 @@ export type HandleState =
  * previous keystroke). `abortRef` discards stale probe responses that
  * resolve after the user has already moved on.
  *
+ * **Throw-safe probe (OOP-4274 follow-up, comment 8c67ba51):**
+ * the server action can return an HTTP 500 (Vercel runtime errors —
+ * module-load throws if env vars go missing). Without try/catch the
+ * `await` would reject, the abort check would never run, and the state
+ * would stick on `checking` forever (UI shows "Checking…" indefinitely).
+ * The catch routes any throw to `{kind:'error'}` so the UI moves on and
+ * the form can still submit (the server re-checks on submit anyway).
+ *
  * `initialHandle` is the starting value of the input (e.g. the user's
  * current handle on the edit page). When it is non-empty and
  * well-formed, we short-circuit to `available` immediately and cache
@@ -77,7 +85,19 @@ export function useHandleAvailability(
 
     const abortAt = abortRef.current;
     debounceRef.current = setTimeout(async () => {
-      const res = await checkHandleAvailableAction(trimmed);
+      let res;
+      try {
+        res = await checkHandleAvailableAction(trimmed);
+      } catch (e) {
+        // The action can reject (HTTP 500 on the deployed edge if env vars
+        // are missing, network blip, etc.). Without this catch the abort
+        // check below never runs and the UI gets stuck on "Checking…".
+        // Log for Vercel grep but always transition out of `checking`.
+        console.error('[auth/useHandleAvailability] probe threw', (e as Error)?.message ?? e);
+        if (abortAt !== abortRef.current) return;
+        setState({ kind: 'error' });
+        return;
+      }
       if (abortAt !== abortRef.current) return; // stale probe, drop
       if (res.ok) {
         lastCheckedRef.current = trimmed;

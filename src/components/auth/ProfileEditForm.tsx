@@ -295,7 +295,10 @@ function HandleStatus({
     case 'invalid':
       return <small className="lb-field__status lb-field__status--bad">{t('invalid')}</small>;
     case 'error':
-      return null;
+      // OOP-4274 follow-up (comment 8c67ba51): show, don't hide. The
+      // server probe failed (HTTP 500 on the deployed edge if env vars
+      // went missing, network blip). Submit still re-runs the check.
+      return <small className="lb-field__status lb-field__status--warn">{t('error')}</small>;
   }
 }
 

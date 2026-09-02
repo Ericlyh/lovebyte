@@ -319,7 +319,11 @@ function HandleStatus({ state }: { state: HandleState }) {
     case 'invalid':
       return <small className="lb-field__status lb-field__status--bad">{t('invalid')}</small>;
     case 'error':
-      return null;
+      // OOP-4274 follow-up (comment 8c67ba51): show, don't hide. The
+      // server probe failed — the user needs to know the live check is
+      // down so they don't think the page is stuck. Submission still
+      // re-runs the check via `upsertProfileAction`.
+      return <small className="lb-field__status lb-field__status--warn">{t('error')}</small>;
   }
 }
 

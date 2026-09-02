@@ -118,7 +118,8 @@
         "checking": "Checking…",
         "available": "Available",
         "taken": "That handle is already taken.",
-        "invalid": "Lowercase letters, digits, and dashes only."
+        "invalid": "Lowercase letters, digits, and dashes only.",
+        "error": "Couldn't check right now — submit and we'll re-check."
       },
       "handleEmpty": "Pick a handle to continue."
     },
@@ -146,7 +147,8 @@
       "checking": "Checking…",
       "available": "Available",
       "taken": "That handle is already taken.",
-      "invalid": "Lowercase letters, digits, and dashes only."
+      "invalid": "Lowercase letters, digits, and dashes only.",
+      "error": "Couldn't check right now — keep going and we'll re-check on save."
     },
     "avatar": {
       "label": "Avatar",
@@ -225,6 +227,7 @@
         "available": "Available",
         "taken": "That handle is already taken.",
         "invalid": "Lowercase letters, digits, and dashes only.",
+        "error": "Couldn't check right now — type one more character to retry.",
         "cooldown": "You can change your handle again in {days} days.",
         "cooldownToday": "You can change your handle again tomorrow.",
         "currentLabel": "Current handle: @{handle}"
