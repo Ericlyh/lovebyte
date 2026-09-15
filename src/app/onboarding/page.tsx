@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { OnboardingForm } from '@/components/auth/OnboardingForm';
+import { ConnectPayoutsButton } from '@/components/onboarding/ConnectPayoutsButton';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -69,7 +70,7 @@ export default async function OnboardingPage({
 
   const { data: profile, error: profileErr } = await supabase
     .from('profiles')
-    .select('handle, display_name, bio, links, avatar_media_id')
+    .select('handle, display_name, bio, links, avatar_media_id, stripe_account_id, stripe_charges_enabled')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -100,6 +101,18 @@ export default async function OnboardingPage({
     ? (profile!.links as unknown[]).map(String)
     : [];
   const initialMediaId = (profile?.avatar_media_id as string | null) ?? null;
+
+  // Stripe Connect state — read directly from `profiles`, NOT from
+  // `profiles_public` (the view intentionally omits stripe_account_id
+  // so the column never leaks to the public profile page).
+  const stripeAccountId = (profile?.stripe_account_id as string | null) ?? null;
+  const stripeChargesEnabled = !!profile?.stripe_charges_enabled;
+  // Map to a single status key so the JSX below stays linear.
+  const connectStatus: 'connect' | 'pending' | 'connected' = !stripeAccountId
+    ? 'connect'
+    : !stripeChargesEnabled
+      ? 'pending'
+      : 'connected';
 
   // Resolve the avatar's public URL server-side (OOP-4310). The
   // `avatars/` prefix is publicly readable per
@@ -138,6 +151,12 @@ export default async function OnboardingPage({
           initialMediaId={initialMediaId}
           initialAvatarUrl={initialAvatarUrl}
         />
+      </section>
+
+      <section className="lb-onboarding-card lb-onboarding-card--connect">
+        <h2>{t(`connect.${connectStatus}Title`)}</h2>
+        <p className="lede">{t(`connect.${connectStatus}Lede`)}</p>
+        <ConnectPayoutsButton />
       </section>
     </main>
   );

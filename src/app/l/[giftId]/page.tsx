@@ -120,7 +120,6 @@ export default async function ListingPage({ params }: Props) {
           <Link href={`/checkout/${listing.id}`} className="lb-btn lb-btn--primary lb-cta-primary">
             {t('sendThisGift')}
           </Link>
-          <p className="lb-listing-cta__hint">{t('checkoutHint')}</p>
         </footer>
       </article>
     </main>

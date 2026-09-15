@@ -204,6 +204,16 @@
       "title": "你嘅確認連結已經過咗期",
       "body": "確認連結一個鐘之後就會失效。用你註冊嘅電郵登入 — 如果你仲未確認電郵，我哋會再 send 一條新連結畀你。",
       "resendCta": "登入重新寄送"
+    },
+    "connect": {
+      "connectTitle": "喺 LoveByte 出貨賺錢",
+      "connectLede": "連接 Stripe 帳戶，等買家可以畀錢你。",
+      "pendingTitle": "驗證緊",
+      "pendingLede": "Stripe 正喺度核實你嘅身份。完成之後買家先可以買你嘅禮物。",
+      "connectedTitle": "已開通收款",
+      "connectedLede": "準備好喇！買家可以直接透過 LoveByte 畀錢你。",
+      "ctaConnect": "連接收款",
+      "ctaConnecting": "開緊 Stripe…"
     }
   },
   "Profile": {
@@ -348,8 +358,7 @@
         "animated_letter": "會動嘅信",
         "unknown": "禮物"
       },
-      "sendThisGift": "送出呢份禮物 →",
-      "checkoutHint": "結帳功能會喺下一階段（M-E）開通。"
+      "sendThisGift": "送出呢份禮物 →"
     },
     "likeButton": {
       "signIn": "登入就可以畀讚",
@@ -383,6 +392,57 @@
       "reportError": "送唔到檢舉，再試多次。",
       "signInToReport": "登入就可以檢舉留言。",
       "cancel": "取消"
+    }
+  },
+  "Checkout": {
+    "title": "送出呢份禮物",
+    "ledePrefix": "送畀 {creator}",
+    "creatorNotReady": "呢個創作人仲未設定收款。請遲啲再試。",
+    "backToListing": "返回禮物",
+    "deliveryModeLabel": "你想點樣分享呢份禮物？",
+    "deliverySendToRecipient": {
+      "title": "直接送畀對方",
+      "hint": "我哋會喺你付款之後用電郵將連結傳畀對方。"
+    },
+    "deliveryBuyerShares": {
+      "title": "我自己分享",
+      "hint": "我哋會畀你一條連結，由你親手送出。"
+    },
+    "recipientLabel": "收禮人電郵",
+    "recipientPlaceholder": "friend@example.com",
+    "continueToPayment": "繼續去付款",
+    "submitting": "開緊結帳頁…",
+    "errors": {
+      "invalidRecipient": "請輸入有效嘅電郵地址。",
+      "creatorNotReady": "呢個創作人仲未設定收款。"
+    },
+    "success": {
+      "title": "多謝你！",
+      "ledeRecipient": "你嘅禮物已經送出畀 {email}。",
+      "ledeSelf": "你嘅禮物準備好喇，可以隨時分享。",
+      "shareLinkLabel": "分享連結",
+      "shareLinkHint": "任何攞到呢條連結嘅人都可以打開呢份禮物，請當密碼咁保管。",
+      "viewAllCta": "睇返你所有嘅禮物",
+      "processingTitle": "就嚟好喇…",
+      "processingBody": "我哋仲喺度處理你嘅訂單，幾秒之後重新整理。"
+    },
+    "cancel": {
+      "title": "已取消結帳",
+      "lede": "冇收過你任何費用，準備好可以再買。",
+      "browseCta": "去逛吓其他禮物"
+    }
+  },
+  "Purchases": {
+    "title": "你嘅禮物",
+    "empty": "你仲未送過任何禮物。",
+    "loadError": "而家載唔到你嘅禮物，重新整理試多次。",
+    "browseMore": "睇多啲禮物",
+    "unknownGift": "（禮物已刪除）",
+    "rowShareLink": "分享連結",
+    "rowRecipient": "已送畀 {email}",
+    "rowStatus": {
+      "paid": "已付款",
+      "refunded": "已退款"
     }
   }
 }

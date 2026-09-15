@@ -204,6 +204,16 @@
       "title": "Your confirmation link expired",
       "body": "Email links are valid for one hour. Sign in with the email you used to sign up — if your email isn't confirmed yet, we'll send you a new link.",
       "resendCta": "Sign in to resend"
+    },
+    "connect": {
+      "connectTitle": "Get paid for your gifts",
+      "connectLede": "Connect a Stripe account so buyers can pay you.",
+      "pendingTitle": "Verification in progress",
+      "pendingLede": "Stripe is verifying your identity. Buyers can’t purchase your gifts until this finishes.",
+      "connectedTitle": "Payouts enabled",
+      "connectedLede": "You’re ready to sell. Buyers can pay you directly through LoveByte.",
+      "ctaConnect": "Connect payouts",
+      "ctaConnecting": "Opening Stripe…"
     }
   },
   "Profile": {
@@ -348,8 +358,7 @@
         "animated_letter": "Animated letter",
         "unknown": "Gift"
       },
-      "sendThisGift": "Send this gift →",
-      "checkoutHint": "Checkout opens in the next step (M-E)."
+      "sendThisGift": "Send this gift →"
     },
     "likeButton": {
       "signIn": "Sign in to like",
@@ -383,6 +392,57 @@
       "reportError": "Couldn't send that report. Try again.",
       "signInToReport": "Sign in to report comments.",
       "cancel": "Cancel"
+    }
+  },
+  "Checkout": {
+    "title": "Send this gift",
+    "ledePrefix": "for {creator}",
+    "creatorNotReady": "This creator is not set up to receive payouts yet. Please check back later.",
+    "backToListing": "Back to listing",
+    "deliveryModeLabel": "How would you like to share this gift?",
+    "deliverySendToRecipient": {
+      "title": "Send to a recipient",
+      "hint": "We’ll email them the share link after payment."
+    },
+    "deliveryBuyerShares": {
+      "title": "I’ll share it",
+      "hint": "We’ll give you the link so you can deliver it yourself."
+    },
+    "recipientLabel": "Recipient email",
+    "recipientPlaceholder": "friend@example.com",
+    "continueToPayment": "Continue to payment",
+    "submitting": "Opening checkout…",
+    "errors": {
+      "invalidRecipient": "Please enter a valid email address.",
+      "creatorNotReady": "This creator is not set up to receive payouts yet."
+    },
+    "success": {
+      "title": "Thank you!",
+      "ledeRecipient": "Your gift is on its way to {email}.",
+      "ledeSelf": "Your gift is ready to share.",
+      "shareLinkLabel": "Share link",
+      "shareLinkHint": "Anyone with this link can open the gift. Treat it like a password.",
+      "viewAllCta": "See all your gifts",
+      "processingTitle": "Almost there…",
+      "processingBody": "We’re finalising your purchase. Refresh in a few seconds."
+    },
+    "cancel": {
+      "title": "Checkout cancelled",
+      "lede": "No payment was taken. Pick another gift whenever you’re ready.",
+      "browseCta": "Browse gifts"
+    }
+  },
+  "Purchases": {
+    "title": "Your gifts",
+    "empty": "You haven’t sent any gifts yet.",
+    "loadError": "Could not load your gifts right now. Refresh to try again.",
+    "browseMore": "Browse more gifts",
+    "unknownGift": "(removed gift)",
+    "rowShareLink": "Share link",
+    "rowRecipient": "Sent to {email}",
+    "rowStatus": {
+      "paid": "Paid",
+      "refunded": "Refunded"
     }
   }
 }

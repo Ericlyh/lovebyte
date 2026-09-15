@@ -1449,3 +1449,147 @@ a:hover { color: var(--lb-primary-deep); }
   .lb-browse-hero { padding: 56px 20px 40px; }
   .lb-browse-controls__row--meta { flex-direction: column; align-items: stretch; }
 }
+
+/* === Checkout (M-E, OOP-4277) ======================================== */
+
+.lb-checkout-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #f3e6e3;
+  border-radius: var(--lb-radius-md);
+  background: var(--lb-surface);
+  margin: 16px 0;
+}
+.lb-checkout-summary h2 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--lb-ink);
+}
+.lb-checkout-summary p { margin: 0; color: var(--lb-ink-soft); }
+
+.lb-checkout-delivery-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+.lb-checkout-delivery-mode label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid #ead7d4;
+  border-radius: var(--lb-radius-md);
+  cursor: pointer;
+  background: #fff;
+  transition: border-color var(--lb-dur-fast), background var(--lb-dur-fast);
+}
+.lb-checkout-delivery-mode label:hover {
+  border-color: var(--lb-primary);
+}
+.lb-checkout-delivery-mode label.is-active {
+  border-color: var(--lb-primary);
+  background: var(--lb-blush);
+}
+.lb-checkout-delivery-mode label input[type='radio'] {
+  margin-top: 3px;
+}
+.lb-checkout-delivery-mode label strong {
+  display: block;
+  color: var(--lb-ink);
+  font-size: 15px;
+}
+.lb-checkout-delivery-mode label small {
+  display: block;
+  color: var(--lb-ink-soft);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.lb-checkout-share-link-label {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  margin-bottom: 4px;
+}
+.lb-checkout-share-link code {
+  display: inline-block;
+  background: var(--lb-blush);
+  padding: 8px 12px;
+  border-radius: var(--lb-radius-sm);
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--lb-primary-deep);
+}
+.lb-checkout-share-link-hint {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  margin-top: 8px;
+}
+
+/* === Purchases dashboard (M-E) ======================================== */
+
+.lb-purchases-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lb-purchase-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #f3e6e3;
+  border-radius: var(--lb-radius-md);
+  background: var(--lb-surface);
+}
+.lb-purchase-row__copy { flex: 1; min-width: 0; }
+.lb-purchase-row__title {
+  font-weight: 600;
+  color: var(--lb-ink);
+  margin: 0 0 4px 0;
+}
+.lb-purchase-row__meta {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  margin: 0;
+}
+.lb-purchase-row__recipient {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  margin: 4px 0 0 0;
+}
+.lb-purchase-row__share {
+  flex-shrink: 0;
+  max-width: 50%;
+  text-align: right;
+}
+.lb-purchase-row__share code {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--lb-ink-soft);
+  word-break: break-all;
+  margin-top: 4px;
+}
+.lb-purchase-row__status--paid {
+  color: var(--lb-success, #2a8a4f);
+  font-weight: 600;
+}
+.lb-purchase-row__status--refunded {
+  color: var(--lb-danger);
+  font-weight: 600;
+}
+
+/* === Connect payouts section (M-E) =================================== */
+
+.lb-onboarding-card--connect {
+  margin-top: 24px;
+}
+.lb-connect-payouts {
+  margin-top: 16px;
+}
