@@ -1593,3 +1593,92 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-connect-payouts {
   margin-top: 16px;
 }
+
+/* === Publish to marketplace card (M-F, OOP-4278) ====================== */
+
+.lb-publish-card {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-5);
+  box-shadow: var(--lb-shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.lb-publish-card__title {
+  font-family: var(--lb-font-display);
+  font-size: 24px;
+  color: var(--lb-ink);
+  margin: 0;
+}
+
+.lb-publish-card__lede {
+  color: var(--lb-ink-soft);
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.lb-publish-cover-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lb-publish-cover-thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--lb-radius-md);
+  border: 2px solid transparent;
+  padding: 0;
+  background: var(--lb-blush);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color var(--lb-dur-fast);
+}
+.lb-publish-cover-thumb:hover {
+  border-color: var(--lb-primary);
+}
+.lb-publish-cover-thumb--selected {
+  border-color: var(--lb-primary);
+  box-shadow: 0 0 0 2px var(--lb-primary);
+}
+.lb-publish-cover-thumb__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.lb-publish-price-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lb-publish-price-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.lb-publish-fee-note {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  padding: 8px 12px;
+  background: var(--lb-blush);
+  border-radius: var(--lb-radius-sm);
+}
+
+.lb-publish-card__actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
