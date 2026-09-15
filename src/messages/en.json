@@ -4,6 +4,7 @@
   },
   "Nav": {
     "brand": "LoveByte",
+    "browse": "Browse",
     "viewProfile": "View profile",
     "finishProfile": "Finish profile",
     "signOut": "Sign out"
@@ -288,6 +289,75 @@
       "stub": "Account deletion is paused while we finalise our data-retention policy.",
       "cta": "Delete account",
       "comingSoon": "Coming soon"
+    }
+  },
+  "Catalog": {
+    "browse": {
+      "heading": "Find a gift someone will remember",
+      "lede": "Five kinds of personalised gifts from independent creators — sorted by what's new.",
+      "empty": "No gifts match those filters yet.",
+      "emptyCta": "Be the first to publish one →",
+      "loadMore": "Load more"
+    },
+    "controls": {
+      "searchPlaceholder": "Search gifts (e.g. \"dim sum\", \"Bangkok\")…",
+      "searchAria": "Search the catalog",
+      "categoryAria": "Filter by category",
+      "priceAria": "Filter by price",
+      "categoryAll": "All",
+      "category": {
+        "memory_cards": "Memory cards",
+        "dragdrop_puzzle": "Photo puzzle",
+        "quiz": "Quiz",
+        "multimedia_collage": "Collage",
+        "animated_letter": "Animated letter"
+      },
+      "priceTier": {
+        "free": "Free",
+        "under_5": "Under $5",
+        "under_20": "Under $20",
+        "over_20": "$20 and up"
+      },
+      "creatorLabel": "Creator handle",
+      "creatorPlaceholder": "@handle",
+      "sortLabel": "Sort",
+      "sort": {
+        "published_desc": "Newest",
+        "most_liked": "Most liked",
+        "price_asc": "Price (low → high)"
+      }
+    },
+    "card": {
+      "by": "by {creator}",
+      "likesLabel": "{count} likes"
+    },
+    "price": {
+      "free": "Free"
+    },
+    "listing": {
+      "by": "by",
+      "category": {
+        "memory_cards": "Memory cards",
+        "dragdrop_puzzle": "Photo puzzle",
+        "quiz": "Quiz",
+        "multimedia_collage": "Multimedia collage",
+        "animated_letter": "Animated letter",
+        "unknown": "Gift"
+      },
+      "sendThisGift": "Send this gift →",
+      "checkoutHint": "Checkout opens in the next step (M-E)."
+    },
+    "likeButton": {
+      "signIn": "Sign in to like",
+      "error": "Couldn't update. Try again."
+    },
+    "preview": {
+      "tag": "Preview"
+    },
+    "comments": {
+      "heading": "{count, plural, =0 {No comments yet} =1 {1 comment} other {# comments}}",
+      "empty": "Be the first to leave a comment.",
+      "moreComing": "More comments land in the next step (M-D)."
     }
   }
 }

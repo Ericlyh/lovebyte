@@ -866,3 +866,369 @@ a:hover { color: var(--lb-primary-deep); }
     font-size: 26px;
   }
 }
+
+/* === Catalog browse + listing (M-C, OOP-4275) ===========================
+ * /browse: hero strip + control bar + responsive gift grid.
+ * /l/[giftId]: hero + preview + comments + CTA. */
+
+/* Hero strip — soft blush gradient matches the landing page so the
+ * user feels they're still inside LoveByte. */
+.lb-browse-hero {
+  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
+  padding: 80px 24px 56px;
+  text-align: center;
+}
+.lb-browse-hero__title {
+  font-family: var(--lb-font-display);
+  font-size: clamp(40px, 7vw, 72px);
+  color: var(--lb-primary);
+  line-height: 1.05;
+  margin-bottom: 16px;
+}
+.lb-browse-hero__lede {
+  font-size: 18px;
+  color: var(--lb-ink-soft);
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* Controls bar — search box on its own row, then filter pills, then
+ * creator + sort. Stacks vertically on mobile. */
+.lb-browse-controls {
+  margin: var(--lb-space-6) 0 var(--lb-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lb-browse-controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.lb-browse-controls__row--meta {
+  justify-content: space-between;
+}
+.lb-browse-controls__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.lb-browse-controls__creator,
+.lb-browse-controls__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lb-ink-soft);
+}
+.lb-browse-controls__creator .lb-input--inline,
+.lb-browse-controls__sort .lb-select--inline {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* Filter pills — same shape as .lb-tag but interactive. Active state
+ * inverts colours so users can see what's currently filtering. */
+.lb-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--lb-radius-pill);
+  background: var(--lb-blush);
+  color: var(--lb-ink);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  font-family: var(--lb-font-body);
+  transition: all var(--lb-dur-fast);
+}
+.lb-pill:hover { border-color: var(--lb-primary); }
+.lb-pill--active {
+  background: var(--lb-primary);
+  color: #fff;
+  border-color: var(--lb-primary);
+}
+
+/* Gift grid — 3-up on desktop, 2-up on tablet, 1-up on phones. The
+ * card itself fills its grid cell via width: 100% in the link. */
+.lb-gift-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--lb-space-4);
+}
+@media (max-width: 900px) {
+  .lb-gift-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 540px) {
+  .lb-gift-grid { grid-template-columns: 1fr; }
+}
+
+.lb-gift-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--lb-shadow-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: transform var(--lb-dur-fast), box-shadow var(--lb-dur-fast);
+}
+.lb-gift-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--lb-shadow-md);
+  color: inherit;
+}
+.lb-gift-card__cover {
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ffe8e7, #fff1d6);
+}
+.lb-gift-card__cover[data-category="memory_cards"]      { background: linear-gradient(135deg, #ffe8e7, #f5d4d2); }
+.lb-gift-card__cover[data-category="dragdrop_puzzle"]    { background: linear-gradient(135deg, #d6e8ff, #c2d8f5); }
+.lb-gift-card__cover[data-category="quiz"]              { background: linear-gradient(135deg, #fff1d6, #f5e3b8); }
+.lb-gift-card__cover[data-category="multimedia_collage"]{ background: linear-gradient(135deg, #e6f4ea, #cfe6d5); }
+.lb-gift-card__cover[data-category="animated_letter"]   { background: linear-gradient(135deg, #f5e9d4, #e8d8c8); }
+.lb-gift-card__emoji { font-size: 56px; line-height: 1; }
+
+.lb-gift-card__body {
+  padding: var(--lb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+.lb-gift-card__title {
+  font-family: var(--lb-font-body);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--lb-ink);
+  margin: 0;
+}
+.lb-gift-card__creator {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  margin: 0;
+}
+.lb-gift-card__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.lb-gift-card__likes {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Price badge — sage pill for free, primary outline for paid. */
+.lb-price-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--lb-radius-pill);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.lb-price-badge--free {
+  background: #e6f4ea;
+  color: #1e6b3a;
+}
+.lb-price-badge--paid {
+  background: transparent;
+  color: var(--lb-primary-deep);
+  border: 1.5px solid var(--lb-primary);
+}
+
+/* Empty state — give the "be the first" CTA enough breathing room. */
+.lb-browse-empty {
+  text-align: center;
+  padding: var(--lb-space-8) 0;
+  color: var(--lb-ink-soft);
+}
+.lb-browse-empty p { margin-bottom: 12px; }
+.lb-link {
+  color: var(--lb-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.lb-browse-more {
+  margin-top: var(--lb-space-5);
+  text-align: center;
+}
+
+/* === Listing detail (/l/[giftId]) ===================================== */
+
+.lb-listing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-6);
+  padding-top: var(--lb-space-6);
+  padding-bottom: var(--lb-space-8);
+  max-width: 880px;
+}
+
+.lb-listing-hero {
+  text-align: left;
+}
+.lb-listing-hero__category {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--lb-radius-pill);
+  background: var(--lb-blush);
+  color: var(--lb-primary-deep);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+.lb-listing-hero__title {
+  font-family: var(--lb-font-display);
+  font-size: clamp(36px, 6vw, 56px);
+  color: var(--lb-primary);
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.lb-listing-hero__creator {
+  font-size: 15px;
+  color: var(--lb-ink-soft);
+  margin-bottom: 16px;
+}
+.lb-listing-hero__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.lb-listing-hero__description {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--lb-ink);
+  max-width: 640px;
+}
+
+.lb-listing-preview {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-5);
+  box-shadow: var(--lb-shadow-sm);
+}
+.lb-listing-preview[data-category="memory_cards"]      { border-left: 4px solid #f5d4d2; }
+.lb-listing-preview[data-category="dragdrop_puzzle"]    { border-left: 4px solid #c2d8f5; }
+.lb-listing-preview[data-category="quiz"]              { border-left: 4px solid #f5e3b8; }
+.lb-listing-preview[data-category="multimedia_collage"]{ border-left: 4px solid #cfe6d5; }
+.lb-listing-preview[data-category="animated_letter"]   { border-left: 4px solid #e8d8c8; }
+.lb-listing-preview__tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lb-ink-soft);
+  margin-bottom: 8px;
+}
+.lb-listing-preview__title {
+  font-family: var(--lb-font-display);
+  font-size: 24px;
+  color: var(--lb-ink);
+  margin-bottom: 8px;
+}
+.lb-listing-preview__snippet {
+  color: var(--lb-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.lb-listing-comments {
+  border-top: 1px solid #f3e6e3;
+  padding-top: var(--lb-space-5);
+}
+.lb-listing-comments__heading {
+  font-family: var(--lb-font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--lb-ink);
+  margin-bottom: var(--lb-space-3);
+}
+.lb-listing-comments__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.lb-listing-comments__item {
+  background: var(--lb-blush);
+  padding: 14px 18px;
+  border-radius: var(--lb-radius-md);
+}
+.lb-listing-comments__author {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--lb-primary-deep);
+  margin-bottom: 4px;
+}
+.lb-listing-comments__body {
+  font-size: 14px;
+  color: var(--lb-ink);
+  line-height: 1.55;
+}
+.lb-listing-comments__more {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  text-align: center;
+}
+
+.lb-listing-cta {
+  border-top: 1px solid #f3e6e3;
+  padding-top: var(--lb-space-5);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.lb-listing-cta__hint {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+}
+
+.lb-like-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.lb-like-button--liked {
+  background: var(--lb-primary) !important;
+  color: #fff !important;
+  border-color: var(--lb-primary) !important;
+}
+.lb-like-button__hint {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.lb-like-button__error {
+  font-size: 12px;
+  color: var(--lb-danger);
+}
+
+@media (max-width: 540px) {
+  .lb-browse-hero { padding: 56px 20px 40px; }
+  .lb-browse-controls__row--meta { flex-direction: column; align-items: stretch; }
+}

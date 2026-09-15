@@ -43,6 +43,7 @@ export async function Nav() {
     <nav className="lb-nav">
       <Link href="/" className="lb-nav__brand">{t('brand')}</Link>
       <div className="lb-nav__links">
+        <Link href="/browse">{t('browse')}</Link>
         <LanguageToggle />
         {user ? (
           <>

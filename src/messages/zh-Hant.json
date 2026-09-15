@@ -4,6 +4,7 @@
   },
   "Nav": {
     "brand": "LoveByte",
+    "browse": "瀏覽",
     "viewProfile": "睇主頁",
     "finishProfile": "完成設定",
     "signOut": "登出"
@@ -288,6 +289,75 @@
       "stub": "帳戶刪除功能會暫停，直至我哋落實資料保留政策。",
       "cta": "刪除帳戶",
       "comingSoon": "就嚟就到"
+    }
+  },
+  "Catalog": {
+    "browse": {
+      "heading": "搵一份令人記得嘅禮物",
+      "lede": "五種由獨立創作人整嘅個人化禮物——按最新上架排序。",
+      "empty": "仲未有禮物符合呢啲條件。",
+      "emptyCta": "做第一個上架嘅人 →",
+      "loadMore": "睇更多"
+    },
+    "controls": {
+      "searchPlaceholder": "搜尋禮物（例如「點心」、「曼谷」）…",
+      "searchAria": "搜尋目錄",
+      "categoryAria": "按類型篩選",
+      "priceAria": "按價錢篩選",
+      "categoryAll": "全部",
+      "category": {
+        "memory_cards": "記憶卡",
+        "dragdrop_puzzle": "相片拼圖",
+        "quiz": "小測驗",
+        "multimedia_collage": "拼貼",
+        "animated_letter": "會動嘅信"
+      },
+      "priceTier": {
+        "free": "免費",
+        "under_5": "$5 以下",
+        "under_20": "$20 以下",
+        "over_20": "$20 或以上"
+      },
+      "creatorLabel": "創作人 handle",
+      "creatorPlaceholder": "@handle",
+      "sortLabel": "排序",
+      "sort": {
+        "published_desc": "最新",
+        "most_liked": "最多讚",
+        "price_asc": "價錢（低 → 高）"
+      }
+    },
+    "card": {
+      "by": "由 {creator}",
+      "likesLabel": "{count} 個讚"
+    },
+    "price": {
+      "free": "免費"
+    },
+    "listing": {
+      "by": "由",
+      "category": {
+        "memory_cards": "記憶卡",
+        "dragdrop_puzzle": "相片拼圖",
+        "quiz": "小測驗",
+        "multimedia_collage": "多媒體拼貼",
+        "animated_letter": "會動嘅信",
+        "unknown": "禮物"
+      },
+      "sendThisGift": "送出呢份禮物 →",
+      "checkoutHint": "結帳功能會喺下一階段（M-E）開通。"
+    },
+    "likeButton": {
+      "signIn": "登入就可以畀讚",
+      "error": "更新唔到，再試多次。"
+    },
+    "preview": {
+      "tag": "預覽"
+    },
+    "comments": {
+      "heading": "{count, plural, =0 {仲未有留言} =1 {1 個留言} other {# 個留言}}",
+      "empty": "做第一個留言嘅人。",
+      "moreComing": "完整留言會喺下一階段（M-D）開通。"
     }
   }
 }

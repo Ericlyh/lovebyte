@@ -1,0 +1,73 @@
+<!-- @dsCard group="Catalog" -->
+<!DOCTYPE html>
+<!--
+  LoveByte — /l/[giftId] (listing detail) design mirror for the open-design project.
+  Mirrors the production page in src/app/l/[giftId]/page.tsx (M-C, OOP-4275).
+  Static HTML so the design team can iterate without the Next.js runtime.
+
+  This page shows the /l/aaaa5555-0000-0000-0000-000000000001 (Mei's
+  "A letter that unfolds" animated_letter) listing — picked because it
+  matches the OOP-4275 acceptance test's "search 'Tai Mo Shan' returns
+  the animated_letter gift" (the gift body references grandma, who
+  taught the sender to write by hand — Tai Mo Shan is a real Hong Kong
+  landmark that fits the design narrative).
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>A letter that unfolds by Mei Chen — LoveByte</title>
+  <link rel="stylesheet" href="shared-tokens.css">
+</head>
+<body>
+  <nav class="lb-nav">
+    <a href="/" class="lb-nav__brand">LoveByte</a>
+    <div class="lb-nav__links">
+      <a href="/browse">Browse</a>
+      <span class="lb-lang-toggle">
+        <button class="is-active">EN</button>
+        <button>繁中</button>
+      </span>
+      <a href="/login">Sign in</a>
+      <a href="/signup" class="lb-btn lb-btn--primary lb-btn--sm">Start free</a>
+    </div>
+  </nav>
+
+  <article class="lb-container lb-listing">
+    <header class="lb-listing-hero">
+      <p class="lb-listing-hero__category">Animated letter</p>
+      <h1 class="lb-listing-hero__title">A letter that unfolds</h1>
+      <p class="lb-listing-hero__creator">
+        by <a href="/u/mei" class="lb-link">Mei Chen</a>
+      </p>
+
+      <div class="lb-listing-hero__meta">
+        <span class="lb-price-badge lb-price-badge--free">Free</span>
+        <button class="lb-btn lb-btn--sm lb-btn--ghost">♥ 0</button>
+      </div>
+
+      <p class="lb-listing-hero__description">
+        For my grandmother, who taught me to write by hand.
+      </p>
+    </header>
+
+    <aside class="lb-listing-preview" data-category="animated_letter">
+      <p class="lb-listing-preview__tag">Preview</p>
+      <h2 class="lb-listing-preview__title">A letter that unfolds</h2>
+      <p class="lb-listing-preview__snippet">For my grandmother, who taught me to write by hand…</p>
+    </aside>
+
+    <section class="lb-listing-comments" aria-labelledby="lb-listing-comments-heading">
+      <h2 id="lb-listing-comments-heading" class="lb-listing-comments__heading">No comments yet</h2>
+      <p class="lb-empty">Be the first to leave a comment.</p>
+      <p class="lb-listing-comments__more">More comments land in the next step (M-D).</p>
+    </section>
+
+    <footer class="lb-listing-cta">
+      <a href="/checkout/aaaa5555-0000-0000-0000-000000000001" class="lb-btn lb-btn--primary lb-cta-primary">
+        Send this gift →
+      </a>
+      <p class="lb-listing-cta__hint">Checkout opens in the next step (M-E).</p>
+    </footer>
+  </article>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!-- @dsCard group="Catalog" -->
+<!DOCTYPE html>
+<!--
+  LoveByte — /browse (catalog grid) design mirror for the open-design project.
+  Mirrors the production page in src/app/browse/page.tsx + BrowseControls
+  (M-C, OOP-4275). Static HTML so the design team can iterate without the
+  Next.js runtime. See src/lib/catalog.ts for the data shape.
+
+  Usage: open in a browser, or copy into the open-design project as
+  catalog-browse.html. The CSS classes match shared-tokens.css so a
+  diff between this file and the shipped UI surfaces only meaningful
+  structural / copy changes.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Browse gifts — LoveByte marketplace</title>
+  <link rel="stylesheet" href="shared-tokens.css">
+</head>
+<body>
+  <nav class="lb-nav">
+    <a href="/" class="lb-nav__brand">LoveByte</a>
+    <div class="lb-nav__links">
+      <a href="/browse">Browse</a>
+      <span class="lb-lang-toggle">
+        <button class="is-active">EN</button>
+        <button>繁中</button>
+      </span>
+      <a href="/login">Sign in</a>
+      <a href="/signup" class="lb-btn lb-btn--primary lb-btn--sm">Start free</a>
+    </div>
+  </nav>
+
+  <section class="lb-browse-hero">
+    <div class="lb-container">
+      <h1 class="lb-browse-hero__title">Find a gift someone will remember</h1>
+      <p class="lb-browse-hero__lede">
+        Five kinds of personalised gifts from independent creators — sorted by what's new.
+      </p>
+    </div>
+  </section>
+
+  <section class="lb-container lb-browse-body">
+    <!-- BrowseControls — search + filter pills + creator + sort -->
+    <div class="lb-browse-controls">
+      <div class="lb-browse-controls__search-row">
+        <input type="search" class="lb-input"
+               placeholder="Search gifts (e.g. &quot;dim sum&quot;, &quot;Bangkok&quot;)…">
+      </div>
+
+      <div class="lb-browse-controls__row">
+        <div class="lb-browse-controls__group">
+          <button class="lb-pill lb-pill--active">All</button>
+          <button class="lb-pill">Memory cards</button>
+          <button class="lb-pill">Photo puzzle</button>
+          <button class="lb-pill">Quiz</button>
+          <button class="lb-pill">Collage</button>
+          <button class="lb-pill">Animated letter</button>
+        </div>
+        <div class="lb-browse-controls__group">
+          <button class="lb-pill">Free</button>
+          <button class="lb-pill">Under $5</button>
+          <button class="lb-pill">Under $20</button>
+          <button class="lb-pill">$20 and up</button>
+        </div>
+      </div>
+
+      <div class="lb-browse-controls__row lb-browse-controls__row--meta">
+        <label class="lb-browse-controls__creator">
+          <span>Creator handle</span>
+          <input type="text" class="lb-input lb-input--inline" placeholder="@handle">
+        </label>
+        <label class="lb-browse-controls__sort">
+          <span>Sort</span>
+          <select class="lb-select lb-select--inline">
+            <option>Newest</option>
+            <option>Most liked</option>
+            <option>Price (low → high)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- Gift grid — 8 seed gifts across 5 categories -->
+    <ul class="lb-gift-grid">
+      <li><a href="/l/aaaa1111-0000-0000-0000-000000000001" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="memory_cards"><span class="lb-gift-card__emoji">🂡</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">Our Sunday dim sum</h3>
+          <p class="lb-gift-card__creator">by Mei Chen</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--free">Free</span>
+            <span class="lb-gift-card__likes">♥ 2</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa1111-0000-0000-0000-000000000002" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="memory_cards"><span class="lb-gift-card__emoji">🂡</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">Match the Goa sunsets</h3>
+          <p class="lb-gift-card__creator">by Arjun Patel</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--paid">HK$48</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa2222-0000-0000-0000-000000000001" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="dragdrop_puzzle"><span class="lb-gift-card__emoji">🧩</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">Bangkok street photo puzzle</h3>
+          <p class="lb-gift-card__creator">by Arjun Patel</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--free">Free</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa2222-0000-0000-0000-000000000002" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="dragdrop_puzzle"><span class="lb-gift-card__emoji">🧩</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">5×5 Madrid rooftops</h3>
+          <p class="lb-gift-card__creator">by Sofia Rivera</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--paid">US$120</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa3333-0000-0000-0000-000000000001" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="quiz"><span class="lb-gift-card__emoji">❓</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">How well do you know us?</h3>
+          <p class="lb-gift-card__creator">by Sofia Rivera</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--free">Free</span>
+            <span class="lb-gift-card__likes">♥ 1</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa3333-0000-0000-0000-000000000002" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="quiz"><span class="lb-gift-card__emoji">❓</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">Trivia of our first year</h3>
+          <p class="lb-gift-card__creator">by Mei Chen</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--paid">HK$18</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa4444-0000-0000-0000-000000000001" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="multimedia_collage"><span class="lb-gift-card__emoji">🖼️</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">A weekend in Lisbon</h3>
+          <p class="lb-gift-card__creator">by Sofia Rivera</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--paid">€25</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+
+      <li><a href="/l/aaaa5555-0000-0000-0000-000000000001" class="lb-gift-card">
+        <div class="lb-gift-card__cover" data-category="animated_letter"><span class="lb-gift-card__emoji">✉️</span></div>
+        <div class="lb-gift-card__body">
+          <h3 class="lb-gift-card__title">A letter that unfolds</h3>
+          <p class="lb-gift-card__creator">by Mei Chen</p>
+          <div class="lb-gift-card__meta">
+            <span class="lb-price-badge lb-price-badge--free">Free</span>
+            <span class="lb-gift-card__likes">♥ 0</span>
+          </div>
+        </div>
+      </a></li>
+    </ul>
+  </section>
+</body>
+</html>
