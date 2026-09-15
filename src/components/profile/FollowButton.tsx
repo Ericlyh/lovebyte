@@ -7,13 +7,21 @@ import { useTranslations } from 'next-intl';
 /**
  * FollowButton — the authed-side of the follow action on /u/[handle].
  *
- * On mount, probes GET /api/me to learn the current session. Three
+ * On mount, probes GET /api/me to learn the current session. Four
  * render modes:
  *
  *   - `loading`     : while we don't know yet (avoids layout shift)
  *   - `anon`        : renders a "Sign in to follow @handle" link to /login
+ *   - `self`        : visiting your own profile — button is disabled
  *   - `authed`      : toggle button. Optimistic update on click; rolls
  *                     back if the server returns an error.
+ *
+ * M-D (OOP-4276) extends this with `initialFollowerCount`: we show
+ * the count next to the button and optimistically increment / decrement
+ * on toggle. The parent /u/[handle] page also reads this count via
+ * SSR; the optimistic local value is the source of truth between
+ * page navigations, while a `router.refresh()` after a successful
+ * toggle brings the SSR count back in sync.
  *
  * Self-follow is impossible here because /u/[handle] only renders when
  * the profile lookup succeeded for a *different* handle than the
@@ -29,6 +37,10 @@ type Props = {
   creatorId: string;
   /** Their handle, used for the i18n string. */
   handle: string;
+  /** SSR'd follower count for the creator. Drives the optimistic
+   *  update on toggle (M-D acceptance: "Follow count updates on the
+   *  creator profile after the follow button is clicked"). */
+  initialFollowerCount?: number;
   /** The signed-in viewer's UUID, or null. Avoids an /api/me roundtrip
    *  when the parent already has the session (currently unused — kept
    *  for the future self-follow guard). */
@@ -37,10 +49,16 @@ type Props = {
 
 type MeResponse = { authed: boolean; userId: string | null };
 
-export function FollowButton({ creatorId, handle, viewerId }: Props) {
+export function FollowButton({
+  creatorId,
+  handle,
+  initialFollowerCount = 0,
+  viewerId,
+}: Props) {
   const t = useTranslations('Profile.followButton');
   const [mode, setMode] = useState<Mode>('loading');
   const [following, setFollowing] = useState(false);
+  const [followerCount, setFollowerCount] = useState(initialFollowerCount);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -77,6 +95,9 @@ export function FollowButton({ creatorId, handle, viewerId }: Props) {
     if (mode !== 'authed' || isPending) return;
     const next = !following;
     setFollowing(next);
+    // Optimistic count update so the badge next to the button moves
+    // immediately. The SSR count re-syncs on the next page navigation.
+    setFollowerCount((n) => Math.max(0, n + (next ? 1 : -1)));
     setError(null);
 
     startTransition(async () => {
@@ -95,10 +116,12 @@ export function FollowButton({ creatorId, handle, viewerId }: Props) {
           .catch(() => ({ ok: false, error: 'Bad response' }));
         if (!res.ok || !data.ok) {
           setFollowing(!next);
+          setFollowerCount((n) => Math.max(0, n + (next ? -1 : 1)));
           setError(data.error ?? t('error'));
         }
       } catch {
         setFollowing(!next);
+        setFollowerCount((n) => Math.max(0, n + (next ? -1 : 1)));
         setError(t('error'));
       }
     });
@@ -154,6 +177,9 @@ export function FollowButton({ creatorId, handle, viewerId }: Props) {
       >
         {isPending ? t('submitting') : following ? t('unfollow') : t('follow')}
       </button>
+      <span className="lb-profile-follow__count" aria-live="polite">
+        {followerCount}
+      </span>
       {error ? <span className="lb-profile-follow__error">{error}</span> : null}
     </p>
   );

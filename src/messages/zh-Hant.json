@@ -261,7 +261,11 @@
       "handleChanged": "Handle 已更改，而家帶你去新頁面。",
       "previewLink": "睇下檔案",
       "signOut": "登出"
-    }
+    },
+    "followersCount": "{count, plural, =0 {仲未有粉絲} =1 {1 位粉絲} other {# 位粉絲}}",
+    "followersLabel": "{count, plural, =0 {未有粉絲} =1 {1 位粉絲} other {# 位粉絲}}",
+    "followersTab": "{count, plural, =0 {粉絲} =1 {粉絲（1）} other {粉絲（#）}}",
+    "followersEmpty": "仲未有粉絲。"
   },
   "Settings": {
     "heading": "設定",
@@ -357,7 +361,28 @@
     "comments": {
       "heading": "{count, plural, =0 {仲未有留言} =1 {1 個留言} other {# 個留言}}",
       "empty": "做第一個留言嘅人。",
-      "moreComing": "完整留言會喺下一階段（M-D）開通。"
+      "composerLabel": "留個言",
+      "placeholder": "講啲溫柔嘅說話…",
+      "submit": "送出",
+      "submitting": "送出緊…",
+      "signInPrompt": "登入就可以留言。",
+      "signInCta": "登入",
+      "signInToComment": "請重新登入再留言。",
+      "charCount": "{count} / {max}",
+      "loadMore": "睇多啲",
+      "loadingMore": "載入緊…",
+      "loadMoreError": "載入唔到，再試多次。",
+      "delete": "刪除",
+      "deleting": "刪除緊…",
+      "you": "你",
+      "report": "檢舉",
+      "reportReasonLabel": "點解要檢舉呢個留言？",
+      "reportReasonPlaceholder": "簡單講下原因（1–500 字）。",
+      "reportSubmit": "送出檢舉",
+      "reportThanks": "多謝，我哋會處理。",
+      "reportError": "送唔到檢舉，再試多次。",
+      "signInToReport": "登入就可以檢舉留言。",
+      "cancel": "取消"
     }
   }
 }

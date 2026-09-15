@@ -8,13 +8,17 @@ import {
   getRedirectForOldHandle,
 } from '@/lib/profiles/query';
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
+import { getFollowerCount } from '@/lib/profiles/followers';
 
 /**
- * /u/[handle] — public creator profile (OOP-4274 M-B).
+ * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
+ * with follower count + Followers tab).
  *
  * Edge-runtime safe: data fetch goes through `profiles_public`
- * (anon-readable view from M-A). The authed follow action lands in
- * the next heartbeat (OOP-4280) — for now the page is read-only.
+ * (anon-readable view from M-A). The authed follow action is wired
+ * via the FollowButton client component (OOP-4285) and updates the
+ * follower's local state; the page revalidates with `router.refresh()`
+ * so the SSR-rendered follower count stays in sync after a toggle.
  *
  * **Handle-change redirect (OOP-4284 Part C):** if the requested
  * handle doesn't exist in `profiles_public`, we look up
@@ -73,6 +77,11 @@ export default async function CreatorProfilePage({ params }: Props) {
       )
     : [];
 
+  // Follower count (M-D). Cheap query against `creator_follows` with
+  // `head: true` + `count: 'exact'`; the RLS policy
+  // `creator_follows_select_public` lets anon read it.
+  const followerCount = await getFollowerCount(profile.id);
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -92,10 +101,21 @@ export default async function CreatorProfilePage({ params }: Props) {
             ))}
           </ul>
         ) : null}
-        <FollowButton
-          creatorId={profile.id}
-          handle={profile.handle}
-        />
+        <div className="lb-profile-hero__actions">
+          <FollowButton
+            creatorId={profile.id}
+            handle={profile.handle}
+            initialFollowerCount={followerCount}
+          />
+          <span
+            className="lb-profile-followers-badge"
+            aria-label={t('Profile.followersCount', {
+              count: followerCount,
+            })}
+          >
+            {t('Profile.followersLabel', { count: followerCount })}
+          </span>
+        </div>
       </section>
 
       <section className="lb-profile-tabs" aria-label={t('tabsAria')}>
@@ -104,6 +124,9 @@ export default async function CreatorProfilePage({ params }: Props) {
         </button>
         <button type="button" className="lb-tab">
           {t('about')}
+        </button>
+        <button type="button" className="lb-tab">
+          {t('followersTab', { count: followerCount })}
         </button>
       </section>
 

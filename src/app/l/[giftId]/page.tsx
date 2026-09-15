@@ -8,7 +8,7 @@ import { ListingComments } from '@/components/catalog/ListingComments';
 import { ListingPreview } from '@/components/catalog/ListingPreview';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
 import { createClient } from '@/lib/supabase/server';
-import { getListingDetail } from '@/lib/catalog';
+import { getListingDetail, getListingComments } from '@/lib/catalog';
 
 /**
  * /l/[giftId] — listing detail (M-C, OOP-4275).
@@ -64,14 +64,12 @@ export default async function ListingPage({ params }: Props) {
     initialLiked = !!data;
   }
 
-  // The total comment count drives the "view all" affordance on M-C's
-  // preview (we only render the first 3). It's a separate query so we
-  // don't need to materialise all rows.
-  const { count: totalComments } = await supabase
-    .from('gift_comments')
-    .select('id', { count: 'exact', head: true })
-    .eq('gift_id', listing.id)
-    .is('deleted_at', null);
+  // First page of comments (SSR'd so anon visitors see real comments on
+  // first paint). The client component takes over from there with
+  // pagination, optimistic inserts, and soft-delete. We use the same
+  // helper as `/api/gift-comments/[giftId]` so the SSR + CSR shape
+  // matches byte-for-byte.
+  const firstPage = await getListingComments(listing.id, null);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -111,8 +109,11 @@ export default async function ListingPage({ params }: Props) {
         />
 
         <ListingComments
-          totalCount={typeof totalComments === 'number' ? totalComments : listing.comments.length}
-          comments={listing.comments}
+          giftId={listing.id}
+          initialComments={firstPage.comments}
+          initialTotalCount={firstPage.totalCount}
+          initialHasMore={firstPage.nextCursor != null}
+          initialNextCursor={firstPage.nextCursor}
         />
 
         <footer className="lb-listing-cta">

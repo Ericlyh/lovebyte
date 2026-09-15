@@ -459,3 +459,127 @@ export async function getListingDetail(giftId: string): Promise<CatalogListing |
     comments,
   };
 }
+
+// ─── Paginated comments (M-D, OOP-4276) ────────────────────────────────────
+
+const COMMENTS_PAGE_SIZE = 10;
+
+export type ListingCommentsResult = {
+  comments: CatalogListingComment[];
+  nextCursor: string | null;
+  totalCount: number;
+};
+
+function encodeCommentCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`, 'utf8').toString('base64url');
+}
+
+function decodeCommentCursor(
+  cursor: string,
+): { createdAt: string; id: string } | null {
+  try {
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
+    const idx = decoded.indexOf('|');
+    if (idx < 0) return null;
+    const createdAt = decoded.slice(0, idx);
+    const id = decoded.slice(idx + 1);
+    if (!createdAt || !id) return null;
+    return { createdAt, id };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Paginated comments for /l/[giftId]. Cursor is `(created_at, id)`;
+ * oldest-first ordering matches the SSR'd preview so the next page
+ * appends naturally without re-shuffling.
+ *
+ * Returns `{ comments, nextCursor, totalCount }`. `totalCount` is the
+ * live (non-soft-deleted) count for the heading; the SSR page also
+ * queries this directly so it doesn't need to count again.
+ *
+ * RLS `gift_comments_select_public` already filters
+ * `deleted_at is null`, so soft-deleted comments never appear here.
+ */
+export async function getListingComments(
+  giftId: string,
+  cursor: string | null,
+): Promise<ListingCommentsResult> {
+  if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) {
+    return { comments: [], nextCursor: null, totalCount: 0 };
+  }
+
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('gift_comments')
+    .select(
+      'id, body, created_at, author:profiles_public!author_id (id, handle, display_name)',
+    )
+    .eq('gift_id', giftId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(COMMENTS_PAGE_SIZE + 1);
+
+  if (cursor) {
+    const c = decodeCommentCursor(cursor);
+    if (c) {
+      // PostgREST `or(...)` lets us combine the strict-less-than on
+      // timestamp with the tiebreaker on id. We pass it as a raw
+      // filter so the client doesn't have to special-case the query.
+      query = query.or(
+        `created_at.gt.${c.createdAt},and(created_at.eq.${c.createdAt},id.gt.${c.id})`,
+      );
+    }
+  }
+
+  const [{ data, error }, { count: totalCount }] = await Promise.all([
+    query,
+    supabase
+      .from('gift_comments')
+      .select('id', { count: 'exact', head: true })
+      .eq('gift_id', giftId)
+      .is('deleted_at', null),
+  ]);
+
+  if (error) {
+    console.error('[catalog/getListingComments]', error.message);
+    return { comments: [], nextCursor: null, totalCount: 0 };
+  }
+
+  let rows = (data ?? []) as Array<{
+    id: string;
+    body: string;
+    created_at: string;
+    author: { id: string; handle: string; display_name: string | null } | { id: string; handle: string; display_name: string | null }[];
+  }>;
+
+  let nextCursor: string | null = null;
+  if (rows.length > COMMENTS_PAGE_SIZE) {
+    const overflow = rows[COMMENTS_PAGE_SIZE];
+    rows = rows.slice(0, COMMENTS_PAGE_SIZE);
+    if (overflow) nextCursor = encodeCommentCursor(overflow.created_at, overflow.id);
+  }
+
+  const comments: CatalogListingComment[] = rows.map((c) => {
+    const author = Array.isArray(c.author) ? c.author[0] : c.author;
+    return {
+      id: c.id,
+      body: c.body,
+      created_at: c.created_at,
+      author: {
+        id: author?.id ?? '',
+        handle: author?.handle ?? '',
+        display_name: author?.display_name ?? null,
+      },
+    };
+  });
+
+  return {
+    comments,
+    nextCursor,
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  };
+}

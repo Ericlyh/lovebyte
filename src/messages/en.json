@@ -261,7 +261,11 @@
       "handleChanged": "Handle changed. Taking you to your new page…",
       "previewLink": "View profile",
       "signOut": "Sign out"
-    }
+    },
+    "followersCount": "{count, plural, =0 {No followers yet} =1 {1 follower} other {# followers}}",
+    "followersLabel": "{count, plural, =0 {No followers} =1 {1 follower} other {# followers}}",
+    "followersTab": "{count, plural, =0 {Followers} =1 {Followers (1)} other {Followers (#)}}",
+    "followersEmpty": "No followers yet."
   },
   "Settings": {
     "heading": "Settings",
@@ -357,7 +361,28 @@
     "comments": {
       "heading": "{count, plural, =0 {No comments yet} =1 {1 comment} other {# comments}}",
       "empty": "Be the first to leave a comment.",
-      "moreComing": "More comments land in the next step (M-D)."
+      "composerLabel": "Leave a comment",
+      "placeholder": "Say something kind…",
+      "submit": "Post",
+      "submitting": "Posting…",
+      "signInPrompt": "Sign in to leave a comment.",
+      "signInCta": "Sign in",
+      "signInToComment": "Sign in again to comment.",
+      "charCount": "{count} / {max}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…",
+      "loadMoreError": "Couldn't load more. Try again.",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "you": "You",
+      "report": "Report",
+      "reportReasonLabel": "Why are you reporting this comment?",
+      "reportReasonPlaceholder": "Briefly describe the issue (1–500 chars).",
+      "reportSubmit": "Send report",
+      "reportThanks": "Thanks — we’ll review it.",
+      "reportError": "Couldn't send that report. Try again.",
+      "signInToReport": "Sign in to report comments.",
+      "cancel": "Cancel"
     }
   }
 }
