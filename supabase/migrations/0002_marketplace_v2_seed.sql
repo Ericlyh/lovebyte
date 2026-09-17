@@ -153,7 +153,7 @@ insert into public.gifts (
    'animated_letter',
    'A letter that unfolds',
    'A scroll-reveal letter about hiking Tai Mo Shan with my grandmother — the day we watched the sunset burn the fog off the ridges.',
-   '{"markdown":"Dear Grandma,\n\nI still walk up Tai Mo Shan on Sundays. The fog lifts at six, and for one minute the whole of Hong Kong glows gold.\n\nLove always,\nMei","paper":"linen","envelope_color":"#f5e9d4","inline_media":[]}'::jsonb,
+   '{"markdown":"Dear Grandma,\n\nI still walk up Tai Mo Shan on Sundays. The fog lifts at six, and for one minute the whole of Hong Kong glows gold.\n\nLove always,\nMei","paper":"lined","envelope_color":"honey","inline_media":[]}'::jsonb,
    'animated_letter', NULL, 'HKD', 1000, true, now() - interval '6 days', 'draft')
 on conflict (id) do nothing;
 
