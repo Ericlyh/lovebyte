@@ -135,7 +135,7 @@ export function PublishToMarketplaceCard({
           className="lb-textarea"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          maxLength={600}
+          maxLength={500}
           rows={4}
           placeholder="What makes this gift special? (optional)"
         />
