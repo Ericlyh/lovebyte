@@ -5,6 +5,7 @@
   "Nav": {
     "brand": "LoveByte",
     "browse": "瀏覽",
+    "create": "整禮物",
     "viewProfile": "睇主頁",
     "finishProfile": "完成設定",
     "signOut": "登出"
@@ -443,6 +444,22 @@
     "rowStatus": {
       "paid": "已付款",
       "refunded": "已退款"
+    }
+  },
+  "Create": {
+    "heading": "整一份禮物",
+    "lede": "開個草稿，跟住就可以放上巿集賣。",
+    "titleLabel": "禮物標題",
+    "titlePlaceholder": "例如：阿媽生日——同張點心相",
+    "typeLabel": "禮物類型",
+    "typeHint": "揀定你想用嘅格式，之後都可以改。",
+    "submit": "開個草稿",
+    "submitting": "開緊…",
+    "browseInstead": "不如去睇下巿集 →",
+    "finish": {
+      "heading": "放上巿集",
+      "lede": "填段描述、揀張封面相（可選），再揀免費或者收費。收費嘅禮物要連接 Stripe 先收得到錢。",
+      "backToProfile": "← 返去你嘅主頁"
     }
   }
 }

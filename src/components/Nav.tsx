@@ -11,7 +11,7 @@ import { createClient } from '@/lib/supabase/server';
  * link set accordingly:
  *
  *   Anon   → brand · lang toggle · "Sign in" · "Start free" CTA
- *   Authed → brand · lang toggle · "View profile" · Sign-out form
+ *   Authed → brand · lang toggle · "Browse" · "Create" · "View profile" · Sign-out form
  *
  * The Sign-out is a `<form action={signOutAction}>` so it works without
  * JS (server action clears the cookie and redirects to `/`).
@@ -47,6 +47,7 @@ export async function Nav() {
         <LanguageToggle />
         {user ? (
           <>
+            <Link href="/create">{t('create')}</Link>
             {handle ? (
               <Link href={`/u/${handle}`}>{t('viewProfile')}</Link>
             ) : (

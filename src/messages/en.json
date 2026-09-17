@@ -5,6 +5,7 @@
   "Nav": {
     "brand": "LoveByte",
     "browse": "Browse",
+    "create": "Create",
     "viewProfile": "View profile",
     "finishProfile": "Finish profile",
     "signOut": "Sign out"
@@ -443,6 +444,22 @@
     "rowStatus": {
       "paid": "Paid",
       "refunded": "Refunded"
+    }
+  },
+  "Create": {
+    "heading": "Create a gift",
+    "lede": "Start a draft, then publish to the marketplace.",
+    "titleLabel": "Gift title",
+    "titlePlaceholder": "e.g. For mum, with the dim sum photo",
+    "typeLabel": "Gift type",
+    "typeHint": "Pick the format you'll build with. You can change it later.",
+    "submit": "Create draft",
+    "submitting": "Creating…",
+    "browseInstead": "Browse the marketplace instead →",
+    "finish": {
+      "heading": "Publish to the marketplace",
+      "lede": "Fill in a description, pick a cover photo (optional), and decide whether it's free or paid. Paid gifts require a connected Stripe account.",
+      "backToProfile": "← Back to your profile"
     }
   }
 }
