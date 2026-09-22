@@ -393,6 +393,33 @@
       "reportError": "送唔到檢舉，再試多次。",
       "signInToReport": "登入就可以檢舉留言。",
       "cancel": "取消"
+    },
+    "replies": {
+      "heading": "{count, plural, =0 {仲未有問題} =1 {1 個問題} other {# 個問題}}",
+      "lede": "問下創作人有關呢份禮物嘅任何問題。",
+      "empty": "做第一個發問嘅人。",
+      "composerLabel": "問個問題",
+      "placeholder": "你想知啲咩？",
+      "submit": "送出",
+      "submitting": "送出緊…",
+      "signInPrompt": "登入就可以問創作人問題。",
+      "signInCta": "登入",
+      "signInToReply": "請重新登入再回覆。",
+      "charCount": "{count} / {max}",
+      "loadMore": "睇多啲",
+      "loadingMore": "載入緊…",
+      "loadMoreError": "載入唔到，再試多次。",
+      "delete": "刪除",
+      "deleting": "刪除緊…",
+      "you": "你",
+      "creator": "創作人",
+      "replyCta": "回覆",
+      "replyComposerLabel": "回覆呢條問題",
+      "replyPlaceholder": "加落傾度…",
+      "replySubmit": "送出回覆",
+      "replySubmitting": "送出緊…",
+      "cancel": "取消",
+      "deletedNotice": "呢條回覆已經刪除咗。"
     }
   },
   "Checkout": {

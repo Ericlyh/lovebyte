@@ -583,3 +583,140 @@ export async function getListingComments(
     totalCount: typeof totalCount === 'number' ? totalCount : 0,
   };
 }
+
+// ─── Threaded gift replies (M-G, OOP-4890) ────────────────────────────────
+//
+// Distinct from comments (M-D): replies nest via parent_reply_id and
+// can be pruned by the listing creator, not just the author. The
+// shape returned here is *flat* (server returns rows in
+// created_at-asc order); the client component groups by parent_reply_id
+// in memory. Keeping it flat keeps the SQL + cursor simple and matches
+// the partial index `gift_replies_gift_live_idx`.
+
+export type CatalogListingReply = {
+  id: string;
+  body: string;
+  created_at: string;
+  parent_reply_id: string | null;
+  user: {
+    id: string;
+    handle: string;
+    display_name: string | null;
+  };
+};
+
+export type ListingRepliesResult = {
+  replies: CatalogListingReply[];
+  nextCursor: string | null;
+  totalCount: number;
+};
+
+const REPLIES_PAGE_SIZE = 20;
+
+function encodeReplyCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`, 'utf8').toString('base64url');
+}
+
+function decodeReplyCursor(
+  cursor: string,
+): { createdAt: string; id: string } | null {
+  try {
+    const decoded = Buffer.from(cursor, 'base64url').toString('utf8');
+    const idx = decoded.indexOf('|');
+    if (idx < 0) return null;
+    const createdAt = decoded.slice(0, idx);
+    const id = decoded.slice(idx + 1);
+    if (!createdAt || !id) return null;
+    return { createdAt, id };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Paginated threaded replies for `/l/[giftId]`. Cursor is
+ * `(created_at, id)`; oldest-first ordering matches the SSR'd preview
+ * so the next page appends naturally without re-shuffling.
+ *
+ * Returns `{ replies, nextCursor, totalCount }`. `totalCount` is the
+ * total live rows for the heading; the SSR page also queries this
+ * directly so it doesn't need to count again.
+ */
+export async function getListingReplies(
+  giftId: string,
+  cursor: string | null,
+): Promise<ListingRepliesResult> {
+  if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) {
+    return { replies: [], nextCursor: null, totalCount: 0 };
+  }
+
+  const supabase = await createClient();
+
+  let query = supabase
+    .from('gift_replies')
+    .select(
+      'id, body, created_at, parent_reply_id, user:profiles_public!user_id (id, handle, display_name)',
+    )
+    .eq('gift_id', giftId)
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(REPLIES_PAGE_SIZE + 1);
+
+  if (cursor) {
+    const c = decodeReplyCursor(cursor);
+    if (c) {
+      query = query.or(
+        `created_at.gt.${c.createdAt},and(created_at.eq.${c.createdAt},id.gt.${c.id})`,
+      );
+    }
+  }
+
+  const [{ data, error }, { count: totalCount }] = await Promise.all([
+    query,
+    supabase
+      .from('gift_replies')
+      .select('id', { count: 'exact', head: true })
+      .eq('gift_id', giftId),
+  ]);
+
+  if (error) {
+    console.error('[catalog/getListingReplies]', error.message);
+    return { replies: [], nextCursor: null, totalCount: 0 };
+  }
+
+  let rawRows = (data ?? []) as Array<{
+    id: string;
+    body: string;
+    created_at: string;
+    parent_reply_id: string | null;
+    user: { id: string; handle: string; display_name: string | null } | { id: string; handle: string; display_name: string | null }[];
+  }>;
+
+  let nextCursor: string | null = null;
+  if (rawRows.length > REPLIES_PAGE_SIZE) {
+    const overflow = rawRows[REPLIES_PAGE_SIZE];
+    rawRows = rawRows.slice(0, REPLIES_PAGE_SIZE);
+    if (overflow) nextCursor = encodeReplyCursor(overflow.created_at, overflow.id);
+  }
+
+  const replies: CatalogListingReply[] = rawRows.map((r) => {
+    const user = Array.isArray(r.user) ? r.user[0] : r.user;
+    return {
+      id: r.id,
+      body: r.body,
+      created_at: r.created_at,
+      parent_reply_id: r.parent_reply_id,
+      user: {
+        id: user?.id ?? '',
+        handle: user?.handle ?? '',
+        display_name: user?.display_name ?? null,
+      },
+    };
+  });
+
+  return {
+    replies,
+    nextCursor,
+    totalCount: typeof totalCount === 'number' ? totalCount : 0,
+  };
+}

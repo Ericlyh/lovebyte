@@ -6,9 +6,10 @@ import { Nav } from '@/components/Nav';
 import { LikeButton } from '@/components/catalog/LikeButton';
 import { ListingComments } from '@/components/catalog/ListingComments';
 import { ListingPreview } from '@/components/catalog/ListingPreview';
+import { ListingReplies } from '@/components/catalog/ListingReplies';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
 import { createClient } from '@/lib/supabase/server';
-import { getListingDetail, getListingComments } from '@/lib/catalog';
+import { getListingDetail, getListingComments, getListingReplies } from '@/lib/catalog';
 
 /**
  * /l/[giftId] — listing detail (M-C, OOP-4275).
@@ -71,6 +72,12 @@ export default async function ListingPage({ params }: Props) {
   // matches byte-for-byte.
   const firstPage = await getListingComments(listing.id, null);
 
+  // First page of threaded replies (M-G, OOP-4890). Same pattern as
+  // comments above. We pre-fetch so anon visitors see real threads on
+  // first paint; the client component handles pagination + optimistic
+  // inserts + per-author / per-creator delete.
+  const firstRepliesPage = await getListingReplies(listing.id, null);
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -114,6 +121,15 @@ export default async function ListingPage({ params }: Props) {
           initialTotalCount={firstPage.totalCount}
           initialHasMore={firstPage.nextCursor != null}
           initialNextCursor={firstPage.nextCursor}
+        />
+
+        <ListingReplies
+          giftId={listing.id}
+          giftOwnerId={listing.owner.id}
+          initialReplies={firstRepliesPage.replies}
+          initialTotalCount={firstRepliesPage.totalCount}
+          initialHasMore={firstRepliesPage.nextCursor != null}
+          initialNextCursor={firstRepliesPage.nextCursor}
         />
 
         <footer className="lb-listing-cta">

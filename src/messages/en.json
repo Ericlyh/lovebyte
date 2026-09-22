@@ -393,6 +393,33 @@
       "reportError": "Couldn't send that report. Try again.",
       "signInToReport": "Sign in to report comments.",
       "cancel": "Cancel"
+    },
+    "replies": {
+      "heading": "{count, plural, =0 {No questions yet} =1 {1 question} other {# questions}}",
+      "lede": "Ask the creator anything about this gift.",
+      "empty": "Be the first to ask a question.",
+      "composerLabel": "Ask a question",
+      "placeholder": "What would you like to know?",
+      "submit": "Send",
+      "submitting": "Sending…",
+      "signInPrompt": "Sign in to ask the creator a question.",
+      "signInCta": "Sign in",
+      "signInToReply": "Sign in again to reply.",
+      "charCount": "{count} / {max}",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…",
+      "loadMoreError": "Couldn't load more. Try again.",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "you": "You",
+      "creator": "Creator",
+      "replyCta": "Reply",
+      "replyComposerLabel": "Reply to this question",
+      "replyPlaceholder": "Add to the conversation…",
+      "replySubmit": "Post reply",
+      "replySubmitting": "Posting…",
+      "cancel": "Cancel",
+      "deletedNotice": "This reply was deleted."
     }
   },
   "Checkout": {

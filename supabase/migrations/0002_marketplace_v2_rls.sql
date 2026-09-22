@@ -167,3 +167,38 @@ create policy "comment_reports_select_own"
 create policy "comment_reports_insert_authenticated"
   on public.comment_reports for insert
   with check (auth.uid() = reporter_id);
+
+-- gift_replies ─────────────────────────────────────────────────────────────
+-- M-G, OOP-4890. Threaded buyer→creator questions on /l/[giftId].
+--   read  : public (anon + authenticated)
+--   insert: authenticated, only on behalf of self
+--   update: only the author (so the body is immutable to others)
+--   delete: the author OR the gift's creator (so creators can prune
+--           abusive threads on their listing) OR service_role.
+drop policy if exists "gift_replies_select_public" on public.gift_replies;
+drop policy if exists "gift_replies_insert_own"    on public.gift_replies;
+drop policy if exists "gift_replies_update_own"    on public.gift_replies;
+drop policy if exists "gift_replies_delete_own_or_creator" on public.gift_replies;
+
+create policy "gift_replies_select_public"
+  on public.gift_replies for select
+  using (true);
+
+create policy "gift_replies_insert_own"
+  on public.gift_replies for insert
+  with check (auth.uid() = user_id);
+
+create policy "gift_replies_update_own"
+  on public.gift_replies for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "gift_replies_delete_own_or_creator"
+  on public.gift_replies for delete
+  using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from public.gifts g
+      where g.id = gift_replies.gift_id and g.owner_id = auth.uid()
+    )
+  );
