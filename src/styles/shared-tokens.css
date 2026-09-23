@@ -426,6 +426,95 @@ a:hover { color: var(--lb-primary-deep); }
 }
 .lb-recipient__foot a { color: var(--lb-primary); }
 
+/* Phase 9 (OOP-4225) — loading / not-found / error states for the public
+ * share-link surface. Mirrors the envelope/recipient geometry so the
+ * Suspense swap and the typed error boundaries don't cause layout shift. */
+
+.lb-skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgba(58, 31, 31, 0.06) 0%,
+    rgba(58, 31, 31, 0.12) 50%,
+    rgba(58, 31, 31, 0.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: lb-shimmer 1.4s var(--lb-ease-in-out) infinite;
+  border-radius: var(--lb-radius-md);
+  color: transparent;
+  user-select: none;
+}
+@keyframes lb-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lb-skeleton { animation: none; }
+}
+
+.lb-skeleton--emoji {
+  width: 96px; height: 96px; border-radius: var(--lb-radius-md);
+  margin: 0 auto 24px;
+}
+.lb-skeleton--h1  { height: 56px; width: 70%; margin: 0 auto 16px; }
+.lb-skeleton--meta { height: 18px; width: 40%; margin: 0 auto 32px; }
+.lb-skeleton--cover { height: 96px; width: 100%; margin-bottom: 32px; }
+.lb-skeleton--cta { height: 56px; width: 220px; }
+.lb-skeleton--cta-secondary { height: 18px; width: 120px; }
+.lb-skeleton--foot { height: 13px; width: 60%; margin: 40px auto 0; }
+
+.lb-skeleton-card {
+  /* Loading-state wrapper around .lb-recipient. Geometry comes from
+   * .lb-recipient; this rule just suppresses interaction on the
+   * shimmer placeholders so the user can't tap a phantom CTA while
+   * the real content is still streaming in. */
+  pointer-events: none;
+  cursor: progress;
+}
+
+.lb-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+.lb-envelope--muted {
+  background: var(--lb-blush);
+  color: var(--lb-ink-soft);
+  animation: none;
+}
+
+.lb-recipient--empty,
+.lb-recipient--error {
+  background: var(--lb-surface);
+}
+.lb-recipient__empty-body {
+  color: var(--lb-ink-soft);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 auto 32px;
+  max-width: 440px;
+}
+.lb-recipient__digest {
+  margin: 0 auto 16px;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+.lb-recipient__digest code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--lb-blush);
+  padding: 2px 6px;
+  border-radius: var(--lb-radius-sm);
+}
+.lb-recipient__retry {
+  /* Reset native button styling so it inherits the CTA look. */
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
 /* === In-experience: animated_letter (Phase 3) ===========================
  * Scroll-reveal letter with paper-background variants. */
 

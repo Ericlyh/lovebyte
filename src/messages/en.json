@@ -83,7 +83,14 @@
     "heading": "{name} sent you something.",
     "openCta": "Open your gift",
     "saveForLater": "Save for later",
-    "reportLabel": "Report"
+    "reportLabel": "Report",
+    "loading": "Loading your gift…",
+    "notFoundTitle": "This gift isn't here anymore",
+    "notFoundBody": "The link may have expired, or the sender unpublished it. If you know who sent it, ask them for a fresh link.",
+    "notFoundCta": "Back to LoveByte",
+    "errorTitle": "We couldn't open this gift",
+    "errorBody": "Something went wrong on our end. Try again — if it keeps failing, the link may be invalid.",
+    "errorRetry": "Try again"
   },
   "Open": {
     "letterTag": "A letter for you",

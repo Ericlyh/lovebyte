@@ -83,7 +83,14 @@
     "heading": "{name} 送咗嘢畀你。",
     "openCta": "打開你嘅禮物",
     "saveForLater": "遲啲先睇",
-    "reportLabel": "檢舉"
+    "reportLabel": "檢舉",
+    "loading": "載緊你嘅禮物…",
+    "notFoundTitle": "呢份禮物已經唔喺度",
+    "notFoundBody": "條 link 可能已經過咗期，或者對方已經落架。如果你知道係邊個送畀你，可以問對方攞返條新 link。",
+    "notFoundCta": "返去 LoveByte",
+    "errorTitle": "開唔到呢份禮物",
+    "errorBody": "我哋嗰邊出咗啲問題。試多次啦，如果一直失敗，條 link 可能已經無效。",
+    "errorRetry": "再試多次"
   },
   "Open": {
     "letterTag": "一封寫畀你嘅信",
