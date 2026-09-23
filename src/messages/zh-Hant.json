@@ -230,6 +230,15 @@
     "collection": "作品",
     "about": "關於",
     "emptyCollection": "仲未有上架嘅禮物。",
+    "emptyCollectionCard": {
+      "ownerTitle": "你嘅作品集仲未有嘢",
+      "ownerBody": "將你整好嘅禮物放上架，就會喺呢度顯示畀所有嚟到你個人頁嘅人睇。",
+      "ownerCtaPrimary": "上架一個禮物",
+      "ownerCtaSecondary": "去市集逛吓",
+      "anonTitle": "仲未有上架嘅禮物",
+      "anonBody": "@{handle} 暫時未有喺市集上架任何禮物。遲啲再嚟睇下 — 或者先去市集睇下其他創作人嘅作品。",
+      "anonCtaPrimary": "去市集逛吓"
+    },
     "notFound": "�唔到呢個創作人（可能未開戶）。",
     "followButton": {
       "loading": "…",

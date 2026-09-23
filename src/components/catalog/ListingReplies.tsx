@@ -270,7 +270,9 @@ export function ListingReplies({
       <ReplyForm giftId={giftId} onCreated={handleCreated} />
 
       {tree.length === 0 ? (
-        <p className="lb-empty">{t('empty')}</p>
+        <div className="lb-empty-card lb-empty-card--inline" role="status">
+          <p className="lb-empty-card__body">{t('empty')}</p>
+        </div>
       ) : (
         <ul className="lb-listing-replies__list">
           {tree.map((node) => renderNode(node, 0))}

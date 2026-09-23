@@ -158,7 +158,9 @@ export function ListingComments({
       <CommentForm giftId={giftId} onCreated={handleCreated} />
 
       {comments.length === 0 ? (
-        <p className="lb-empty">{t('empty')}</p>
+        <div className="lb-empty-card lb-empty-card--inline" role="status">
+          <p className="lb-empty-card__body">{t('empty')}</p>
+        </div>
       ) : (
         <ul className="lb-listing-comments__list">
           {comments.map((c) => {

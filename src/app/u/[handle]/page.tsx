@@ -3,12 +3,16 @@ import { getTranslations } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { FollowButton } from '@/components/profile/FollowButton';
+import { EmptyCollectionState } from '@/components/profile/EmptyCollectionState';
+import { GiftCard } from '@/components/catalog/GiftCard';
 import {
   getProfileByHandle,
   getRedirectForOldHandle,
 } from '@/lib/profiles/query';
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
 import { getFollowerCount } from '@/lib/profiles/followers';
+import { getCatalogFeed } from '@/lib/catalog';
+import { createClient } from '@/lib/supabase/server';
 
 /**
  * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
@@ -82,6 +86,26 @@ export default async function CreatorProfilePage({ params }: Props) {
   // `creator_follows_select_public` lets anon read it.
   const followerCount = await getFollowerCount(profile.id);
 
+  // Viewer auth (OOP-4225 Phase 9 polish). Owner-only copy on the
+  // empty-state card hinges on this — anon visitors shouldn't see
+  // "List a gift" as a CTA. Anon-readable via the JWT-less server
+  // client; `auth.getUser()` returns null without error.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerIsOwner = !!user && user.id === profile.id;
+
+  // Creator's listed gifts (OOP-4225 Phase 9 polish). Reuses the same
+  // RLS-permitted feed query as /browse so the visual language of the
+  // cards stays consistent across the app. Capped at PAGE_SIZE (20)
+  // for the first paint — full pagination can land when the design
+  // actually needs it (most creators won't list 20+ in the MVP).
+  const { gifts: creatorListings } = await getCatalogFeed({
+    creator: profile.handle,
+    sort: 'published_desc',
+  });
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -131,7 +155,18 @@ export default async function CreatorProfilePage({ params }: Props) {
       </section>
 
       <section className="lb-profile-collection">
-        <p className="lb-empty">{t('emptyCollection')}</p>
+        {creatorListings.length > 0 ? (
+          <div className="lb-profile-collection-grid">
+            {creatorListings.map((gift) => (
+              <GiftCard key={gift.id} gift={gift} />
+            ))}
+          </div>
+        ) : (
+          <EmptyCollectionState
+            viewerIsOwner={viewerIsOwner}
+            handle={profile.handle}
+          />
+        )}
       </section>
     </main>
   );

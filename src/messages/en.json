@@ -230,6 +230,15 @@
     "collection": "Collection",
     "about": "About",
     "emptyCollection": "No listed gifts yet.",
+    "emptyCollectionCard": {
+      "ownerTitle": "Your collection is quiet",
+      "ownerBody": "List a gift you've made and it'll show up here for anyone who lands on your profile.",
+      "ownerCtaPrimary": "List a gift",
+      "ownerCtaSecondary": "Browse the marketplace",
+      "anonTitle": "Nothing listed yet",
+      "anonBody": "@{handle} hasn't published any gifts to the marketplace yet. Check back soon — or browse what other creators have made.",
+      "anonCtaPrimary": "Browse the marketplace"
+    },
     "notFound": "This creator doesn't exist (yet).",
     "followButton": {
       "loading": "…",

@@ -1122,6 +1122,74 @@ a:hover { color: var(--lb-primary-deep); }
   font-variant-numeric: tabular-nums;
 }
 
+/* === Profile collection (OOP-4225 Phase 9) ============================== */
+
+.lb-profile-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--lb-space-4);
+}
+
+/* Empty-state card — same envelope geometry as the /g/[token]
+ * not-found and error surfaces so an empty creator collection reads
+ * as "intentional pause", not "broken page". Centred icon + title +
+ * body + CTA row. */
+.lb-empty-card {
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-7) var(--lb-space-5);
+  box-shadow: var(--lb-shadow-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--lb-space-3);
+}
+.lb-empty-card__icon {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: var(--lb-space-1);
+}
+.lb-empty-card__title {
+  font-family: var(--lb-font-display);
+  font-size: 22px;
+  color: var(--lb-ink);
+  margin: 0;
+}
+.lb-empty-card__body {
+  color: var(--lb-ink-soft);
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 42ch;
+  margin: 0;
+}
+.lb-empty-card__actions {
+  display: flex;
+  gap: var(--lb-space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--lb-space-3);
+}
+@media (max-width: 480px) {
+  .lb-empty-card { padding: var(--lb-space-6) var(--lb-space-4); }
+  .lb-empty-card__title { font-size: 20px; }
+  .lb-empty-card__body { font-size: 14px; }
+}
+
+/* Inline variant for sub-sections on /l/[giftId] (comments, replies).
+ * No icon, tighter padding — keeps the card affordance without
+ * competing with the listing hero above. */
+.lb-empty-card--inline {
+  padding: var(--lb-space-5) var(--lb-space-4);
+  box-shadow: none;
+  border: 1.5px dashed var(--lb-blush);
+  background: transparent;
+}
+.lb-empty-card--inline .lb-empty-card__body {
+  font-size: 14px;
+  max-width: none;
+}
+
 /* Price badge — sage pill for free, primary outline for paid. */
 .lb-price-badge {
   display: inline-block;
