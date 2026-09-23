@@ -1682,3 +1682,211 @@ a:hover { color: var(--lb-primary-deep); }
   flex-wrap: wrap;
   margin-top: 4px;
 }
+
+/* ─── M-G (OOP-4890): gift replies composer + threaded thread + creator badge ─
+ * Mirrors the M-D comment styles for visual consistency. Distinct enough
+ * that the thread can sit below the comment section without looking like
+ * a duplicate: replies nest one level deep (sub-replies indented under
+ * the question), and the gift's creator gets a pill badge next to their
+ * handle on every message they post on their own listing.
+ */
+
+.lb-listing-replies {
+  border-top: 1px solid #f3e6e3;
+  padding-top: var(--lb-space-5);
+  margin-top: var(--lb-space-5);
+}
+.lb-listing-replies__heading {
+  font-family: var(--lb-font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--lb-ink);
+  margin-bottom: 4px;
+}
+.lb-listing-replies__lede {
+  font-size: 13px;
+  color: var(--lb-ink-soft);
+  margin: 0 0 16px;
+}
+.lb-listing-replies__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lb-listing-replies__item {
+  background: var(--lb-blush);
+  padding: 14px 18px;
+  border-radius: var(--lb-radius-md);
+}
+.lb-listing-replies__item--depth-1 {
+  background: var(--lb-surface-raised);
+  border: 1px solid #f3e6e3;
+  margin-top: 10px;
+}
+.lb-listing-replies__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.lb-listing-replies__author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--lb-primary-deep);
+  margin: 0;
+}
+.lb-listing-replies__creator-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: var(--lb-primary);
+  padding: 2px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.lb-listing-replies__body {
+  font-size: 14px;
+  color: var(--lb-ink);
+  line-height: 1.55;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.lb-listing-replies__reply-cta {
+  margin-top: 10px;
+}
+.lb-listing-replies__reply-form {
+  margin-top: 10px;
+}
+.lb-listing-replies__children {
+  list-style: none;
+  padding: 0 0 0 18px;
+  margin: 10px 0 0;
+  border-left: 2px solid #f3e6e3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lb-listing-replies__more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.lb-listing-replies__error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--lb-danger);
+}
+.lb-listing-replies__delete {
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--lb-radius-sm);
+}
+.lb-listing-replies__delete:hover:not(:disabled) {
+  color: var(--lb-danger);
+  background: #fff;
+}
+.lb-listing-replies__delete:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.lb-reply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 20px;
+  padding: 16px;
+  background: var(--lb-surface-raised);
+  border-radius: var(--lb-radius-md);
+  border: 1px solid #f3e6e3;
+}
+.lb-reply-form--nested {
+  margin: 10px 0 0;
+  padding: 12px;
+}
+.lb-reply-form--anon {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.lb-reply-form__placeholder {
+  display: block;
+  height: 88px;
+  background: var(--lb-blush);
+  border-radius: var(--lb-radius-sm);
+}
+.lb-reply-form--nested .lb-reply-form__placeholder {
+  height: 64px;
+}
+.lb-reply-form__hint {
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+  margin: 0;
+}
+.lb-reply-form__parent {
+  font-size: 12px;
+  color: var(--lb-primary-deep);
+  font-weight: 600;
+  margin: 0 0 -2px;
+}
+.lb-reply-form__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lb-ink);
+}
+.lb-reply-form__textarea {
+  width: 100%;
+  min-height: 88px;
+  padding: 10px 12px;
+  border: 1px solid #e8d8d2;
+  border-radius: var(--lb-radius-sm);
+  background: var(--lb-surface);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--lb-ink);
+  resize: vertical;
+}
+.lb-reply-form--nested .lb-reply-form__textarea {
+  min-height: 64px;
+}
+.lb-reply-form__textarea:focus {
+  outline: 2px solid var(--lb-primary);
+  outline-offset: 1px;
+}
+.lb-reply-form__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lb-reply-form__count {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  margin-right: auto;
+}
+.lb-reply-form__count--over {
+  color: var(--lb-danger);
+  font-weight: 700;
+}
+.lb-reply-form__error {
+  font-size: 12px;
+  color: var(--lb-danger);
+}
