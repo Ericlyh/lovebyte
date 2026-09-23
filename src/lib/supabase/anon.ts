@@ -10,14 +10,20 @@
  * have a cookie store. For authed reads/writes use `@/lib/supabase/server`.
  */
 
+// OOP-5048: prefer the publishable key (sb_publishable_…) over the legacy
+// anon JWT. Since OOP-4894 the legacy JWT is 401-rejected at the Supabase
+// gateway; the publishable key keeps working. See
+// `lovebyte-supabase-disable-legacy-jwt`.
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!SUPABASE_URL || !SUPABASE_KEY) {
   // Throw at import time in server contexts — the envs are required for
   // any DB read. Missing here means a misconfigured deploy.
   throw new Error(
-    '[supabase/anon] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY missing',
+    '[supabase/anon] NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) missing',
   );
 }
 
@@ -53,8 +59,8 @@ export async function postgrest<T>(
   const res = await fetch(url.toString(), {
     method: init.method ?? 'GET',
     headers: {
-      apikey: SUPABASE_ANON_KEY!,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      apikey: SUPABASE_KEY!,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
       ...(init.body ? { 'Content-Type': 'application/json' } : {}),
     },
     body: init.body,

@@ -67,10 +67,18 @@ export async function proxy(request: NextRequest) {
   // which only inspects the JWT (no DB roundtrip) and triggers the
   // refresh path when the access token is within ~60s of expiry. If
   // there is no session at all, this is a no-op and we skip the DB hit.
+  //
+  // OOP-5048: prefer the publishable key (sb_publishable_…) so the
+  // proxy keeps working after OOP-4894 disabled the legacy anon JWT
+  // at the Supabase gateway. See `lovebyte-supabase-disable-legacy-jwt`.
   try {
+    const supabaseKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseKey) throw new Error('missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or ANON_KEY)');
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseKey,
       {
         cookies: {
           getAll() {
