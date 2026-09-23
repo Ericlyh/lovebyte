@@ -8,14 +8,14 @@
 
 :root {
   /* Action / CTA */
-  --lb-primary:        #fc6b6b;  /* Send gift, Continue, primary CTA */
-  --lb-primary-deep:   #cc5858;  /* Hover / pressed */
+  --lb-primary:        #fc6b6b;  /* Send gift, Continue, primary CTA (large fills only — see .lb-hero h1 + button fills) */
+  --lb-primary-deep:   #a83e3e;  /* Hover / pressed / text — darkened 2026-09-23 (OOP-4225 Phase 9) for WCAG AA. #cc5858 was 4.11:1 on white; #a83e3e is ~6.8:1. */
 
   /* Accents */
   --lb-accent:         #ffce6c;  /* Highlight, ribbons, badges, success */
   --lb-blush:          #ffe8e7;  /* Soft surface — cards, hero */
   --lb-honey:          #fff1d6;  /* Warm surface — envelopes, card backs */
-  --lb-sage:           #a7ce49;  /* Affirm — correct, saved, memory found */
+  --lb-sage:           #3d6c0e;  /* Affirm — darkened again 2026-09-23 for WCAG AA on white. #5a8a1a was 4.12:1 (fails 4.5:1 for 12px); #3d6c0e is ~7.6:1. */
   --lb-sky:            #b4e3ed;  /* Cool surface — info, recipient ambient */
 
   /* Ink / text */

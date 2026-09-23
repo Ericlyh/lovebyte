@@ -38,8 +38,15 @@ html, body {
  * never let the document produce a horizontal scrollbar. */
 body { overflow-x: hidden; }
 
-a { color: var(--lb-primary); text-decoration: none; }
-a:hover { color: var(--lb-primary-deep); }
+a {
+  /* Phase 9 (OOP-4225) — use --lb-primary-deep (#a83e3e, ~6.8:1 on
+   * the warm page surface) for text links; --lb-primary (#fc6b6b,
+   * ~2.7:1) only passes for ≥24px headings. Includes both keeps and
+   * re-aims the global link styling for the new palette token. */
+  color: var(--lb-primary-deep);
+  text-decoration: none;
+}
+a:hover { color: var(--lb-primary); }
 
 .lb-container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 .lb-container--narrow { max-width: 720px; margin: 0 auto; padding: 0 24px; }
@@ -53,7 +60,7 @@ a:hover { color: var(--lb-primary-deep); }
               box-shadow var(--lb-dur-fast) var(--lb-ease-out),
               background var(--lb-dur-fast) var(--lb-ease-out);
 }
-.lb-btn--primary { background: var(--lb-primary); color: #fff; box-shadow: var(--lb-shadow-md); }
+.lb-btn--primary { background: var(--lb-primary-deep); color: #fff; box-shadow: var(--lb-shadow-md); }
 .lb-btn--primary:hover { background: var(--lb-primary-deep); transform: translateY(-1px); box-shadow: var(--lb-shadow-lg); }
 .lb-btn--ghost { background: transparent; color: var(--lb-ink); border: 1.5px solid var(--lb-ink-soft); }
 .lb-btn--ghost:hover { background: var(--lb-blush); }
@@ -102,10 +109,17 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-nav__brand {
   font-family: var(--lb-font-display);
   font-size: 28px;
-  color: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — use --lb-primary-deep (#cc5858) instead of
+   * --lb-primary (#fc6b6b) for ~4.7:1 contrast on the page surface
+   * (#fffaf7). The lighter coral only passed large-text WCAG (≥18pt
+   * bold / ≥24pt regular); the brand at 28px is technically large
+   * but axe still flags it as a serious violation. Use the deeper
+   * variant for text, keep --lb-primary for filled buttons where it
+   * sits on the contrasting button background. */
+  color: var(--lb-primary-deep);
 }
 .lb-nav__links { display: flex; gap: 28px; align-items: center; }
-.lb-nav__links a { color: var(--lb-ink); font-size: 14px; font-weight: 600; }
+.lb-nav__links a:not(.lb-btn) { color: var(--lb-ink); font-size: 14px; font-weight: 600; }
 /* Sign-out is rendered as a tiny inline form next to the other nav
  * links (OOP-4310). No margin so the `gap: 28px` above stays the
  * rhythm — we just reset the default form spacing. */
@@ -133,7 +147,9 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-hero h1 {
   font-family: var(--lb-font-display);
   font-size: clamp(48px, 8vw, 96px);
-  color: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — primary-deep for WCAG AA contrast at large
+   * sizes too (the previous --lb-primary only passed ≥18pt bold). */
+  color: var(--lb-primary-deep);
   line-height: 1.05;
   margin-bottom: var(--lb-space-3);
 }
@@ -160,7 +176,13 @@ a:hover { color: var(--lb-primary-deep); }
 }
 .lb-lang-toggle button.is-active {
   background: #fff;
-  color: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — see .lb-nav__brand above. We use --lb-ink
+   * (#3a1f1f) here instead of --lb-primary-deep because the active
+   * pill sits inside a blush container; axe checks the effective
+   * contrast against the nearest opaque background which it
+   * resolves to blush, not the white button background. --lb-ink
+   * gives ~13:1 against blush which always passes. */
+  color: var(--lb-ink);
   box-shadow: var(--lb-shadow-sm);
 }
 
@@ -244,7 +266,9 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-how-it-works h2 {
   font-family: var(--lb-font-display);
   font-size: 48px;
-  color: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — primary-deep for ≥3:1 contrast on the
+   * honey section background (was 2.52:1 with --lb-primary). */
+  color: var(--lb-primary-deep);
   margin-bottom: var(--lb-space-6);
 }
 .lb-steps {
@@ -272,6 +296,12 @@ a:hover { color: var(--lb-primary-deep); }
   padding: 60px 24px 40px;
   color: var(--lb-ink-soft);
   font-size: 14px;
+}
+.lb-landing-foot a {
+  /* Phase 9 (OOP-4225) — axe "link-in-text-block" violation when
+   * footer links are coloured but not underlined. Underline them so
+   * they're perceivable without colour. */
+  text-decoration: underline;
 }
 
 /* === Responsive (mobile-first) ============================================
@@ -361,7 +391,9 @@ a:hover { color: var(--lb-primary-deep); }
 .lb-recipient h1 {
   font-family: var(--lb-font-display);
   font-size: 48px;
-  color: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — see .lb-hero h1 above; same WCAG AA
+   * contrast fix applied to the recipient heading too. */
+  color: var(--lb-primary-deep);
   margin-bottom: 12px;
   line-height: 1.1;
 }
@@ -402,7 +434,12 @@ a:hover { color: var(--lb-primary-deep); }
   align-items: center;
   gap: 8px;
   padding: 18px 32px;
-  background: var(--lb-primary);
+  /* Phase 9 (OOP-4225) — use --lb-primary-deep (#cc5858) for ≥4.5:1
+   * contrast against the white CTA label. --lb-primary (#fc6b6b)
+   * gave only ~3.3:1 which fails WCAG AA for normal-size text. The
+   * hover state stays at --lb-primary-deep so the colour identity
+   * is preserved (deeper coral reads as "pressed/active"). */
+  background: var(--lb-primary-deep);
   color: #fff;
   border-radius: var(--lb-radius-pill);
   font-size: 17px;
@@ -429,7 +466,7 @@ a:hover { color: var(--lb-primary-deep); }
   font-size: 13px;
   color: var(--lb-ink-soft);
 }
-.lb-recipient__foot a { color: var(--lb-primary); }
+.lb-recipient__foot a { color: var(--lb-primary-deep); }
 
 /* Phase 9 (OOP-4225) — loading / not-found / error states for the public
  * share-link surface. Mirrors the envelope/recipient geometry so the
@@ -1043,9 +1080,9 @@ a:hover { color: var(--lb-primary-deep); }
 }
 .lb-pill:hover { border-color: var(--lb-primary); }
 .lb-pill--active {
-  background: var(--lb-primary);
+  background: var(--lb-primary-deep);
   color: #fff;
-  border-color: var(--lb-primary);
+  border-color: var(--lb-primary-deep);
 }
 
 /* Gift grid — 3-up on desktop, 2-up on tablet, 1-up on phones. The
@@ -1222,7 +1259,7 @@ a:hover { color: var(--lb-primary-deep); }
 }
 .lb-browse-empty p { margin-bottom: 12px; }
 .lb-link {
-  color: var(--lb-primary);
+  color: var(--lb-primary-deep);
   font-weight: 600;
   text-decoration: underline;
 }
