@@ -479,6 +479,7 @@
   "Purchases": {
     "title": "Your gifts",
     "empty": "You haven’t sent any gifts yet.",
+    "emptyTitle": "No gifts yet",
     "loadError": "Could not load your gifts right now. Refresh to try again.",
     "browseMore": "Browse more gifts",
     "unknownGift": "(removed gift)",
@@ -520,6 +521,9 @@
       "title": "Loading…",
       "body": "Just a moment.",
       "sr": "Loading, please wait."
+    },
+    "offline": {
+      "body": "You're offline. Changes won't save until you're back online."
     }
   }
 }

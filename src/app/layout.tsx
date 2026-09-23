@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Norican, Overlock } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import './globals.css';
 
 const norican = Norican({
@@ -35,6 +36,13 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
     >
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider locale={locale} messages={messages}>
+          {/*
+            Phase 9 (OOP-4225) — typed offline indicator. Renders
+            nothing when navigator.onLine is true; appears at the
+            top of every page when the user loses connectivity so
+            form submissions don't silently hang.
+          */}
+          <OfflineBanner />
           {children}
         </NextIntlClientProvider>
       </body>

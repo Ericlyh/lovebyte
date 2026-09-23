@@ -60,7 +60,22 @@ export default async function PurchasesPage() {
         ) : null}
 
         {!rows || rows.length === 0 ? (
-          <p className="lede">{t('empty')}</p>
+          // Phase 9 (OOP-4225) — typed empty-state card instead of a
+          // bare <p>. Same .lb-empty-card geometry as /u/[handle]
+          // (slice 2) and /g/[token] (slice 1) so all three surfaces
+          // speak the same visual language. CTA points to /browse
+          // since buyers who haven't bought anything yet are
+          // probably browsing.
+          <div className="lb-empty-card" role="status">
+            <div className="lb-empty-card__icon" aria-hidden="true">🛍️</div>
+            <h2 className="lb-empty-card__title">{t('emptyTitle')}</h2>
+            <p className="lb-empty-card__body">{t('empty')}</p>
+            <div className="lb-empty-card__actions">
+              <Link href="/browse" className="lb-btn lb-btn--primary">
+                {t('browseMore')}
+              </Link>
+            </div>
+          </div>
         ) : (
           <ul className="lb-purchases-list">
             {rows.map((row) => {

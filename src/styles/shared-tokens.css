@@ -2052,3 +2052,21 @@ a:hover { color: var(--lb-primary-deep); }
   font-size: 12px;
   color: var(--lb-danger);
 }
+
+/* === Offline banner (OOP-4225 Phase 9) ============================
+ * Sticky-top, full-width strip that surfaces when navigator.onLine
+ * flips to false. role=status + aria-live=polite so screen readers
+ * announce the transition without interrupting the user's flow. */
+.lb-offline-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--lb-warning, #f5b942);
+  color: var(--lb-ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
