@@ -287,7 +287,12 @@ a:hover { color: var(--lb-primary-deep); }
   .lb-nav__links a:not(.lb-btn) { font-size: 13px; }
   .lb-btn--sm { padding: 6px 12px; font-size: 12px; }
   .lb-lang-toggle { padding: 3px; }
-  .lb-lang-toggle button { padding: 5px 9px; font-size: 12px; }
+  .lb-lang-toggle button { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  /* Phase 9 (OOP-4225) — minimum 36px tap target per Apple HIG /
+   * Material guidelines; affects every inline pill, tag, and small
+   * button on phones. Browsers default to <28px which fails a11y. */
+  .lb-pill, .lb-tag, .lb-btn--sm { min-height: 36px; }
+  .lb-pill { padding: 8px 14px; }
 
   /* Hero — smaller padding, the title clamp already works */
   .lb-landing-hero { padding: 64px 20px 48px; }
