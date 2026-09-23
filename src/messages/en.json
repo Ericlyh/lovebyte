@@ -504,5 +504,22 @@
       "lede": "Fill in a description, pick a cover photo (optional), and decide whether it's free or paid. Paid gifts require a connected Stripe account.",
       "backToProfile": "← Back to your profile"
     }
+  },
+  "Common": {
+    "error": {
+      "title": "Something went wrong",
+      "body": "That page hit an unexpected error. Try again — if it keeps failing, head back home.",
+      "retry": "Try again"
+    },
+    "notFound": {
+      "title": "We couldn't find that page",
+      "body": "The link may be broken, or the page has moved. Let's get you back to somewhere that works.",
+      "cta": "Back to LoveByte"
+    },
+    "loading": {
+      "title": "Loading…",
+      "body": "Just a moment.",
+      "sr": "Loading, please wait."
+    }
   }
 }

@@ -24,13 +24,14 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { token } = await params;
   const envelope = await getEnvelopeByToken(token);
+  // Phase 9 (OOP-4225) — if the token doesn't resolve, propagate
+  // notFound() from generateMetadata too. Without this, generateMetadata
+  // returns a fallback title and Next.js commits the response status
+  // to 200 before the page-level notFound() throws, leaving the
+  // /g/[token] not-found surface served as HTTP 200 (cosmetic bug
+  // — the leaf not-found.tsx still renders, but crawlers see 200).
+  if (!envelope) notFound();
   const ogUrl = `/api/og/${encodeURIComponent(token)}`;
-  if (!envelope) {
-    return {
-      title: 'A gift for you — LoveByte',
-      openGraph: { images: [ogUrl] },
-    };
-  }
   return {
     title: `${envelope.senderName} sent you something — LoveByte`,
     description:
