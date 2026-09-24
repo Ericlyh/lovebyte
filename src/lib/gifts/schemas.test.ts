@@ -4,6 +4,8 @@ import {
   DragdropPuzzlePayloadSchema,
   GiftTypeSchema,
   MemoryCardsPayloadSchema,
+  MultimediaCollagePayloadSchema,
+  MultimediaMediaItemSchema,
   QuizPayloadSchema,
   RecipientEnvelopeSchema,
 } from './schemas';
@@ -276,6 +278,143 @@ describe('QuizPayloadSchema (Phase 6, OOP-4222)', () => {
     expect(() =>
       QuizPayloadSchema.parse({
         questions: [{ ...validQuestion, reveal_msg: '' }],
+      }),
+    ).toThrow();
+  });
+});
+
+describe('MultimediaMediaItemSchema (Phase 7, OOP-4223)', () => {
+  const validItem = {
+    type: 'photo' as const,
+    url: 'https://example.com/photo.jpg',
+    caption: 'That rainy Causeway Bay morning',
+    position: { x: 0.1, y: 0.1, w: 0.3, h: 0.4 },
+  };
+
+  it('parses a minimal photo item with caption and position', () => {
+    const parsed = MultimediaMediaItemSchema.parse(validItem);
+    expect(parsed.type).toBe('photo');
+    expect(parsed.position.x).toBe(0.1);
+  });
+
+  it('accepts video and audio kinds', () => {
+    for (const t of ['photo', 'video', 'audio'] as const) {
+      const parsed = MultimediaMediaItemSchema.parse({ ...validItem, type: t });
+      expect(parsed.type).toBe(t);
+    }
+  });
+
+  it('rejects unknown kinds', () => {
+    expect(() =>
+      MultimediaMediaItemSchema.parse({ ...validItem, type: 'gif' }),
+    ).toThrow();
+  });
+
+  it('rejects position out of 0..1 range', () => {
+    expect(() =>
+      MultimediaMediaItemSchema.parse({
+        ...validItem,
+        position: { x: 1.5, y: 0, w: 0.3, h: 0.3 },
+      }),
+    ).toThrow();
+    expect(() =>
+      MultimediaMediaItemSchema.parse({
+        ...validItem,
+        position: { x: 0, y: -0.1, w: 0.3, h: 0.3 },
+      }),
+    ).toThrow();
+  });
+
+  it('rejects zero-size items (would render as nothing on the canvas)', () => {
+    expect(() =>
+      MultimediaMediaItemSchema.parse({
+        ...validItem,
+        position: { x: 0, y: 0, w: 0, h: 0.3 },
+      }),
+    ).toThrow();
+  });
+});
+
+describe('MultimediaCollagePayloadSchema (Phase 7, OOP-4223)', () => {
+  const validPayload = {
+    template: 'polaroid-wall',
+    media: [
+      {
+        type: 'photo' as const,
+        url: 'https://example.com/a.jpg',
+        caption: 'Tai Mo Shan',
+        position: { x: 0.04, y: 0.05, w: 0.28, h: 0.42 },
+      },
+      {
+        type: 'video' as const,
+        url: 'https://example.com/b.mp4',
+        caption: 'The proposal clip',
+        position: { x: 0.36, y: 0.08, w: 0.28, h: 0.42 },
+      },
+      {
+        type: 'audio' as const,
+        url: 'https://example.com/c.mp3',
+        position: { x: 0.68, y: 0.05, w: 0.28, h: 0.42 },
+      },
+    ],
+    music_url: 'https://example.com/bg.mp3',
+  };
+
+  it('parses a minimal mixed-media payload', () => {
+    const parsed = MultimediaCollagePayloadSchema.parse(validPayload);
+    expect(parsed.template).toBe('polaroid-wall');
+    expect(parsed.media).toHaveLength(3);
+    expect(parsed.music_url).toBe(validPayload.music_url);
+  });
+
+  it('defaults music_url to null when omitted', () => {
+    const parsed = MultimediaCollagePayloadSchema.parse({
+      template: 'timeline',
+      media: validPayload.media.slice(0, 1),
+    });
+    expect(parsed.music_url).toBeNull();
+  });
+
+  it('accepts up to 20 media items', () => {
+    const media = Array.from({ length: 20 }, (_, i) => ({
+      type: 'photo' as const,
+      url: `https://example.com/${i}.jpg`,
+      position: {
+        x: (i % 5) * 0.2,
+        y: Math.floor(i / 5) * 0.2,
+        w: 0.18,
+        h: 0.18,
+      },
+    }));
+    const parsed = MultimediaCollagePayloadSchema.parse({
+      template: 'timeline',
+      media,
+    });
+    expect(parsed.media).toHaveLength(20);
+  });
+
+  it('rejects more than 20 media items', () => {
+    const media = Array.from({ length: 21 }, (_, i) => ({
+      type: 'photo' as const,
+      url: `https://example.com/${i}.jpg`,
+      position: { x: 0, y: 0, w: 0.18, h: 0.18 },
+    }));
+    expect(() =>
+      MultimediaCollagePayloadSchema.parse({ template: 'timeline', media }),
+    ).toThrow();
+  });
+
+  it('rejects empty media array', () => {
+    expect(() =>
+      MultimediaCollagePayloadSchema.parse({ template: 'timeline', media: [] }),
+    ).toThrow();
+  });
+
+  it('rejects empty template id', () => {
+    expect(() =>
+      MultimediaCollagePayloadSchema.parse({
+        template: '',
+        media: validPayload.media.slice(0, 1),
       }),
     ).toThrow();
   });

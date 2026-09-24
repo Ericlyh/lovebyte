@@ -122,6 +122,68 @@ export const QuizPayloadSchema = z.object({
 });
 export type QuizPayload = z.infer<typeof QuizPayloadSchema>;
 
+// ─── multimedia_collage (Phase 7, OOP-4223) ────────────────────────────────
+// Source of truth: design/04-architecture/architecture.md §3 + §7 (locked).
+//   template:   canvas template id chosen by the sender (e.g.
+//               'polaroid-wall', 'timeline', 'magazine'). Free-form for
+//               now — the recipient view treats unknown templates as a
+//               fallback render.
+//   media:      ordered list of items placed on the canvas. Each item
+//               carries its own positional {x, y, w, h} in 0..1 canvas
+//               percentages so the canvas scales without the sender
+//               having to pick pixel coordinates. The recipient view
+//               stretches them into the available canvas size.
+//     type:     'photo' | 'video' | 'audio'.
+//     url:      public Storage URL (or signed URL — same shape).
+//     caption:  short optional caption that overlays the item.
+//               Trims at 200 chars — long enough for a quote, short
+//               enough to stay legible on a phone.
+//   music_url:  optional background music. Playback is gated on a user
+//               gesture (Safari/iOS autoplay) and starts via MusicToggle.
+//
+// Storage limits (architecture §7 / §11 #3):
+//   - photo: ≤ 5 MB uploaded via /api/upload/photo?kind=multimedia_collage.
+//   - video: ≤ 50 MB uploaded via /api/upload/media (Supabase Storage
+//            handles short clips fine; clips > 50 MB switch to Mux by
+//            policy, but that's out of scope for the MVP — sender sees
+//            an explicit error rather than silent fallback).
+//   - audio: ≤ 25 MB uploaded via /api/upload/media (matches i18n hint).
+export const MultimediaMediaKindSchema = z.enum(['photo', 'video', 'audio']);
+export type MultimediaMediaKind = z.infer<typeof MultimediaMediaKindSchema>;
+
+// Per-canvas percentages. 0..1 inclusive.
+const PercentSchema = z.number().min(0).max(1);
+
+const MultimediaMediaPositionSchema = z.object({
+  x: PercentSchema,
+  y: PercentSchema,
+  w: PercentSchema,
+  h: PercentSchema,
+});
+
+export const MultimediaMediaItemSchema = z
+  .object({
+    type: MultimediaMediaKindSchema,
+    url: z.string().min(1, 'Each media item needs a URL.'),
+    caption: z.string().max(200).optional(),
+    position: MultimediaMediaPositionSchema,
+  })
+  .refine(
+    (m) => m.position.w > 0 && m.position.h > 0,
+    'Media items need a positive size on the canvas.',
+  );
+export type MultimediaMediaItem = z.infer<typeof MultimediaMediaItemSchema>;
+
+export const MultimediaCollagePayloadSchema = z.object({
+  template: z.string().trim().min(1).max(64),
+  media: z
+    .array(MultimediaMediaItemSchema)
+    .min(1, 'Add at least one photo, video, or audio item.')
+    .max(20, 'Max 20 media items per collage.'),
+  music_url: z.string().url().nullable().default(null),
+});
+export type MultimediaCollagePayload = z.infer<typeof MultimediaCollagePayloadSchema>;
+
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({
   shareToken: z.string().min(1),

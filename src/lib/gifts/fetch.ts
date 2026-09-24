@@ -4,6 +4,7 @@ import {
   AnimatedLetterPayloadSchema,
   DragdropPuzzlePayloadSchema,
   MemoryCardsPayloadSchema,
+  MultimediaCollagePayloadSchema,
   type RecipientEnvelope,
 } from './schemas';
 
@@ -60,15 +61,16 @@ async function fetchFromSupabase(
   if (!row.gifts) return null;
 
   // Validate the payload against the type-specific schema at the
-  // type-narrow boundary (architecture §6). Other gift types
-  // (quiz, multimedia_collage) are validated by their own feature-module
-  // schemas once they ship (Phases 6+).
+  // type-narrow boundary (architecture §6). Each gift type validates
+  // here AND at the /g/[token]/open dispatch — defence in depth.
   if (row.gifts.type === 'animated_letter') {
     AnimatedLetterPayloadSchema.parse(row.gifts.payload);
   } else if (row.gifts.type === 'memory_cards') {
     MemoryCardsPayloadSchema.parse(row.gifts.payload);
   } else if (row.gifts.type === 'dragdrop_puzzle') {
     DragdropPuzzlePayloadSchema.parse(row.gifts.payload);
+  } else if (row.gifts.type === 'multimedia_collage') {
+    MultimediaCollagePayloadSchema.parse(row.gifts.payload);
   }
 
   return {
