@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getEnvelopeByToken } from '@/lib/gifts/fetch';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /g/[shareToken] — recipient envelope view (Phase 3, architecture §2).
@@ -33,14 +34,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!envelope) notFound();
   const ogUrl = `/api/og/${encodeURIComponent(token)}`;
   return {
-    title: `${envelope.senderName} sent you something — LoveByte`,
+    title: `${envelope.senderName} sent you something — ${BRAND.NAME}`,
     description:
       envelope.coverText ??
-      `${envelope.senderName} sent you a one-of-a-kind gift on LoveByte.`,
+      `${envelope.senderName} sent you a one-of-a-kind gift on ${BRAND.NAME}.`,
     openGraph: {
       title: `${envelope.senderName} sent you something`,
       description:
-        envelope.coverText ?? 'Open your gift on LoveByte.',
+        envelope.coverText ?? `Open your gift on ${BRAND.NAME}.`,
       images: [{ url: ogUrl, width: 1200, height: 630 }],
       type: 'website',
     },
@@ -97,7 +98,7 @@ export default async function RecipientEnvelopePage({ params }: Props) {
         </div>
 
         <footer className="lb-recipient__foot">
-          <Link href="/">LoveByte</Link>
+          <Link href="/">{BRAND.NAME}</Link>
           {' · 為香港而設 · '}
           <a href="#">{t('reportLabel') ?? 'Report'}</a>
         </footer>

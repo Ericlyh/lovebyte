@@ -5,6 +5,7 @@ import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /checkout/success — post-payment landing (M-E, OOP-4277).
@@ -27,7 +28,7 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role';
  */
 
 export const metadata: Metadata = {
-  title: 'Thank you — LoveByte',
+  title: `Thank you — ${BRAND.NAME}`,
 };
 
 type Props = {

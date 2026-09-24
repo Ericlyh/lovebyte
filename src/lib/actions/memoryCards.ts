@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { randomBytes } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { MemoryCardsPayloadSchema } from '@/features/memory-cards/schemas';
+import { BRAND } from '@/lib/brand';
 
 /**
  * saveMemoryCardsDraftAction — Phase 4 builder save (OOP-4219).
@@ -98,7 +99,7 @@ export async function saveMemoryCardsDraftAction(
   const pairs = input.pairs.map((p) => {
     const media = byId.get(p.mediaId)!;
     const { data: pub } = supabase.storage
-      .from('lovebyte-media')
+      .from(BRAND.STORAGE_BUCKET)
       .getPublicUrl(media.storage_path);
     return { photo_url: pub.publicUrl, caption: p.caption };
   });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 /**
  * POST /api/upload/photo — generic photo upload for builders (Phase 4).
@@ -20,9 +21,9 @@ import { createClient } from '@/lib/supabase/server';
  * Pipeline:
  *   1. Verify the request is authed.
  *   2. Validate mime (PNG/JPEG/WEBP) + size (≤ 5 MB).
- *   3. Stream to `lovebyte-media` under
- *      `gifts/<kind>/<user-id>/photo-<uuid>.<ext>`. The owner-CRL policy
- *      `media_owner_all` gates this.
+ *   3. Stream to the brand media bucket (`BRAND.STORAGE_BUCKET` in
+ *      `src/lib/brand.ts`) under `gifts/<kind>/<user-id>/photo-<uuid>.<ext>`.
+ *      The owner-CRL policy `media_owner_all` gates this.
  *   4. Insert a `gift_media` row referencing the storage path.
  *   5. Return `{ mediaId, publicUrl }`. The builder stashes `mediaId`
  *      in hidden form fields until save.
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
   const bytes = await file.arrayBuffer();
 
   const { error: uploadErr } = await supabase.storage
-    .from('lovebyte-media')
+    .from(BRAND.STORAGE_BUCKET)
     .upload(path, bytes, {
       contentType: mime,
       cacheControl: '3600',
@@ -161,7 +162,7 @@ export async function POST(request: Request) {
     .single();
 
   if (insertErr || !inserted) {
-    await supabase.storage.from('lovebyte-media').remove([path]);
+    await supabase.storage.from(BRAND.STORAGE_BUCKET).remove([path]);
     console.error('[upload/photo] gift_media insert failed', insertErr?.message);
     return NextResponse.json(
       { ok: false, error: `Could not save photo record: ${insertErr?.message ?? 'unknown error'}` },
@@ -169,10 +170,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // gifts/<kind>/<user-id>/... is publicly readable (lovebyte-media
+  // gifts/<kind>/<user-id>/... is publicly readable (brand media
   // bucket policy; see 0001_initial_schema + 0004_avatar_storage).
   const { data: publicUrlData } = supabase.storage
-    .from('lovebyte-media')
+    .from(BRAND.STORAGE_BUCKET)
     .getPublicUrl(path);
 
   return NextResponse.json({

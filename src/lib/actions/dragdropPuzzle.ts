@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { randomBytes } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { DragdropPuzzlePayloadSchema } from '@/features/dragdrop-puzzle/schemas';
+import { BRAND } from '@/lib/brand';
 
 /**
  * saveDragdropPuzzleDraftAction — Phase 5 builder save (OOP-4221).
@@ -86,7 +87,7 @@ export async function saveDragdropPuzzleDraftAction(
   //    gifts/<owner>/.../<file> is publicly readable (see migration 0001
   //    + 0004 — owner-scoped prefixes without a signed URL).
   const { data: pub } = supabase.storage
-    .from('lovebyte-media')
+    .from(BRAND.STORAGE_BUCKET)
     .getPublicUrl(mediaRow.storage_path);
   if (!pub.publicUrl) {
     return { ok: false, error: 'Could not resolve photo URL. Try again.' };

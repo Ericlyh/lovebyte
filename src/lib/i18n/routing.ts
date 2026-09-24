@@ -1,7 +1,7 @@
 import { defineRouting } from 'next-intl/routing';
 
 /**
- * LoveByte routing config.
+ * Lovorithm routing config.
  *
  * Locale-prefix strategy: `never` — URLs never carry a locale prefix, so
  * the recipient experience at /g/[token] is identical regardless of which

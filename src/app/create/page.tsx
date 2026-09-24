@@ -5,9 +5,10 @@ import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { CreateDraftForm } from '@/components/create/CreateDraftForm';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Create a gift — LoveByte',
+  title: `Create a gift — ${BRAND.NAME}`,
 };
 
 /**

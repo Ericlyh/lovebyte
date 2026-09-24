@@ -1,4 +1,5 @@
 import 'server-only';
+import { BRAND } from './brand';
 
 /**
  * Email helper for transactional share-link delivery (M-E, OOP-4277).
@@ -64,7 +65,7 @@ function buildBody(locale: 'en' | 'zh-Hant', shareUrl: string, buyerName: string
   const from = buyerName ?? (locale === 'zh-Hant' ? '有人' : 'Someone');
   if (locale === 'zh-Hant') {
     return [
-      `${from} 喺 LoveByte 送咗一份禮物畀你。`,
+      `${from} 喺 ${BRAND.NAME} 送咗一份禮物畀你。`,
       '',
       '按以下連結打開：',
       shareUrl,
@@ -73,7 +74,7 @@ function buildBody(locale: 'en' | 'zh-Hant', shareUrl: string, buyerName: string
     ].join('\n');
   }
   return [
-    `${from} sent you a gift on LoveByte.`,
+    `${from} sent you a gift on ${BRAND.NAME}.`,
     '',
     'Open it here:',
     shareUrl,

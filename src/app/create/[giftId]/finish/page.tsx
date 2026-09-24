@@ -9,9 +9,10 @@ import {
 } from '@/components/publish/PublishToMarketplaceCard';
 import { ShareLinkCard } from '@/components/create/ShareLinkCard';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Publish to marketplace — LoveByte',
+  title: `Publish to marketplace — ${BRAND.NAME}`,
 };
 
 /**
@@ -83,7 +84,7 @@ export default async function CreateFinishPage({
   // Resolve to public URLs via the same anon client the rest of the app uses.
   const mediaItems: GiftMediaItem[] = (mediaRows ?? []).flatMap((row) => {
     const { data: pub } = supabase.storage
-      .from('lovebyte-media')
+      .from(BRAND.STORAGE_BUCKET)
       .getPublicUrl(row.storage_path);
     return pub.publicUrl ? [{ id: row.id, url: pub.publicUrl }] : [];
   });

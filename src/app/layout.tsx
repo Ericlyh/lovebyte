@@ -3,6 +3,7 @@ import { Norican, Overlock } from 'next/font/google';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { BRAND } from '@/lib/brand';
 import './globals.css';
 
 const norican = Norican({
@@ -20,9 +21,8 @@ const overlock = Overlock({
 });
 
 export const metadata: Metadata = {
-  title: 'LoveByte — Send a feeling, not just a gift',
-  description:
-    'LoveByte turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they would know how to pass.',
+  title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
+  description: `${BRAND.NAME} turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they would know how to pass.`,
 };
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {

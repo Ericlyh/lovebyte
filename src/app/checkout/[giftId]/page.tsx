@@ -6,6 +6,7 @@ import { Nav } from '@/components/Nav';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /checkout/[giftId] — pre-payment buyer flow (M-E, OOP-4277).
@@ -29,8 +30,8 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { giftId } = await params;
   return {
-    title: 'Checkout — LoveByte',
-    description: `Buy a gift on LoveByte (${giftId.slice(0, 8)}…).`,
+    title: `Checkout — ${BRAND.NAME}`,
+    description: `Buy a gift on ${BRAND.NAME} (${giftId.slice(0, 8)}…).`,
   };
 }
 

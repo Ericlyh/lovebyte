@@ -127,7 +127,7 @@ export async function startCheckoutSessionAction(
         },
       ],
       // Destination charge: money goes to the creator's connected
-      // account; LoveByte skims the platform fee.
+      // account; Lovorithm skims the platform fee.
       payment_intent_data: {
         application_fee_amount: feeCents,
         transfer_data: { destination: owner.stripe_account_id },

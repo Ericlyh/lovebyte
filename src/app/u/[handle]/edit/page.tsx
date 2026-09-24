@@ -9,9 +9,10 @@ import {
 } from '@/components/auth/ProfileEditForm';
 import { createClient } from '@/lib/supabase/server';
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Edit your profile — LoveByte',
+  title: `Edit your profile — ${BRAND.NAME}`,
 };
 
 /**
@@ -69,7 +70,7 @@ export default async function ProfileEditPage({ params }: Props) {
     return (
       <main className="min-h-screen flex flex-col">
         <nav className="lb-nav">
-          <Link href="/" className="lb-nav__brand">LoveByte</Link>
+          <Link href="/" className="lb-nav__brand">{BRAND.NAME}</Link>
           <div className="lb-nav__links">
             <LanguageToggle />
             <ProfileEditSignOut />
@@ -130,7 +131,7 @@ export default async function ProfileEditPage({ params }: Props) {
   return (
     <main className="min-h-screen flex flex-col">
       <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
+        <Link href="/" className="lb-nav__brand">{BRAND.NAME}</Link>
         <div className="lb-nav__links">
           <LanguageToggle />
           <ProfileEditSignOut />

@@ -8,7 +8,7 @@ import { getEnvelopeByToken } from '@/lib/gifts/fetch';
  * Returns a 1200×630 image suitable for WhatsApp / iMessage / Twitter
  * link unfurls. The envelope text (sender name + cover quote) is
  * overlaid on the warm-romantic palette so unfurls look like a
- * LoveByte envelope even before the recipient clicks through.
+ * Lovorithm envelope even before the recipient clicks through.
  *
  * Hard constraint from OOP-4211: `next/og` for OG cards.
  * `next/og`'s ImageResponse requires Edge Runtime.

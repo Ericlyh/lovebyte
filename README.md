@@ -1,7 +1,10 @@
-# LoveByte — Web MVP
+# Lovorithm — Web MVP
 
-Send a feeling, not just a gift. The implementation of the LoveByte MVP
+Send a feeling, not just a gift. The implementation of the Lovorithm MVP
 that was scoped in OOP-4206 (Study) and kicked off in OOP-4211.
+
+> Renamed from **LoveByte** on 2026-09-24 (OOP-5091). All display strings
+> read from `src/lib/brand.ts`. To rename again, edit that one file.
 
 <!-- 2026-09-02: no-op to retrigger Vercel deploy (OOP-4267). main was already
      at 2996d21 with the OOP-4274 handle-check fixes — webhook had stopped firing. -->

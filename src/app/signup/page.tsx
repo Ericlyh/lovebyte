@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { SignupForm } from '@/components/auth/SignupForm';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /signup — M-B step 3 (OOP-4284).
@@ -13,7 +14,7 @@ import { SignupForm } from '@/components/auth/SignupForm';
  * (email-confirmation flow).
  */
 export const metadata: Metadata = {
-  title: 'Sign up — LoveByte',
+  title: `Sign up — ${BRAND.NAME}`,
 };
 
 export default async function SignupPage() {
@@ -22,7 +23,7 @@ export default async function SignupPage() {
   return (
     <main className="min-h-screen flex flex-col">
       <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
+        <Link href="/" className="lb-nav__brand">{BRAND.NAME}</Link>
         <div className="lb-nav__links">
           <LanguageToggle />
         </div>

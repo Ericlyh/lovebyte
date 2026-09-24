@@ -1,9 +1,9 @@
 {
   "Brand": {
-    "name": "LoveByte"
+    "name": "Lovorithm"
   },
   "Nav": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "browse": "Browse",
     "create": "Create",
     "viewProfile": "View profile",
@@ -11,7 +11,7 @@
     "signOut": "Sign out"
   },
   "Scaffold": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "phase": "Phase 1 · scaffold ready",
     "title": "Send a feeling, not just a gift.",
     "subtitle": "Scaffold is live. Phase 2 wires the full landing page; Phase 3 ships the recipient envelope; Phases 4–8 add the five gift builders.",
@@ -19,7 +19,7 @@
     "footer": "Made with care in Hong Kong · 為香港而設"
   },
   "Landing": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "nav": {
       "signin": "Sign in",
       "startFree": "Start free"
@@ -28,7 +28,7 @@
       "tag": "Made in Hong Kong · 為香港而設",
       "line1": "Send a feeling,",
       "line2": "not just a gift.",
-      "lede": "LoveByte turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they'd know how to pass.",
+      "lede": "Lovorithm turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they'd know how to pass.",
       "ctaPrimary": "Start your gift →",
       "ctaSecondary": "See an example"
     },
@@ -74,7 +74,7 @@
       }
     },
     "footer": {
-      "line": "LoveByte · Made with care in Hong Kong",
+      "line": "Lovorithm · Made with care in Hong Kong",
       "privacy": "Privacy",
       "terms": "Terms"
     }
@@ -87,7 +87,7 @@
     "loading": "Loading your gift…",
     "notFoundTitle": "This gift isn't here anymore",
     "notFoundBody": "The link may have expired, or the sender unpublished it. If you know who sent it, ask them for a fresh link.",
-    "notFoundCta": "Back to LoveByte",
+    "notFoundCta": "Back to Lovorithm",
     "errorTitle": "We couldn't open this gift",
     "errorBody": "Something went wrong on our end. Try again — if it keeps failing, the link may be invalid.",
     "errorRetry": "Try again"
@@ -95,7 +95,7 @@
   "Open": {
     "letterTag": "A letter for you",
     "fromLine": "from {name}",
-    "letterFoot": "Sent with LoveByte · 為香港而設",
+    "letterFoot": "Sent with Lovorithm · 為香港而設",
     "notShippedYet": "This gift type hasn't been built yet — check back soon.",
     "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave.",
     "memoryCards": {
@@ -254,7 +254,7 @@
       "pendingTitle": "Verification in progress",
       "pendingLede": "Stripe is verifying your identity. Buyers can’t purchase your gifts until this finishes.",
       "connectedTitle": "Payouts enabled",
-      "connectedLede": "You’re ready to sell. Buyers can pay you directly through LoveByte.",
+      "connectedLede": "You’re ready to sell. Buyers can pay you directly through Lovorithm.",
       "ctaConnect": "Connect payouts",
       "ctaConnecting": "Opening Stripe…"
     }
@@ -340,7 +340,7 @@
     "language": {
       "title": "Language",
       "current": "Current language: {locale}",
-      "hint": "The toggle updates the language for everything you see on LoveByte."
+      "hint": "The toggle updates the language for everything you see on Lovorithm."
     },
     "notifications": {
       "title": "Notifications",
@@ -558,7 +558,7 @@
     "notFound": {
       "title": "We couldn't find that page",
       "body": "The link may be broken, or the page has moved. Let's get you back to somewhere that works.",
-      "cta": "Back to LoveByte"
+      "cta": "Back to Lovorithm"
     },
     "loading": {
       "title": "Loading…",
@@ -574,7 +574,7 @@
       "backToPicker": "← Back to the create picker",
       "heading": "Memory cards",
       "lede": "Pick 3–12 photo pairs. The recipient flips cards to find matches — every match unlocks the memory you tagged.",
-      "privacyNote": "Photos are stored in your private LoveByte library. Only people with the share link can see them.",
+      "privacyNote": "Photos are stored in your private Lovorithm library. Only people with the share link can see them.",
       "titleLabel": "Gift title",
       "titlePlaceholder": "e.g. For Jamie, with the dim sum photo",
       "difficultyLabel": "Difficulty",
@@ -613,7 +613,7 @@
       "backToPicker": "← Back to the create picker",
       "heading": "Photo puzzle",
       "lede": "Upload one photo and pick a grid. The recipient drags the tiles back into place to reveal your message.",
-      "privacyNote": "Your photo is stored in your private LoveByte library. Only people with the share link can see it.",
+      "privacyNote": "Your photo is stored in your private Lovorithm library. Only people with the share link can see it.",
       "titleLabel": "Gift title",
       "titlePlaceholder": "e.g. The photo from our trip",
       "photoLabel": "Photo",
@@ -645,7 +645,7 @@
       "backToPicker": "← Back to the create picker",
       "heading": "Quiz",
       "lede": "Write multiple-choice questions. The recipient picks an answer to read your message.",
-      "privacyNote": "Your questions and reveal messages are stored in your private LoveByte library. Only people with the share link can see them.",
+      "privacyNote": "Your questions and reveal messages are stored in your private Lovorithm library. Only people with the share link can see them.",
       "titleLabel": "Gift title",
       "titlePlaceholder": "e.g. How well do you know us?",
       "questionLegend": "Question {n}",

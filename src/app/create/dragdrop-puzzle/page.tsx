@@ -5,9 +5,10 @@ import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { createClient } from '@/lib/supabase/server';
 import { DragdropPuzzleBuilderForm } from '@/components/dragdrop-puzzle/DragdropPuzzleBuilderForm';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Photo puzzle — LoveByte builder',
+  title: `Photo puzzle — ${BRAND.NAME} builder`,
 };
 
 /**

@@ -5,9 +5,10 @@ import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { createClient } from '@/lib/supabase/server';
 import { MemoryCardsBuilderForm } from '@/components/memory-cards/MemoryCardsBuilderForm';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Memory cards — LoveByte builder',
+  title: `Memory cards — ${BRAND.NAME} builder`,
 };
 
 /**

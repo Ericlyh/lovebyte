@@ -5,9 +5,10 @@ import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { createClient } from '@/lib/supabase/server';
 import { QuizBuilderForm } from '@/components/quiz/QuizBuilderForm';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Quiz — LoveByte builder',
+  title: `Quiz — ${BRAND.NAME} builder`,
 };
 
 /**

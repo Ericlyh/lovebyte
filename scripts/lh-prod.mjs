@@ -1,5 +1,8 @@
 import lighthouse from 'lighthouse';
 import * as chromeLauncher from 'chrome-launcher';
+// Production base URL — keep in sync with `src/lib/brand.ts` PRODUCTION_URL.
+// Env override (`AUDIT_BASE=`) is the supported way to point this at a
+// staging deploy or a custom Vercel alias without touching the source file.
 const BASE = process.env.AUDIT_BASE ?? 'https://lovebyte-five.vercel.app';
 const TARGETS = ['/', '/g/demo', '/browse'];
 const chrome = await chromeLauncher.launch({chromeFlags: ['--headless=new', '--no-sandbox']});

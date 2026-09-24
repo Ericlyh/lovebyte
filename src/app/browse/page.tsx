@@ -5,6 +5,7 @@ import { Nav } from '@/components/Nav';
 import { BrowseControls } from '@/components/catalog/BrowseControls';
 import { GiftCard } from '@/components/catalog/GiftCard';
 import { getCatalogFeed, searchCatalog, FeedQuerySchema } from '@/lib/catalog';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /browse — public catalog (M-C, OOP-4275).
@@ -30,8 +31,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const sp = await searchParams;
   const query = typeof sp.q === 'string' ? sp.q : '';
   const title = query
-    ? `Search "${query}" — LoveByte marketplace`
-    : 'Browse gifts — LoveByte marketplace';
+    ? `Search "${query}" — ${BRAND.NAME} marketplace`
+    : `Browse gifts — ${BRAND.NAME} marketplace`;
   return {
     title,
     description:

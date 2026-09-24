@@ -1,4 +1,4 @@
-/* LoveByte — shared tokens (entry file for the palette)
+/* Lovorithm — shared tokens (entry file for the palette)
  *
  * Three palettes ship with the project:
  *   Warm Romantic   (default) — coral / blush / amber / sage / sky
@@ -1003,7 +1003,7 @@ a:hover { color: var(--lb-primary); }
  * /l/[giftId]: hero + preview + comments + CTA. */
 
 /* Hero strip — soft blush gradient matches the landing page so the
- * user feels they're still inside LoveByte. */
+ * user feels they're still inside Lovorithm. */
 .lb-browse-hero {
   background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
   padding: 80px 24px 56px;

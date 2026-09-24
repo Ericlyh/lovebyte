@@ -6,9 +6,10 @@ import { Nav } from '@/components/Nav';
 import { OnboardingForm } from '@/components/auth/OnboardingForm';
 import { ConnectPayoutsButton } from '@/components/onboarding/ConnectPayoutsButton';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Set up your creator profile — LoveByte',
+  title: `Set up your creator profile — ${BRAND.NAME}`,
 };
 
 /**
@@ -129,7 +130,7 @@ export default async function OnboardingPage({
       console.warn('[onboarding] avatar media read failed', mediaErr.message);
     } else if (mediaRow?.storage_path) {
       const { data: pub } = supabase.storage
-        .from('lovebyte-media')
+        .from(BRAND.STORAGE_BUCKET)
         .getPublicUrl(mediaRow.storage_path as string);
       initialAvatarUrl = pub.publicUrl;
     }

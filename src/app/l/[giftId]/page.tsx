@@ -10,6 +10,7 @@ import { ListingReplies } from '@/components/catalog/ListingReplies';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
 import { createClient } from '@/lib/supabase/server';
 import { getListingDetail, getListingComments, getListingReplies } from '@/lib/catalog';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /l/[giftId] — listing detail (M-C, OOP-4275).
@@ -31,12 +32,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { giftId } = await params;
   const listing = await getListingDetail(giftId);
   if (!listing) {
-    return { title: 'Gift not found — LoveByte' };
+    return { title: `Gift not found — ${BRAND.NAME}` };
   }
   const creatorLabel = listing.owner.display_name ?? `@${listing.owner.handle}`;
   return {
-    title: `${listing.title} by ${creatorLabel} — LoveByte`,
-    description: listing.description ?? `${listing.title} on LoveByte.`,
+    title: `${listing.title} by ${creatorLabel} — ${BRAND.NAME}`,
+    description: listing.description ?? `${listing.title} on ${BRAND.NAME}.`,
   };
 }
 

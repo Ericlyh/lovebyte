@@ -3,7 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { routing, type Locale } from '@/lib/i18n/routing';
 
 /**
- * LoveByte proxy — locale resolution + Supabase auth cookie refresh.
+ * Lovorithm proxy — locale resolution + Supabase auth cookie refresh.
  *
  * Next.js 16 renamed `middleware.ts` → `proxy.ts`. Functionality is the
  * same: runs on the edge before routes render, can set headers / cookies
@@ -16,7 +16,7 @@ import { routing, type Locale } from '@/lib/i18n/routing';
  *      (see node_modules/next-intl/dist/esm/development/server/react-server/
  *      RequestLocale.js). We deliberately do NOT use `createMiddleware`
  *      from next-intl — with `localePrefix: 'never'` it still rewrites
- *      to `/[locale]/...`, but LoveByte has no `/[locale]/...` routes
+ *      to `/[locale]/...`, but Lovorithm has no `/[locale]/...` routes
  *      (architecture §5: recipient links must work without a prefix).
  *
  *   2. Refresh Supabase auth cookies. @supabase/ssr's `createServerClient`

@@ -1,5 +1,6 @@
 import 'server-only';
 import Stripe from 'stripe';
+import { BRAND } from './brand';
 
 /**
  * Server-only Stripe SDK instance (M-E, OOP-4277).
@@ -26,7 +27,7 @@ export function getStripe(): Stripe {
     apiVersion: '2026-08-26.dahlia' as Stripe.LatestApiVersion,
     typescript: true,
     appInfo: {
-      name: 'LoveByte',
+      name: BRAND.NAME,
       version: '0.1.0',
     },
   });

@@ -37,7 +37,8 @@ type AvatarUpload =
  * Avatar upload (OOP-4310 follow-up):
  *   The client picks a file, validates size + mime locally, then POSTs
  *   the bytes to `/api/upload/avatar`. That route writes the file to
- *   the `lovebyte-media` bucket under `avatars/<user-id>/…` and inserts
+ *   the brand media bucket (see `BRAND.STORAGE_BUCKET` in
+ *   `src/lib/brand.ts`) under `avatars/<user-id>/…` and inserts
  *   a `gift_media` row. We stash the resulting `mediaId` in a hidden
  *   form input so `upsertProfileAction` can attach it to the profile.
  *   If the user re-submits without picking a new file, the existing

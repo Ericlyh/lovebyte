@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 /**
  * GET /api/media/[mediaId] — public URL for a gift_media row.
@@ -40,7 +41,7 @@ export async function GET(
   }
 
   const { data: urlData } = supabase.storage
-    .from('lovebyte-media')
+    .from(BRAND.STORAGE_BUCKET)
     .getPublicUrl(media.storage_path);
 
   return NextResponse.json({ url: urlData.publicUrl });

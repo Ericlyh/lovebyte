@@ -3,6 +3,7 @@
 import { useState, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { publishToMarketplaceAction } from '@/lib/actions/publish';
+import { BRAND } from '@/lib/brand';
 
 const LOVEBYTE_MIN_FEE_BPS = 500;
 const LOVEBYTE_DEFAULT_FEE_BPS = 1000;
@@ -111,7 +112,7 @@ export function PublishToMarketplaceCard({
     <div className="lb-publish-card">
       <h2 className="lb-publish-card__title">Publish to marketplace</h2>
       <p className="lb-publish-card__lede">
-        Set your listing details and go live on LoveByte.
+        Set your listing details and go live on {BRAND.NAME}.
       </p>
 
       {/* Title */}

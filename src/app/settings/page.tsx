@@ -7,9 +7,10 @@ import { LanguageToggle } from '@/components/LanguageToggle';
 import { signOutAction } from '@/lib/actions/auth';
 import { createClient } from '@/lib/supabase/server';
 import { type Locale } from '@/lib/i18n/routing';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Settings — LoveByte',
+  title: `Settings — ${BRAND.NAME}`,
 };
 
 /**

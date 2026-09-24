@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { LoginForm } from '@/components/auth/LoginForm';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /login — M-B step 3 (OOP-4284).
@@ -12,7 +13,7 @@ import { LoginForm } from '@/components/auth/LoginForm';
  * redirects to `/`.
  */
 export const metadata: Metadata = {
-  title: 'Sign in — LoveByte',
+  title: `Sign in — ${BRAND.NAME}`,
 };
 
 export default async function LoginPage() {
@@ -21,7 +22,7 @@ export default async function LoginPage() {
   return (
     <main className="min-h-screen flex flex-col">
       <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">LoveByte</Link>
+        <Link href="/" className="lb-nav__brand">{BRAND.NAME}</Link>
         <div className="lb-nav__links">
           <LanguageToggle />
         </div>

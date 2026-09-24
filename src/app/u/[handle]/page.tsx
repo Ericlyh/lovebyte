@@ -13,6 +13,7 @@ import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
 import { getFollowerCount } from '@/lib/profiles/followers';
 import { getCatalogFeed } from '@/lib/catalog';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
@@ -42,8 +43,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await getProfileByHandle(handle);
   const name = profile?.display_name ?? `@${handle}`;
   return {
-    title: `${name} — LoveByte`,
-    description: profile?.bio ?? `Creator profile @${handle} on LoveByte.`,
+    title: `${name} — ${BRAND.NAME}`,
+    description: profile?.bio ?? `Creator profile @${handle} on ${BRAND.NAME}.`,
   };
 }
 

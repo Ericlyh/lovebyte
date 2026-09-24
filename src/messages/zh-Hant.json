@@ -1,9 +1,9 @@
 {
   "Brand": {
-    "name": "LoveByte"
+    "name": "Lovorithm"
   },
   "Nav": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "browse": "瀏覽",
     "create": "整禮物",
     "viewProfile": "睇主頁",
@@ -11,7 +11,7 @@
     "signOut": "登出"
   },
   "Scaffold": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "phase": "第一階段 · 框架就緒",
     "title": "送一份心意，不只一份禮物。",
     "subtitle": "框架已就緒。第二階段會接駁完整嘅主頁；第三階段交付收件人嘅開信畫面；第四至第八階段加入五種禮物編輯器。",
@@ -19,7 +19,7 @@
     "footer": "用心喺香港整 · 為香港而設"
   },
   "Landing": {
-    "brand": "LoveByte",
+    "brand": "Lovorithm",
     "nav": {
       "signin": "登入",
       "startFree": "免費開始"
@@ -28,7 +28,7 @@
       "tag": "為香港而設 · Made in Hong Kong",
       "line1": "送一份心意，",
       "line2": "不只一份禮物。",
-      "lede": "LoveByte 將你嘅相片、錄音同文字變成獨一無二嘅數碼禮物——一場配對遊戲、一封情信、一個只有對方先識答嘅小測驗。",
+      "lede": "Lovorithm 將你嘅相片、錄音同文字變成獨一無二嘅數碼禮物——一場配對遊戲、一封情信、一個只有對方先識答嘅小測驗。",
       "ctaPrimary": "開始整禮物 →",
       "ctaSecondary": "睇下例子"
     },
@@ -74,7 +74,7 @@
       }
     },
     "footer": {
-      "line": "LoveByte · 用心喺香港整",
+      "line": "Lovorithm · 用心喺香港整",
       "privacy": "私隱",
       "terms": "條款"
     }
@@ -87,7 +87,7 @@
     "loading": "載緊你嘅禮物…",
     "notFoundTitle": "呢份禮物已經唔喺度",
     "notFoundBody": "條 link 可能已經過咗期，或者對方已經落架。如果你知道係邊個送畀你，可以問對方攞返條新 link。",
-    "notFoundCta": "返去 LoveByte",
+    "notFoundCta": "返去 Lovorithm",
     "errorTitle": "開唔到呢份禮物",
     "errorBody": "我哋嗰邊出咗啲問題。試多次啦，如果一直失敗，條 link 可能已經無效。",
     "errorRetry": "再試多次"
@@ -95,7 +95,7 @@
   "Open": {
     "letterTag": "一封寫畀你嘅信",
     "fromLine": "由 {name} 寫",
-    "letterFoot": "經 LoveByte 寄出 · 為香港而設",
+    "letterFoot": "經 Lovorithm 寄出 · 為香港而設",
     "notShippedYet": "呢種禮物仲未整好，遲啲再嚟睇。",
     "schemaMismatch": "禮物內容格式不符，請傳話者重新儲存。",
     "memoryCards": {
@@ -249,12 +249,12 @@
       "resendCta": "登入重新寄送"
     },
     "connect": {
-      "connectTitle": "喺 LoveByte 出貨賺錢",
+      "connectTitle": "喺 Lovorithm 出貨賺錢",
       "connectLede": "連接 Stripe 帳戶，等買家可以畀錢你。",
       "pendingTitle": "驗證緊",
       "pendingLede": "Stripe 正喺度核實你嘅身份。完成之後買家先可以買你嘅禮物。",
       "connectedTitle": "已開通收款",
-      "connectedLede": "準備好喇！買家可以直接透過 LoveByte 畀錢你。",
+      "connectedLede": "準備好喇！買家可以直接透過 Lovorithm 畀錢你。",
       "ctaConnect": "連接收款",
       "ctaConnecting": "開緊 Stripe…"
     }
@@ -340,7 +340,7 @@
     "language": {
       "title": "語言",
       "current": "現時語言：{locale}",
-      "hint": "切換語言會即時更新你喺 LoveByte 睇到嘅所有文字。"
+      "hint": "切換語言會即時更新你喺 Lovorithm 睇到嘅所有文字。"
     },
     "notifications": {
       "title": "通知",
@@ -558,7 +558,7 @@
     "notFound": {
       "title": "搵唔到呢一頁",
       "body": "連結可能壞咗，或者頁面已經搬走咗。返去主頁再試過。",
-      "cta": "返去 LoveByte"
+      "cta": "返去 Lovorithm"
     },
     "loading": {
       "title": "載入緊…",
@@ -574,7 +574,7 @@
       "backToPicker": "← 返回禮物類型選擇",
       "heading": "記憶卡",
       "lede": "揀 3–12 對相。收件人翻牌配對 — 每對得啱就睇到你寫嘅回憶標題。",
-      "privacyNote": "相會儲喺你嘅 LoveByte 私人圖庫,只有攞到 share link 嘅人可以睇到。",
+      "privacyNote": "相會儲喺你嘅 Lovorithm 私人圖庫,只有攞到 share link 嘅人可以睇到。",
       "titleLabel": "禮物標題",
       "titlePlaceholder": "例: 送畀 Jamie,連埋嗰張點心相",
       "difficultyLabel": "難度",
@@ -613,7 +613,7 @@
       "backToPicker": "← 返去禮物類型選擇",
       "heading": "相片拼圖",
       "lede": "上載一張相，再揀個拼圖大細。收件人拖返啲拼圖塊番去就睇到你嘅訊息。",
-      "privacyNote": "相片會儲喺你嘅私人 LoveByte 收藏庫，淨係有 share link 嘅人睇得到。",
+      "privacyNote": "相片會儲喺你嘅私人 Lovorithm 收藏庫，淨係有 share link 嘅人睇得到。",
       "titleLabel": "禮物標題",
       "titlePlaceholder": "例: 我哋嗰次旅行嘅相",
       "photoLabel": "相片",
@@ -645,7 +645,7 @@
       "backToPicker": "← 返去禮物類型選擇",
       "heading": "小測驗",
       "lede": "寫低選擇題。收件人揀個答案就睇到你嘅訊息。",
-      "privacyNote": "你嘅問題同揭曉訊息會儲喺私人 LoveByte 收藏庫，淨係有 share link 嘅人睇得到。",
+      "privacyNote": "你嘅問題同揭曉訊息會儲喺私人 Lovorithm 收藏庫，淨係有 share link 嘅人睇得到。",
       "titleLabel": "禮物標題",
       "titlePlaceholder": "例: 你對我哋識幾深?",
       "questionLegend": "第 {n} 題",

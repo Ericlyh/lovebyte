@@ -1,6 +1,6 @@
 # Supabase migrations
 
-SQL migrations for the LoveByte Cloud project. Apply in numeric order.
+SQL migrations for the Lovorithm Cloud project. Apply in numeric order.
 
 ## Apply via Supabase CLI
 
@@ -34,6 +34,7 @@ calls in `src/lib/supabase/{client,server}.ts`.
 
 ## Storage bucket
 
-After the tables exist, create the `lovebyte-media` bucket in the dashboard
-(Storage → New bucket → name `lovebyte-media`, Private). Media uploads go
-through `/api/upload` which signs PUT URLs to this bucket.
+After the tables exist, create the storage bucket in the dashboard
+(Storage → New bucket → name matches `BRAND.STORAGE_BUCKET` in
+`src/lib/brand.ts`, Private). Media uploads go through `/api/upload`
+which streams bytes to this bucket.

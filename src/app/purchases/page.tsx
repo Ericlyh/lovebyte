@@ -4,9 +4,10 @@ import { redirect } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
-  title: 'Your gifts — LoveByte',
+  title: `Your gifts — ${BRAND.NAME}`,
 };
 
 /**

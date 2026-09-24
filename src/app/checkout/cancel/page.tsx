@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /checkout/cancel — Stripe `cancel_url` landing (M-E, OOP-4277).
@@ -13,7 +14,7 @@ import { Nav } from '@/components/Nav';
  */
 
 export const metadata = {
-  title: 'Checkout cancelled — LoveByte',
+  title: `Checkout cancelled — ${BRAND.NAME}`,
 };
 
 export default async function CheckoutCancelPage() {
