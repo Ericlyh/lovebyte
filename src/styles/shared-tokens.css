@@ -2090,6 +2090,287 @@ a:hover { color: var(--lb-primary); }
   color: var(--lb-danger);
 }
 
+/* === Memory cards — sender builder (Phase 4, OOP-4219) ==========
+ * Per-pair rows in the form. The full mockup-styled photo-grid
+ * layout (lb-mc-builder) is intentionally deferred — the fieldset
+ * list is the MVP and reads better on mobile. */
+.lb-memory-pair {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  margin-top: var(--lb-space-3, 12px);
+  padding: var(--lb-space-3, 12px);
+  border: 1px solid #f3e6e3;
+  background: var(--lb-surface-raised, #ffffff);
+}
+@media (max-width: 540px) {
+  .lb-memory-pair {
+    grid-template-columns: 1fr;
+  }
+}
+.lb-memory-pair legend {
+  font-family: var(--lb-font-display);
+  color: var(--lb-primary-deep, #a83e3e);
+  font-size: 13px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+.lb-memory-pair__upload {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.lb-memory-pair__thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--lb-radius-md, 12px);
+  display: block;
+}
+.lb-memory-pair__placeholder {
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--lb-blush, #ffe8e7);
+  border-radius: var(--lb-radius-md, 12px);
+  font-size: 32px;
+  color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-memory-pair__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lb-memory-pair__caption input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--lb-radius-md, 12px);
+  border: 1.5px solid #e8d8d6;
+  font-family: var(--lb-font-body);
+  font-size: 14px;
+}
+.lb-memory-pair__caption input:focus {
+  outline: none;
+  border-color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-memory-pair__remove {
+  align-self: start;
+}
+
+/* === Memory cards — recipient game (Phase 4, OOP-4219) =========
+ * The flip-and-match game rendered at /g/[token]/open when
+ * gifts.type === memory_cards. Lives inside .lb-recipient-page so the
+ * envelope shell + bobby envelope animation stay consistent.
+ *
+ * Grid layout scales with payload.difficulty:
+ *   easy   → 3 pairs (6 cards)  → 3 columns
+ *   medium → 6 pairs (12 cards) → 4 columns
+ *   hard   → 12 pairs (24 cards)→ 6 columns
+ */
+.lb-memory-page {
+  width: 100%;
+  max-width: 720px;
+  margin: 24px auto 0;
+  background: var(--lb-surface, #fffaf7);
+  border-radius: var(--lb-radius-lg, 20px);
+  box-shadow: var(--lb-shadow-lg, 0 12px 40px rgba(58, 31, 31, 0.10));
+  padding: 32px 28px 40px;
+}
+.lb-memory-page__head {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.lb-memory-page__head h1 {
+  font-family: var(--lb-font-display, 'Norican', cursive);
+  color: var(--lb-primary-deep, #a83e3e);
+  font-size: 36px;
+  margin: 6px 0 4px;
+  line-height: 1.1;
+}
+@media (max-width: 540px) {
+  .lb-memory-page__head h1 { font-size: 28px; }
+}
+.lb-memory-page__progress {
+  color: var(--lb-ink-soft, #6b4a4a);
+  font-size: 14px;
+}
+.lb-memory-grid {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.lb-memory-grid--easy { grid-template-columns: repeat(3, 1fr); }
+.lb-memory-grid--medium { grid-template-columns: repeat(4, 1fr); }
+.lb-memory-grid--hard { grid-template-columns: repeat(6, 1fr); }
+@media (max-width: 540px) {
+  .lb-memory-grid--medium { grid-template-columns: repeat(3, 1fr); }
+  .lb-memory-grid--hard { grid-template-columns: repeat(4, 1fr); }
+}
+.lb-memory-card {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+  perspective: 800px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  color: inherit;
+}
+.lb-memory-card:disabled { cursor: default; }
+.lb-memory-card__face {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--lb-radius-md, 12px);
+  backface-visibility: hidden;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--lb-shadow-md, 0 4px 16px rgba(58, 31, 31, 0.08));
+  transition: transform 360ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lb-memory-card__face--back {
+  background: linear-gradient(135deg, var(--lb-blush, #ffe8e7), var(--lb-honey, #fff1d6));
+  color: var(--lb-primary-deep, #a83e3e);
+  font-family: var(--lb-font-display, 'Norican', cursive);
+  font-size: 36px;
+}
+.lb-memory-card__face--front {
+  background: #fff;
+  transform: rotateY(180deg);
+}
+.lb-memory-card__back-image,
+.lb-memory-card__back-fallback {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.lb-memory-card__back-image {
+  background-size: cover;
+  background-position: center;
+}
+.lb-memory-card__back-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-memory-card__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lb-memory-card__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
+  color: #fff;
+  padding: 18px 8px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.2;
+}
+.lb-memory-card--face-up .lb-memory-card__face--back,
+.lb-memory-card--matched .lb-memory-card__face--back {
+  transform: rotateY(180deg);
+}
+.lb-memory-card--face-up .lb-memory-card__face--front,
+.lb-memory-card--matched .lb-memory-card__face--front {
+  transform: rotateY(360deg);
+}
+.lb-memory-card--matched .lb-memory-card__face--front {
+  box-shadow: 0 0 0 2px var(--lb-sage, #3d6c0e), var(--lb-shadow-md);
+}
+.lb-memory-card--matched .lb-memory-card__caption {
+  /* Matched cards keep their caption visible (face-up). */
+  opacity: 1;
+}
+.lb-memory-page__caption-flash {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--lb-primary-deep, #a83e3e);
+  font-weight: 600;
+  font-style: italic;
+}
+.lb-memory-page__win {
+  text-align: center;
+  margin-top: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, var(--lb-blush, #ffe8e7), var(--lb-honey, #fff1d6));
+  border-radius: var(--lb-radius-md, 12px);
+}
+.lb-memory-page__win h2 {
+  font-family: var(--lb-font-display, 'Norican', cursive);
+  color: var(--lb-primary-deep, #a83e3e);
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+.lb-memory-page__win p {
+  color: var(--lb-ink, #3a1f1f);
+  font-size: 15px;
+}
+
+/* === ShareLinkCard (Phase 4 builder finish, OOP-4219) =========
+ * Renders on /create/[giftId]/finish?share=<token> after the
+ * memory_cards builder (and future builders) save. The sender pastes
+ * the share link into their message to the recipient. */
+.lb-share-link-card {
+  max-width: 720px;
+  margin: 0 auto var(--lb-space-5, 24px);
+  background: var(--lb-surface-raised, #ffffff);
+  border: 1.5px solid var(--lb-blush, #ffe8e7);
+  border-radius: var(--lb-radius-lg, 20px);
+  padding: var(--lb-space-5, 24px);
+  box-shadow: var(--lb-shadow-md, 0 4px 16px rgba(58, 31, 31, 0.08));
+}
+.lb-share-link-card h2 {
+  font-family: var(--lb-font-display, 'Norican', cursive);
+  color: var(--lb-primary-deep, #a83e3e);
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+.lb-share-link-card .lede {
+  color: var(--lb-ink-soft, #6b4a4a);
+  margin-bottom: var(--lb-space-4, 16px);
+}
+.lb-share-link-card__row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.lb-share-link-card__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--lb-radius-md, 12px);
+  border: 1.5px solid #e8d8d6;
+  background: var(--lb-surface, #fffaf7);
+  font-family: var(--lb-font-body, sans-serif);
+  font-size: 14px;
+  color: var(--lb-ink, #3a1f1f);
+}
+.lb-share-link-card__row input:focus {
+  outline: none;
+  border-color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-share-link-card__hint {
+  margin-top: var(--lb-space-3, 12px);
+  font-size: 13px;
+  color: var(--lb-ink-soft, #6b4a4a);
+}
+
 /* === Offline banner (OOP-4225 Phase 9) ============================
  * Sticky-top, full-width strip that surfaces when navigator.onLine
  * flips to false. role=status + aria-live=polite so screen readers

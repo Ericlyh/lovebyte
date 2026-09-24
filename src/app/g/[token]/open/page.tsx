@@ -1,18 +1,24 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { getEnvelopeByToken } from '@/lib/gifts/fetch';
-import { AnimatedLetterPayloadSchema } from '@/lib/gifts/schemas';
+import {
+  AnimatedLetterPayloadSchema,
+  MemoryCardsPayloadSchema,
+} from '@/lib/gifts/schemas';
+import { MemoryCardsGame } from '@/features/memory-cards/recipient/MemoryCardsGame';
 
 /**
- * /g/[shareToken]/open — in-experience view (Phase 3).
+ * /g/[shareToken]/open — in-experience view (Phase 3 envelope + Phase 4
+ * memory_cards game, OOP-4211 / OOP-4219).
  *
- * Stubbed per architecture §6: builders may be stubbed for the
- * first sub-issue. This page dispatches on gift_type and renders
- * the one type that ships in Phase 3 (animated_letter) as a
- * scroll-reveal letter. Other types return a placeholder until
- * their Phase 4–8 sub-issues land.
+ * Edge runtime per OOP-4211 hard constraint. Dispatches on gift type:
+ *   • animated_letter   → scroll-reveal letter (Phase 3)
+ *   • memory_cards      → flip-and-match game (Phase 4)
+ *   • dragdrop_puzzle / quiz / multimedia_collage → placeholder
  *
- * Edge runtime per OOP-4211 hard constraint.
+ * The Zod schema for the type-specific payload is the type-narrow
+ * boundary (architecture §6) — anything that fails safeParse falls back
+ * to the placeholder rather than rendering a broken game.
  */
 
 export const runtime = 'edge';
@@ -25,6 +31,14 @@ export default async function GiftOpenPage({ params }: Props) {
   const { token } = await params;
   const envelope = await getEnvelopeByToken(token);
   if (!envelope) notFound();
+
+  if (envelope.giftType === 'memory_cards') {
+    const parsed = MemoryCardsPayloadSchema.safeParse(envelope.payload);
+    if (!parsed.success) {
+      return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
+    }
+    return <MemoryCardsGame payload={parsed.data} senderName={envelope.senderName} />;
+  }
 
   if (envelope.giftType !== 'animated_letter') {
     return <GiftNotYetShipped envelope={envelope} />;

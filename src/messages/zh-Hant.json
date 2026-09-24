@@ -97,7 +97,17 @@
     "fromLine": "由 {name} 寫",
     "letterFoot": "經 LoveByte 寄出 · 為香港而設",
     "notShippedYet": "呢種禮物仲未整好，遲啲再嚟睇。",
-    "schemaMismatch": "禮物內容格式不符，請傳話者重新儲存。"
+    "schemaMismatch": "禮物內容格式不符，請傳話者重新儲存。",
+    "memoryCards": {
+      "tag": "送畀你嘅記憶遊戲",
+      "heading": "{name} 留咗啲回憶畀你",
+      "progress": "已配對 {matched} / {total} 對 · {moves} 步",
+      "gridAria": "記憶卡格仔",
+      "matchedCardAria": "已配對:{caption}",
+      "faceDownAria": "牌背",
+      "winHeading": "全部配對成功 🎉",
+      "winBody": "{moves} 步就搵齊所有回覆。寫返個訊息畀對方啦 — 佢會好開心。"
+    }
   },
   "Auth": {
     "errors": {
@@ -503,7 +513,15 @@
     "finish": {
       "heading": "放上巿集",
       "lede": "填段描述、揀張封面相（可選），再揀免費或者收費。收費嘅禮物要連接 Stripe 先收得到錢。",
-      "backToProfile": "← 返去你嘅主頁"
+      "backToProfile": "← 返去你嘅主頁",
+      "share": {
+        "heading": "Share link 已準備好",
+        "lede": "將呢個連結傳畀對方,佢哋即開即玩。",
+        "copy": "複製",
+        "copied": "已複製 ✓",
+        "linkAria": "分享連結",
+        "hint": "或者喺下面放上巿集,畀更多人睇到。"
+      }
     }
   },
   "Common": {
@@ -524,6 +542,47 @@
     },
     "offline": {
       "body": "你而家無網絡。等返到上網先可以儲存。"
+    }
+  },
+  "Builder": {
+    "memoryCards": {
+      "backToPicker": "← 返回禮物類型選擇",
+      "heading": "記憶卡",
+      "lede": "揀 3–12 對相。收件人翻牌配對 — 每對得啱就睇到你寫嘅回憶標題。",
+      "privacyNote": "相會儲喺你嘅 LoveByte 私人圖庫,只有攞到 share link 嘅人可以睇到。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例: 送畀 Jamie,連埋嗰張點心相",
+      "difficultyLabel": "難度",
+      "difficultyHint": "決定收件人玩幾多對。Easy = 3 對,Medium = 6,Hard = 12。",
+      "difficulty": {
+        "easy": "簡單(3 對)",
+        "medium": "中等(6 對)",
+        "hard": "困難(12 對)"
+      },
+      "pairsHeading": "相片配對",
+      "addPair": "+ 加多一對",
+      "musicLabel": "音樂連結(可選)",
+      "musicPlaceholder": "https://example.com/your-song.mp3",
+      "musicHint": "背景音樂會喺收件人翻第一張牌之後先播。唔填就靜靜地。",
+      "submitting": "儲存緊…",
+      "submit": "儲存並攞 share link",
+      "errors": {
+        "titleRequired": "請填寫禮物標題。",
+        "notEnoughPairs": "至少要 {min} 對上載好嘅相。",
+        "tooManyPairs": "最多 {max} 對。",
+        "stillUploading": "請等相片上載完。"
+      },
+      "pair": {
+        "legend": "第 {n} 對",
+        "uploadAria": "上載第 {n} 對嘅相",
+        "uploading": "上載中…",
+        "uploadError": "上載失敗。",
+        "captionLabel": "標題",
+        "captionPlaceholder": "例: 第一杯咖啡",
+        "pairPreviewAlt": "配對預覽",
+        "removeAria": "移除第 {n} 對",
+        "remove": "移除"
+      }
     }
   }
 }

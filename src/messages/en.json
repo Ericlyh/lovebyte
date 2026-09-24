@@ -97,7 +97,17 @@
     "fromLine": "from {name}",
     "letterFoot": "Sent with LoveByte · 為香港而設",
     "notShippedYet": "This gift type hasn't been built yet — check back soon.",
-    "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave."
+    "schemaMismatch": "The gift payload didn't match the expected shape. The sender may need to resave.",
+    "memoryCards": {
+      "tag": "A memory game for you",
+      "heading": "{name} left you some memories",
+      "progress": "Matched {matched} of {total} pairs · {moves} moves",
+      "gridAria": "Memory card grid",
+      "matchedCardAria": "Matched: {caption}",
+      "faceDownAria": "Face-down card",
+      "winHeading": "You matched them all 🎉",
+      "winBody": "Every memory in {moves} moves. Now write back — they’d love that."
+    }
   },
   "Auth": {
     "errors": {
@@ -503,7 +513,15 @@
     "finish": {
       "heading": "Publish to the marketplace",
       "lede": "Fill in a description, pick a cover photo (optional), and decide whether it's free or paid. Paid gifts require a connected Stripe account.",
-      "backToProfile": "← Back to your profile"
+      "backToProfile": "← Back to your profile",
+      "share": {
+        "heading": "Your share link is ready",
+        "lede": "Send this to your person — they open it and the gift plays.",
+        "copy": "Copy",
+        "copied": "Copied ✓",
+        "linkAria": "Share link",
+        "hint": "Or publish to the marketplace below so others can find it too."
+      }
     }
   },
   "Common": {
@@ -524,6 +542,47 @@
     },
     "offline": {
       "body": "You're offline. Changes won't save until you're back online."
+    }
+  },
+  "Builder": {
+    "memoryCards": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Memory cards",
+      "lede": "Pick 3–12 photo pairs. The recipient flips cards to find matches — every match unlocks the memory you tagged.",
+      "privacyNote": "Photos are stored in your private LoveByte library. Only people with the share link can see them.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. For Jamie, with the dim sum photo",
+      "difficultyLabel": "Difficulty",
+      "difficultyHint": "Affects how many pairs the recipient plays with. Easy = 3 pairs, Medium = 6, Hard = 12.",
+      "difficulty": {
+        "easy": "Easy (3 pairs)",
+        "medium": "Medium (6 pairs)",
+        "hard": "Hard (12 pairs)"
+      },
+      "pairsHeading": "Photo pairs",
+      "addPair": "+ Add another pair",
+      "musicLabel": "Music URL (optional)",
+      "musicPlaceholder": "https://example.com/your-song.mp3",
+      "musicHint": "Background music plays after the recipient flips their first card. Leave blank for silent.",
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link",
+      "errors": {
+        "titleRequired": "Add a title for your gift.",
+        "notEnoughPairs": "You need at least {min} uploaded pairs.",
+        "tooManyPairs": "Too many pairs — max is {max}.",
+        "stillUploading": "Wait for your photos to finish uploading."
+      },
+      "pair": {
+        "legend": "Pair {n}",
+        "uploadAria": "Upload photo for pair {n}",
+        "uploading": "Uploading…",
+        "uploadError": "Upload failed.",
+        "captionLabel": "Caption",
+        "captionPlaceholder": "e.g. First coffee",
+        "pairPreviewAlt": "Pair preview",
+        "removeAria": "Remove pair {n}",
+        "remove": "Remove"
+      }
     }
   }
 }

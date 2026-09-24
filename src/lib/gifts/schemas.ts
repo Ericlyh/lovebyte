@@ -42,6 +42,39 @@ export const AnimatedLetterPayloadSchema = z.object({
 });
 export type AnimatedLetterPayload = z.infer<typeof AnimatedLetterPayloadSchema>;
 
+// ─── memory_cards (Phase 4, OOP-4219) ─────────────────────────────────────
+// Source of truth: design/04-architecture/architecture.md §3 (locked shape).
+//   pairs:       photo pairs the recipient matches. Each pair is two cards
+//                with the same photo_url — only the caption disambiguates.
+//                ≥ 3 pairs so the game has enough turns to be interesting;
+//                ≤ 12 pairs keeps a 4×6 grid manageable on mobile.
+//   difficulty:  affects the timer / flip window. Free-form for now —
+//                the recipient view consumes the string.
+//   card_back:   CSS background-image url (or color) used for the face-down
+//                card. Optional — falls back to a CSS gradient.
+//   music_url:   optional bg music once the recipient opens the first card.
+//                Safari/iOS gate the autoplay on a user gesture so we only
+//                start the audio after the first flip.
+export const MemoryCardsPayloadSchema = z.object({
+  pairs: z
+    .array(
+      z.object({
+        photo_url: z.string().url(),
+        caption: z.string().min(1).max(120),
+      }),
+    )
+    .min(3, 'Need at least 3 pairs to play.')
+    .max(12, 'Max 12 pairs (24 cards).')
+    .refine(
+      (pairs) => new Set(pairs.map((p) => p.photo_url)).size === pairs.length,
+      'Each pair needs a unique photo — duplicates won’t match.',
+    ),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('easy'),
+  card_back: z.string().url().optional(),
+  music_url: z.string().url().nullable().default(null),
+});
+export type MemoryCardsPayload = z.infer<typeof MemoryCardsPayloadSchema>;
+
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({
   shareToken: z.string().min(1),

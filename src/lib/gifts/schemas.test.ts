@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   AnimatedLetterPayloadSchema,
   GiftTypeSchema,
+  MemoryCardsPayloadSchema,
   RecipientEnvelopeSchema,
 } from './schemas';
 import { MOCK_GIFTS, getMockEnvelope } from './mock';
@@ -88,5 +89,65 @@ describe('getMockEnvelope', () => {
 
   it('returns null for an unknown token (caller can 404)', () => {
     expect(getMockEnvelope('does-not-exist')).toBeNull();
+  });
+});
+
+describe('MemoryCardsPayloadSchema (Phase 4, OOP-4219)', () => {
+  const validPayload = {
+    pairs: [
+      { photo_url: 'https://example.com/a.jpg', caption: 'First coffee' },
+      { photo_url: 'https://example.com/b.jpg', caption: 'Tai Mo Shan' },
+      { photo_url: 'https://example.com/c.jpg', caption: 'Mid-Autumn' },
+    ],
+    difficulty: 'easy' as const,
+    music_url: null,
+  };
+
+  it('parses a minimal 3-pair payload', () => {
+    const parsed = MemoryCardsPayloadSchema.parse(validPayload);
+    expect(parsed.pairs).toHaveLength(3);
+    expect(parsed.difficulty).toBe('easy');
+    expect(parsed.music_url).toBeNull();
+  });
+
+  it('rejects payloads with fewer than 3 pairs', () => {
+    expect(() =>
+      MemoryCardsPayloadSchema.parse({
+        ...validPayload,
+        pairs: validPayload.pairs.slice(0, 2),
+      }),
+    ).toThrow();
+  });
+
+  it('rejects payloads with duplicate photo_urls (would be unplayable)', () => {
+    expect(() =>
+      MemoryCardsPayloadSchema.parse({
+        ...validPayload,
+        pairs: [
+          { photo_url: 'https://example.com/a.jpg', caption: 'one' },
+          { photo_url: 'https://example.com/a.jpg', caption: 'two' },
+          { photo_url: 'https://example.com/c.jpg', caption: 'three' },
+        ],
+      }),
+    ).toThrow(/unique photo/i);
+  });
+
+  it('rejects empty captions', () => {
+    expect(() =>
+      MemoryCardsPayloadSchema.parse({
+        ...validPayload,
+        pairs: [
+          { photo_url: 'https://example.com/a.jpg', caption: '' },
+          { photo_url: 'https://example.com/b.jpg', caption: 'two' },
+          { photo_url: 'https://example.com/c.jpg', caption: 'three' },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects unknown difficulty', () => {
+    expect(() =>
+      MemoryCardsPayloadSchema.parse({ ...validPayload, difficulty: 'impossible' }),
+    ).toThrow();
   });
 });

@@ -7,6 +7,7 @@ import {
   PublishToMarketplaceCard,
   type GiftMediaItem,
 } from '@/components/publish/PublishToMarketplaceCard';
+import { ShareLinkCard } from '@/components/create/ShareLinkCard';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
@@ -21,23 +22,33 @@ export const metadata: Metadata = {
  * picker in the card has something to render. Publish is free by
  * default; paid gifts still go through Stripe onboarding (M-E).
  *
+ * If the URL carries `?share=<token>` (Phase 4 builder path), a
+ * ShareLinkCard renders above the publish card so the sender can copy
+ * the recipient link right away — without going through the marketplace.
+ *
  * RLS protects this page: the `gifts_select_own` policy ensures only
  * the owner can reach their draft.
  */
 export default async function CreateFinishPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ giftId: string }>;
+  searchParams: Promise<{ share?: string }>;
 }) {
   const t = await getTranslations('Create.finish');
   const { giftId } = await params;
+  const { share: shareToken } = await searchParams;
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    redirect(`/login?next=/create/${giftId}/finish`);
+    const next = shareToken
+      ? `/create/${giftId}/finish?share=${shareToken}`
+      : `/create/${giftId}/finish`;
+    redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
   const { data: gift, error: giftErr } = await supabase
@@ -86,6 +97,10 @@ export default async function CreateFinishPage({
           <h1>{t('heading')}</h1>
           <p className="lede">{t('lede')}</p>
         </header>
+
+        {shareToken && (
+          <ShareLinkCard token={shareToken} originHeader="x-forwarded-host" />
+        )}
 
         <PublishToMarketplaceCard
           giftId={gift.id}
