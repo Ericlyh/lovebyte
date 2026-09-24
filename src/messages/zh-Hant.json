@@ -117,6 +117,21 @@
       "pieceAria": "拼圖塊 {n}",
       "winHeading": "砌齊喇 🎉",
       "winMoves": "用咗 {moves} 步。"
+    },
+    "quiz": {
+      "tag": "送畀你嘅小測驗",
+      "introHeading": "{name} 整咗條小測驗畀你",
+      "introLede": "{count, plural, =1 {1 條問題} other {# 條問題}}。揀個答案就睇到訊息。",
+      "start": "開始",
+      "progress": "第 {current} / {total} 題",
+      "navAria": "小測驗導覽",
+      "back": "上一題",
+      "next": "下一題",
+      "seeResults": "睇結果",
+      "pickOne": "揀個答案先可以繼續。",
+      "winHeading": "答晒喇 🎉",
+      "scoreLine": "答啱 {correct} / {total} 題。",
+      "playAgain": "再玩一次"
     }
   },
   "Auth": {
@@ -624,6 +639,39 @@
         "photoRequired": "請上載一張拼圖相片。",
         "stillUploading": "請等相片上載完。",
         "revealRequired": "寫低收件人砌完之後會見到嘅訊息。"
+      }
+    },
+    "quiz": {
+      "backToPicker": "← 返去禮物類型選擇",
+      "heading": "小測驗",
+      "lede": "寫低選擇題。收件人揀個答案就睇到你嘅訊息。",
+      "privacyNote": "你嘅問題同揭曉訊息會儲喺私人 LoveByte 收藏庫，淨係有 share link 嘅人睇得到。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例: 你對我哋識幾深?",
+      "questionLegend": "第 {n} 題",
+      "questionLabel": "題目",
+      "questionPlaceholder": "例: 我哋第一次見面喺邊度?",
+      "optionsLabel": "答案選項",
+      "optionPlaceholder": "選項 {n}",
+      "addOption": "加多個答案選項",
+      "removeOptionAria": "移除第 {n} 題嘅選項 {o}",
+      "markCorrectAria": "標記第 {n} 題嘅選項 {o} 為正確",
+      "revealLabel": "揭曉訊息",
+      "revealPlaceholder": "例: 嗰次喺銅鑼灣港鐵站俾雨淋濕嗰日",
+      "revealHint": "{count} / {max} 字。收件人答完就會見到。",
+      "addQuestion": "加多一題",
+      "removeQuestionAria": "移除第 {n} 題",
+      "moveUpAria": "將第 {n} 題向上移",
+      "moveDownAria": "將第 {n} 題向下移",
+      "submitting": "儲存緊…",
+      "submit": "儲存並攞 share link",
+      "errors": {
+        "titleRequired": "請填寫禮物標題。",
+        "noQuestions": "請加至少一條問題。",
+        "questionRequired": "請寫低第 {n} 條題目。",
+        "optionRequired": "請填齊第 {n} 條嘅所有選項。",
+        "correctRequired": "請標記第 {n} 條嘅正確答案。",
+        "revealRequired": "請寫低第 {n} 條嘅揭曉訊息。"
       }
     }
   }

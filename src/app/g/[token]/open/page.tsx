@@ -5,20 +5,23 @@ import {
   AnimatedLetterPayloadSchema,
   DragdropPuzzlePayloadSchema,
   MemoryCardsPayloadSchema,
+  QuizPayloadSchema,
 } from '@/lib/gifts/schemas';
 import { MemoryCardsGame } from '@/features/memory-cards/recipient/MemoryCardsGame';
 import { DragdropPuzzleGame } from '@/features/dragdrop-puzzle/recipient/DragdropPuzzleGame';
+import { QuizGame } from '@/features/quiz/recipient/QuizGame';
 
 /**
  * /g/[shareToken]/open — in-experience view (Phase 3 envelope + Phase 4
- * memory_cards game + Phase 5 dragdrop_puzzle, OOP-4211 / OOP-4219 /
- * OOP-4221).
+ * memory_cards game + Phase 5 dragdrop_puzzle + Phase 6 quiz,
+ * OOP-4211 / OOP-4219 / OOP-4221 / OOP-4222).
  *
  * Edge runtime per OOP-4211 hard constraint. Dispatches on gift type:
  *   • animated_letter   → scroll-reveal letter (Phase 3)
  *   • memory_cards      → flip-and-match game (Phase 4)
  *   • dragdrop_puzzle   → snap-to-grid puzzle (Phase 5)
- *   • quiz / multimedia_collage → placeholder
+ *   • quiz              → multiple-choice question flow (Phase 6)
+ *   • multimedia_collage → placeholder
  *
  * The Zod schema for the type-specific payload is the type-narrow
  * boundary (architecture §6) — anything that fails safeParse falls back
@@ -50,6 +53,14 @@ export default async function GiftOpenPage({ params }: Props) {
       return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
     }
     return <DragdropPuzzleGame payload={parsed.data} senderName={envelope.senderName} />;
+  }
+
+  if (envelope.giftType === 'quiz') {
+    const parsed = QuizPayloadSchema.safeParse(envelope.payload);
+    if (!parsed.success) {
+      return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
+    }
+    return <QuizGame payload={parsed.data} senderName={envelope.senderName} />;
   }
 
   if (envelope.giftType !== 'animated_letter') {

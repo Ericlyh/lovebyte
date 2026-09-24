@@ -4,6 +4,7 @@ import {
   DragdropPuzzlePayloadSchema,
   GiftTypeSchema,
   MemoryCardsPayloadSchema,
+  QuizPayloadSchema,
   RecipientEnvelopeSchema,
 } from './schemas';
 import { MOCK_GIFTS, getMockEnvelope } from './mock';
@@ -192,6 +193,90 @@ describe('DragdropPuzzlePayloadSchema (Phase 5, OOP-4221)', () => {
   it('rejects photo_url that is not a URL', () => {
     expect(() =>
       DragdropPuzzlePayloadSchema.parse({ ...validPayload, photo_url: 'not-a-url' }),
+    ).toThrow();
+  });
+});
+
+describe('QuizPayloadSchema (Phase 6, OOP-4222)', () => {
+  const validQuestion = {
+    q: 'Where did we first meet?',
+    options: ['Tai Mo Shan', 'Causeway Bay MTR', 'Tokyo'],
+    correct_idx: 1,
+    reveal_msg: 'That rainy Causeway Bay morning ☔',
+  };
+
+  const validPayload = {
+    questions: [validQuestion],
+  };
+
+  it('parses a single-question payload', () => {
+    const parsed = QuizPayloadSchema.parse(validPayload);
+    expect(parsed.questions).toHaveLength(1);
+    expect(parsed.questions[0].correct_idx).toBe(1);
+    expect(parsed.questions[0].options).toHaveLength(3);
+  });
+
+  it('accepts multiple questions (1–30)', () => {
+    const parsed = QuizPayloadSchema.parse({
+      questions: Array.from({ length: 5 }, () => validQuestion),
+    });
+    expect(parsed.questions).toHaveLength(5);
+  });
+
+  it('rejects an empty questions array', () => {
+    expect(() => QuizPayloadSchema.parse({ questions: [] })).toThrow();
+  });
+
+  it('rejects more than 30 questions', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: Array.from({ length: 31 }, () => validQuestion),
+      }),
+    ).toThrow();
+  });
+
+  it('rejects fewer than 2 options on a question', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: [{ ...validQuestion, options: ['only one'] }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects more than 6 options on a question', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: [
+          {
+            ...validQuestion,
+            options: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects correct_idx that points past the options array', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: [{ ...validQuestion, correct_idx: 5 }],
+      }),
+    ).toThrow(/correct_idx/);
+  });
+
+  it('rejects empty question text', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: [{ ...validQuestion, q: '' }],
+      }),
+    ).toThrow();
+  });
+
+  it('rejects empty reveal_msg (the gift payoff)', () => {
+    expect(() =>
+      QuizPayloadSchema.parse({
+        questions: [{ ...validQuestion, reveal_msg: '' }],
+      }),
     ).toThrow();
   });
 });

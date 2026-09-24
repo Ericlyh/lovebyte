@@ -89,6 +89,39 @@ export const DragdropPuzzlePayloadSchema = z.object({
 });
 export type DragdropPuzzlePayload = z.infer<typeof DragdropPuzzlePayloadSchema>;
 
+// ─── quiz (Phase 6, OOP-4222) ──────────────────────────────────────────────
+// Source of truth: design/04-architecture/architecture.md §3 (locked shape).
+//   questions[]:    sender-authored multiple-choice questions.
+//     q:            question text. ≥ 1 char.
+//     options:      2..6 answer choices, each 1..120 chars. Recipient picks.
+//     correct_idx:  index into `options` for the right answer. Validated
+//                   below so out-of-range indices fail fast at the boundary.
+//     reveal_msg:   shown after the recipient answers (correct or not).
+//                   Acts as the "message in a bottle" — the gift's payoff.
+//   ≥ 1 question keeps a quiz a quiz; ≤ 30 keeps the recipient's session
+//   reasonable (≈10 min at 20s per question).
+export const QuizPayloadSchema = z.object({
+  questions: z
+    .array(
+      z.object({
+        q: z.string().min(1).max(280),
+        options: z
+          .array(z.string().min(1).max(120))
+          .min(2, 'Each question needs at least 2 options.')
+          .max(6, 'Max 6 options per question.'),
+        correct_idx: z.number().int().min(0),
+        reveal_msg: z.string().min(1).max(500),
+      }),
+    )
+    .min(1, 'Add at least one question.')
+    .max(30, 'Max 30 questions per quiz.')
+    .refine(
+      (qs) => qs.every((q) => q.correct_idx < q.options.length),
+      'Every correct_idx must point to an existing option.',
+    ),
+});
+export type QuizPayload = z.infer<typeof QuizPayloadSchema>;
+
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({
   shareToken: z.string().min(1),

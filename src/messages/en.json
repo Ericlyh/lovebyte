@@ -117,6 +117,21 @@
       "pieceAria": "Puzzle piece {n}",
       "winHeading": "You pieced it together 🎉",
       "winMoves": "Solved in {moves} moves."
+    },
+    "quiz": {
+      "tag": "A quiz for you",
+      "introHeading": "{name} made you a quiz",
+      "introLede": "{count, plural, =1 {1 question} other {# questions}}. Pick an answer to read the message.",
+      "start": "Start",
+      "progress": "Question {current} of {total}",
+      "navAria": "Quiz navigation",
+      "back": "Back",
+      "next": "Next",
+      "seeResults": "See results",
+      "pickOne": "Pick an answer to continue.",
+      "winHeading": "All done 🎉",
+      "scoreLine": "You got {correct} of {total} right.",
+      "playAgain": "Play again"
     }
   },
   "Auth": {
@@ -624,6 +639,39 @@
         "photoRequired": "Upload a photo for the puzzle.",
         "stillUploading": "Wait for your photo to finish uploading.",
         "revealRequired": "Write the message the recipient will see when they finish."
+      }
+    },
+    "quiz": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Quiz",
+      "lede": "Write multiple-choice questions. The recipient picks an answer to read your message.",
+      "privacyNote": "Your questions and reveal messages are stored in your private LoveByte library. Only people with the share link can see them.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. How well do you know us?",
+      "questionLegend": "Question {n}",
+      "questionLabel": "Question",
+      "questionPlaceholder": "e.g. Where did we first meet?",
+      "optionsLabel": "Answer choices",
+      "optionPlaceholder": "Choice {n}",
+      "addOption": "Add an answer choice",
+      "removeOptionAria": "Remove choice {o} from question {n}",
+      "markCorrectAria": "Mark choice {o} as the correct answer for question {n}",
+      "revealLabel": "Reveal message",
+      "revealPlaceholder": "e.g. The day we got caught in the rain at the Causeway Bay MTR",
+      "revealHint": "{count} / {max} characters. Shown after the recipient answers.",
+      "addQuestion": "Add a question",
+      "removeQuestionAria": "Remove question {n}",
+      "moveUpAria": "Move question {n} up",
+      "moveDownAria": "Move question {n} down",
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link",
+      "errors": {
+        "titleRequired": "Add a title for your gift.",
+        "noQuestions": "Add at least one question.",
+        "questionRequired": "Write the text for question {n}.",
+        "optionRequired": "Fill in every answer choice for question {n}.",
+        "correctRequired": "Mark which answer is correct for question {n}.",
+        "revealRequired": "Write the reveal message for question {n}."
       }
     }
   }
