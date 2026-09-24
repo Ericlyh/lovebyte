@@ -3054,3 +3054,34 @@ a:hover { color: var(--lb-primary); }
 }
 .lb-quiz-builder__opt-correct input { cursor: pointer; }
 .lb-quiz-builder__opt .lb-input { flex: 1; }
+
+/* Buttons that destroy work-in-progress (delete question, delete option).
+ * Uses the primary-deep red so it's clearly destructive on hover / focus. */
+.lb-btn--danger {
+  color: var(--lb-primary-deep, #a83e3e);
+  border-color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-btn--danger:hover:not(:disabled) {
+  background: var(--lb-blush, #fdebe7);
+  color: var(--lb-primary-deep, #a83e3e);
+}
+.lb-btn--danger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Inline form-level error message (one per form, not per field). */
+.lb-form-error {
+  margin: 0;
+  padding: 10px 14px;
+  background: var(--lb-blush, #fdebe7);
+  border-left: 3px solid var(--lb-primary-deep, #a83e3e);
+  border-radius: var(--lb-radius-sm, 6px);
+  color: var(--lb-primary-deep, #a83e3e);
+  font-size: 14px;
+}
+.lb-field-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--lb-ink-soft, #6b4a4a);
+}
