@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { LanguageToggle } from '@/components/LanguageToggle';
+import { WaitlistForm } from '@/components/WaitlistForm';
 
 /**
  * Landing page — Phase 2 (architecture.md §12).
@@ -9,6 +10,15 @@ import { LanguageToggle } from '@/components/LanguageToggle';
  * server component. All copy is sourced from the `Landing` namespace so
  * the EN ↔ 繁中 switch via the <LanguageToggle /> re-renders the page
  * with the matching message bundle.
+ *
+ * Phase 10 (OOP-4226):
+ *   - slice 2: closed-beta waitlist capture (`Landing.waitlist.*` copy
+ *     + `<WaitlistForm />`). The form submits via `joinWaitlistAction`
+ *     — the only insert path because `public.waitlist` has no anon
+ *     INSERT policy.
+ *   - slice 3: footer links to `/privacy`, `/terms`, `/support`, and
+ *     `/status` now point at the Phase 10 routes (legal pages were
+ *     `#` placeholders until those pages shipped).
  */
 export default async function Home() {
   const t = await getTranslations('Landing');
@@ -77,11 +87,31 @@ export default async function Home() {
         </div>
       </section>
 
+      {/*
+        Phase 10 closed-beta waitlist — the marketing-funnel capture for
+        visitors who aren't ready to sign up today. Server Component, so
+        the form is hydrated as a child; the action path is the only
+        insert into `public.waitlist`.
+      */}
+      <section className="lb-waitlist-section" aria-labelledby="waitlist-heading">
+        <div className="lb-waitlist-card">
+          <span className="lb-tag">{t('waitlist.tag')}</span>
+          <h2 id="waitlist-heading">{t('waitlist.heading')}</h2>
+          <p className="lede">{t('waitlist.lede')}</p>
+          <WaitlistForm />
+        </div>
+      </section>
+
       <footer className="lb-landing-foot">
         <p>
           {t('footer.line')}{' '}
-          <a href="#">{t('footer.privacy')}</a>{' · '}
-          <a href="#">{t('footer.terms')}</a>
+          <Link href="/support">{t('footer.support')}</Link>
+          {' · '}
+          <Link href="/privacy">{t('footer.privacy')}</Link>
+          {' · '}
+          <Link href="/terms">{t('footer.terms')}</Link>
+          {' · '}
+          <Link href="/status">{t('footer.status')}</Link>
         </p>
       </footer>
     </main>

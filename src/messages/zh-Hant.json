@@ -76,7 +76,29 @@
     "footer": {
       "line": "Lovorithm · 用心喺香港整",
       "privacy": "私隱",
-      "terms": "條款"
+      "terms": "條款",
+      "support": "支援",
+      "status": "狀態"
+    },
+    "waitlist": {
+      "tag": "封測 · 邀請制",
+      "heading": "加入 Lovorithm 封測。",
+      "lede": "我哋邀請咗一班香港創作者同送禮嘅人率先試用 Lovorithm。留低你嘅 email，位置開咗就會即刻通知你。",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "intentLabel": "我打算用佢嚟（可選）",
+      "intentPlaceholder": "揀一個",
+      "intentPersonal": "自用 — 送畀我愛嘅人",
+      "intentHkSme": "我嘅香港小生意 — 送畀客戶",
+      "intentCreator": "我係創作者 — 想賣嘢",
+      "submit": "加入候補名單",
+      "submitting": "加入緊…",
+      "successTitle": "你已經喺名單上面。",
+      "successInserted": "邀請準備好我哋會 email 你。期間歡迎你推介 Lovorithm 畀你身邊鍾意嘅人。",
+      "successAlready": "你已經喺名單上面喇，邀請準備好就會通知你。",
+      "fineprint": "唔會濫發 email。淨係喺你嘅邀請開通時寄一封，加你隨時可以退訂嘅上架消息。",
+      "errorRateLimit": "你一個鐘頭內已經加入過，遲少少先再試。",
+      "errorGeneric": "加入候補名單時出咗問題，請再試多次。"
     }
   },
   "Recipient": {
@@ -132,6 +154,13 @@
       "winHeading": "答晒喇 🎉",
       "scoreLine": "答啱 {correct} / {total} 題。",
       "playAgain": "再玩一次"
+    },
+    "multimediaCollage": {
+      "tag": "送畀你嘅拼貼",
+      "heading": "{name} 整咗份拼貼畀你",
+      "lede": "相、影片、音樂 — 自己撳播放慢慢睇。",
+      "musicPlay": "播音樂",
+      "musicPause": "暫停音樂"
     }
   },
   "Auth": {
@@ -673,6 +702,182 @@
         "correctRequired": "請標記第 {n} 條嘅正確答案。",
         "revealRequired": "請寫低第 {n} 條嘅揭曉訊息。"
       }
+    },
+    "multimediaCollage": {
+      "backToPicker": "← 返去禮物類型選擇",
+      "heading": "多媒體拼貼",
+      "lede": "擺低相、短片、音樂。拖去唔同位置。收件人打開就睇到。",
+      "privacyNote": "你嘅媒體會儲喺私人 Lovorithm 收藏庫,淨係有 share link 嘅人睇得到。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例: 我哋呢趟旅程嘅回憶",
+      "templateLabel": "拼貼範本",
+      "templateHint": "揀一個最啱你故事嘅排版。",
+      "templates": {
+        "polaroid-wall": "即影即有牆",
+        "timeline": "時間線",
+        "magazine": "雜誌封面"
+      },
+      "canvasLabel": "排好個拼貼",
+      "addMedia": "加相 / 影片 / 音樂",
+      "slotAriaEmpty": "空位 {n} — 撳一下以上傳",
+      "slotAriaFilled": "位置 {n}:{type}。撳一下再撳另一個可以互換。",
+      "captionPlaceholder": "標題(可選)",
+      "canvasHint": "{count} / {min}–{max} 個媒體。撳實一個位置再撳第二個可以互換,亦可以拖放。",
+      "swapHint": "而家撳另一個有內容嘅位置就會互換。Esc 取消。",
+      "removeSlotAria": "移除位置 {n} 嘅媒體",
+      "musicLabel": "背景音樂(可選)",
+      "musicUploadAria": "上傳背景音樂",
+      "musicHint": "MP3 上限 25 MB。收件人撳「播音樂」先會開始播(Safari/iOS 自動播放規則)。",
+      "removeMusicAria": "移除背景音樂",
+      "uploading": "上傳中…",
+      "uploadError": "上傳失敗。",
+      "submitting": "儲存緊…",
+      "submit": "儲存並攞 share link",
+      "type": {
+        "photo": "相",
+        "video": "影片",
+        "audio": "音樂"
+      },
+      "errors": {
+        "titleRequired": "請填寫禮物標題。",
+        "notEnoughMedia": "請加至少 {min} 個媒體項目。",
+        "tooManyMedia": "太多喇,最多 {max} 個。",
+        "stillUploading": "等多陣,媒體仲上傳緊。"
+      }
+    }
+  },
+  "Status": {
+    "title": "系統狀態",
+    "lede": "Lovorithm 而家點。每分鐘更新。",
+    "updatedAt": "最後更新：{time}",
+    "overallOperational": "全部系統運作正常",
+    "overallDegraded": "部分系統降級",
+    "overallOutage": "現正故障",
+    "overallMaintenance": "排程維護",
+    "last7": "最近 7 日",
+    "noIncidents": "最近 7 日冇事故。",
+    "inProgress": "進行中",
+    "resolvedAt": "已解決（{time}）",
+    "investigating": "調查中",
+    "identified": "已識別",
+    "monitoring": "監察中",
+    "resolved": "已解決",
+    "subscribe": "訂閱更新",
+    "subscribeBody": "有新事故我哋會 email 你。唔會有推廣，唔會有噪音。",
+    "subscribeCta": "有事故 email 我",
+    "footer": {
+      "home": "主頁",
+      "support": "支援",
+      "privacy": "私隱"
+    }
+  },
+  "Support": {
+    "title": "支援",
+    "lede": "我哋團隊唔大，每一封訊息都會睇，一個工作天內回覆（香港時間）。",
+    "emailHeading": "Email 我哋",
+    "emailBody": "帳戶問題、禮物送遞、付款、或者其他任何嘢。",
+    "emailCta": "Email：support@lovorithm.app",
+    "reportHeading": "回報問題",
+    "reportBody": "發現 bug、壞 link、或者有嘢唔啱？話畀我哋知喺邊、睇到咩。",
+    "reportCta": "Email：bugs@lovorithm.app",
+    "billingHeading": "帳單及退款",
+    "billingBody": "關於購買問題、退款申請、或者發票查詢。",
+    "billingCta": "Email：billing@lovorithm.app",
+    "responseTime": "一般回覆時間：一個工作天內（星期一至五，香港時間）。",
+    "footer": {
+      "home": "主頁",
+      "status": "狀態",
+      "privacy": "私隱",
+      "terms": "條款"
+    }
+  },
+  "Privacy": {
+    "title": "私隱政策",
+    "effective": "生效日期：{date}",
+    "intro": "Lovorithm 圍繞住禮物整，好多時都帶住私人嘅時刻 —— 你愛嘅人嘅相、語音備忘、私人訊息。我哋會小心處理呢啲內容。呢一頁解釋我哋收集咩、用嚟做咩、同埋你有咩選擇。",
+    "sections": {
+      "whatWeCollect": {
+        "heading": "我哋收集咩",
+        "body": "註冊時嘅帳戶資料（email、顯示名稱、handle、大頭貼）。建立禮物時嘅禮物內容（相、語音、你寫嘅文字）。收禮者只會睇到你送畀佢嘅禮物，我哋唔會將你嘅資料透露畀佢。伺服器記錄（IP、user agent）係為咗一般嘅運作需要——rate limiting、防濫用、debug。"
+      },
+      "howWeUse": {
+        "heading": "點樣使用",
+        "body": "用嚟運作呢個服務：遞送禮物、寄交易電郵（購買收據、分享 link）、防止濫用。我哋唔會賣或者租你嘅資料，亦都唔會擺第三方廣告。"
+      },
+      "storage": {
+        "heading": "儲存喺邊",
+        "body": "喺 Supabase（新加坡區域）。相同語音備存喺一個私人嘅 Supabase Storage bucket；只有攞到 share link 嘅人睇到。資料庫每日備份。"
+      },
+      "sharing": {
+        "heading": "分享",
+        "body": "禮物透過一條不公開嘅 link 分享。每份禮物嘅 link 都係獨立；請唔好將佢轉發畀你唔想佢睇到嘅人。你嘅禮物內容我哋唔會分享畀你冇明確送出嘅人。"
+      },
+      "yourChoices": {
+        "heading": "你嘅選擇",
+        "body": "你可以隨時喺「設定」更新或者刪除你嘅帳戶。刪除帳戶會移除你嘅 profile 同未發佈嘅草稿。你送出咗嘅禮物會繼續提供畀收禮者，除非你叫我哋落架——email support@lovorithm.app 我哋 7 日內會處理。"
+      },
+      "cookies": {
+        "heading": "Cookies",
+        "body": "我哋用一個 cookie 記住你嘅語言偏好（en / 繁中），同 Supabase 為登入而設嘅標準 auth cookies。冇第三方追蹤 cookie。"
+      },
+      "contact": {
+        "heading": "聯絡",
+        "body": "有問題、疑慮、或者想申請刪除？Email support@lovorithm.app。"
+      }
+    },
+    "footer": {
+      "home": "主頁",
+      "support": "支援",
+      "status": "狀態",
+      "terms": "條款"
+    }
+  },
+  "Terms": {
+    "title": "服務條款",
+    "intro": "呢啲條款規範你使用 Lovorithm。每一節頂部都有白話總結，下面係實際生效嘅規則。",
+    "sections": {
+      "theService": {
+        "heading": "呢個服務",
+        "body": "Lovorithm 係一個數碼禮物嘅市集。創作者刊登禮物；買家攞嚟自用或者送畀收禮者。我哋運作平台、付款通道、同 share link 嘅遞送；禮物嘅內容本身屬於建立佢嘅創作者。"
+      },
+      "accounts": {
+        "heading": "帳戶",
+        "body": "你要有個帳戶先可以買或者賣。請保管好你嘅登入資料；你帳戶下面嘅活動由你負責。對於濫用平台嘅帳戶（垃圾、詐騙、騷擾），我哋可能會暫停。"
+      },
+      "yourContent": {
+        "heading": "你嘅內容",
+        "body": "你保留你所建立禮物嘅版權。透過刊登 listing，你授權 Lovorithm 一個非獨家嘅牌照去寄存同遞送嗰份禮物畀買家或者收禮者。你可以隨時下架 listing；已經遞送嘅禮物會繼續提供畀收禮者，除非你叫我哋落架。"
+      },
+      "purchases": {
+        "heading": "購買及退款",
+        "body": "價錢以 HKD 或者 USD 列示。付款由 Stripe 處理；我哋永遠唔會見到你嘅信用卡號碼。如果禮物遞送失敗（壞 share link、被創作者下架），14 日內 email billing@lovorithm.app 我哋會全額退款。"
+      },
+      "availability": {
+        "heading": "可用性",
+        "body": "我哋目標係 99.9% 正常運行時間，但唔保證服務唔會中斷。有重大事故我哋會喺 /status 公布同 email 訂閱咗嘅人。"
+      },
+      "liability": {
+        "heading": "責任",
+        "body": "喺香港法例容許嘅最大範圍內，我哋嘅責任上限係你喺事故之前 12 個月內畀過我哋嘅金額。對於間接或者衍生嘅損失我哋唔負責。"
+      },
+      "changes": {
+        "heading": "條款嘅更改",
+        "body": "我哋可能更新呢啲條款。重大嘅更改會透過 email 同 app 內嘅橫幅提前 30 日通知。生效日期之後繼續使用代表你接受新嘅條款。"
+      },
+      "governing": {
+        "heading": "適用法律",
+        "body": "呢啲條款受香港法律管轄。爭議由香港法院專屬管轄。"
+      },
+      "contact": {
+        "heading": "聯絡",
+        "body": "對呢啲條款有問題？Email legal@lovorithm.app。"
+      }
+    },
+    "footer": {
+      "home": "主頁",
+      "support": "支援",
+      "status": "狀態",
+      "privacy": "私隱"
     }
   }
 }

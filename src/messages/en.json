@@ -75,8 +75,30 @@
     },
     "footer": {
       "line": "Lovorithm · Made with care in Hong Kong",
+      "support": "Support",
       "privacy": "Privacy",
-      "terms": "Terms"
+      "terms": "Terms",
+      "status": "Status"
+    },
+    "waitlist": {
+      "tag": "Closed beta · invite only",
+      "heading": "Join the Lovorithm beta.",
+      "lede": "We're inviting a small group of Hong Kong creators and gift-givers to try Lovorithm first. Drop your email and we'll send you an invite when your spot opens up.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "intentLabel": "I plan to use it for (optional)",
+      "intentPlaceholder": "Pick one",
+      "intentPersonal": "Personal — for someone I love",
+      "intentHkSme": "My HK small business — for customers",
+      "intentCreator": "I'm a creator — I'd like to sell",
+      "submit": "Join the waitlist",
+      "submitting": "Joining…",
+      "successTitle": "You're on the list.",
+      "successInserted": "We'll email you when your invite is ready. In the meantime, feel free to share Lovorithm with someone who'd love it.",
+      "successAlready": "Looks like you're already on the list. We'll be in touch when your invite is ready.",
+      "fineprint": "No spam. One email when your invite opens, plus launch updates you can opt out of any time.",
+      "errorRateLimit": "You already joined the waitlist in the last hour. Try again later.",
+      "errorGeneric": "Something went wrong joining the waitlist. Please try again."
     }
   },
   "Recipient": {
@@ -132,6 +154,13 @@
       "winHeading": "All done 🎉",
       "scoreLine": "You got {correct} of {total} right.",
       "playAgain": "Play again"
+    },
+    "multimediaCollage": {
+      "tag": "A collage for you",
+      "heading": "{name} made you a collage",
+      "lede": "Photos, video clips, audio moments — drag the play controls to explore.",
+      "musicPlay": "Play music",
+      "musicPause": "Pause music"
     }
   },
   "Auth": {
@@ -673,6 +702,182 @@
         "correctRequired": "Mark which answer is correct for question {n}.",
         "revealRequired": "Write the reveal message for question {n}."
       }
+    },
+    "multimediaCollage": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Multimedia collage",
+      "lede": "Drop in photos, video clips, audio moments. Drag them onto a canvas. The recipient opens your collage.",
+      "privacyNote": "Your media is stored in your private Lovorithm library. Only people with the share link can see it.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. Our trip, in moments",
+      "templateLabel": "Canvas template",
+      "templateHint": "Pick the layout that fits your story.",
+      "templates": {
+        "polaroid-wall": "Polaroid wall",
+        "timeline": "Timeline",
+        "magazine": "Magazine"
+      },
+      "canvasLabel": "Compose the canvas",
+      "addMedia": "Add photo / video / audio",
+      "slotAriaEmpty": "Empty slot {n} — click to upload",
+      "slotAriaFilled": "Slot {n}: {type}. Click to swap with another slot.",
+      "captionPlaceholder": "Caption (optional)",
+      "canvasHint": "{count} / {min}–{max} items. Click a filled slot, then click another to swap. Or drag-and-drop.",
+      "swapHint": "Now click another filled slot to swap. Press Escape to cancel.",
+      "removeSlotAria": "Remove media from slot {n}",
+      "musicLabel": "Background music (optional)",
+      "musicUploadAria": "Upload background music",
+      "musicHint": "MP3 up to 25 MB. Plays only after the recipient taps \"Play music\" (Safari/iOS autoplay rules).",
+      "removeMusicAria": "Remove the background music",
+      "uploading": "Uploading…",
+      "uploadError": "Upload failed.",
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link",
+      "type": {
+        "photo": "photo",
+        "video": "video",
+        "audio": "audio"
+      },
+      "errors": {
+        "titleRequired": "Add a title for your gift.",
+        "notEnoughMedia": "Add at least {min} media items to your collage.",
+        "tooManyMedia": "Too many items — max is {max}.",
+        "stillUploading": "Wait for your media to finish uploading."
+      }
+    }
+  },
+  "Status": {
+    "title": "System status",
+    "lede": "How Lovorithm is doing right now. Updated every minute.",
+    "updatedAt": "Last updated {time}",
+    "overallOperational": "All systems operational",
+    "overallDegraded": "Some systems degraded",
+    "overallOutage": "Active outage",
+    "overallMaintenance": "Scheduled maintenance",
+    "last7": "Last 7 days",
+    "noIncidents": "No incidents in the last 7 days.",
+    "inProgress": "Ongoing",
+    "resolvedAt": "Resolved {time}",
+    "investigating": "Investigating",
+    "identified": "Identified",
+    "monitoring": "Monitoring",
+    "resolved": "Resolved",
+    "subscribe": "Subscribe to updates",
+    "subscribeBody": "We will email you when there is a new incident. No marketing, no noise.",
+    "subscribeCta": "Email me on incidents",
+    "footer": {
+      "home": "Home",
+      "support": "Support",
+      "privacy": "Privacy"
+    }
+  },
+  "Support": {
+    "title": "Support",
+    "lede": "We are a small team. We read every message and reply within one business day (HK time).",
+    "emailHeading": "Email us",
+    "emailBody": "For account help, gift delivery issues, payments, or anything else.",
+    "emailCta": "Email support@lovorithm.app",
+    "reportHeading": "Report a problem",
+    "reportBody": "Found a bug, broken link, or something that does not look right? Tell us where it is and what you saw.",
+    "reportCta": "Email bugs@lovorithm.app",
+    "billingHeading": "Billing & refunds",
+    "billingBody": "For purchase issues, refund requests, or invoice questions.",
+    "billingCta": "Email billing@lovorithm.app",
+    "responseTime": "Typical response: within 1 business day (Mon–Fri, HK time).",
+    "footer": {
+      "home": "Home",
+      "status": "Status",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
+  },
+  "Privacy": {
+    "title": "Privacy policy",
+    "effective": "Effective {date}",
+    "intro": "Lovorithm is built around gifts that often carry private moments — photos of people you love, voice notes, personal messages. We treat that material with care. This page explains what we collect, what we do with it, and what choices you have.",
+    "sections": {
+      "whatWeCollect": {
+        "heading": "What we collect",
+        "body": "Account info (email, display name, handle, avatar) when you sign up. Gift content (photos, voice notes, text you write) when you create a gift. Recipients only see the gift you send them; we never expose your account details to them. Server logs (IP, user agent) for the usual operational reasons — rate limiting, abuse prevention, debugging."
+      },
+      "howWeUse": {
+        "heading": "How we use it",
+        "body": "To run the service: deliver gifts, send transactional email (purchase receipts, share links), prevent abuse. We do not sell or rent your data, and we do not run third-party advertising."
+      },
+      "storage": {
+        "heading": "Where it is stored",
+        "body": "On Supabase (Singapore region). Photos and voice notes live in a private Supabase Storage bucket; only people with the share link can read them. Database backups are taken daily."
+      },
+      "sharing": {
+        "heading": "Sharing",
+        "body": "Gifts are shared via an opaque link. The link is unique per gift; please do not forward it to people you do not want to see the gift. We do not share your gift content with anyone outside the gift you explicitly created."
+      },
+      "yourChoices": {
+        "heading": "Your choices",
+        "body": "You can update or delete your account at any time from Settings. Deleting your account removes your profile and unpublished drafts. Gifts you have sent remain live for the recipient unless you ask us to take them down — email support@lovorithm.app and we will remove them within 7 days."
+      },
+      "cookies": {
+        "heading": "Cookies",
+        "body": "We use one cookie to remember your language preference (en / zh-Hant), and the standard auth cookies Supabase sets for sign-in. No third-party tracking cookies."
+      },
+      "contact": {
+        "heading": "Contact",
+        "body": "Questions, concerns, or a deletion request? Email support@lovorithm.app."
+      }
+    },
+    "footer": {
+      "home": "Home",
+      "support": "Support",
+      "status": "Status",
+      "terms": "Terms"
+    }
+  },
+  "Terms": {
+    "title": "Terms of service",
+    "intro": "These terms govern your use of Lovorithm. Plain-language summary at the top of each section, the enforceable rule underneath.",
+    "sections": {
+      "theService": {
+        "heading": "The service",
+        "body": "Lovorithm is a marketplace for digital gifts. Creators list gifts; buyers claim them or send them to a recipient. We operate the platform, the payment rails, and the share-link delivery; the gift content itself belongs to the creator who authored it."
+      },
+      "accounts": {
+        "heading": "Accounts",
+        "body": "You need an account to buy or sell. Keep your credentials to yourself; you are responsible for activity under your account. We may suspend accounts that abuse the platform (spam, fraud, harassment)."
+      },
+      "yourContent": {
+        "heading": "Your content",
+        "body": "You retain ownership of the gifts you create. By publishing a listing, you grant Lovorithm a non-exclusive licence to host and deliver that gift to the buyer or recipient. You can unpublish a listing at any time; gifts already delivered remain live for the recipient unless you ask us to take them down."
+      },
+      "purchases": {
+        "heading": "Purchases & refunds",
+        "body": "Prices are listed in HKD or USD. Payment is processed by Stripe; we never see your card number. If a gift fails to deliver (broken share link, removed by the creator), email billing@lovorithm.app within 14 days for a full refund."
+      },
+      "availability": {
+        "heading": "Availability",
+        "body": "We aim for 99.9% uptime but do not guarantee uninterrupted access. We will post incidents at /status and email subscribers when there is a material outage."
+      },
+      "liability": {
+        "heading": "Liability",
+        "body": "To the maximum extent permitted by Hong Kong law, our liability is limited to the amount you paid us in the 12 months before the claim. We are not liable for indirect or consequential damages."
+      },
+      "changes": {
+        "heading": "Changes to these terms",
+        "body": "We may update these terms. Material changes get a 30-day notice via email and a banner in the app. Continued use after the effective date means you accept the new terms."
+      },
+      "governing": {
+        "heading": "Governing law",
+        "body": "These terms are governed by the laws of Hong Kong. Disputes are subject to the exclusive jurisdiction of the courts of Hong Kong."
+      },
+      "contact": {
+        "heading": "Contact",
+        "body": "Questions about these terms? Email legal@lovorithm.app."
+      }
+    },
+    "footer": {
+      "home": "Home",
+      "support": "Support",
+      "status": "Status",
+      "privacy": "Privacy"
     }
   }
 }
