@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AnimatedLetterPayloadSchema,
+  DragdropPuzzlePayloadSchema,
   GiftTypeSchema,
   MemoryCardsPayloadSchema,
   RecipientEnvelopeSchema,
@@ -148,6 +149,49 @@ describe('MemoryCardsPayloadSchema (Phase 4, OOP-4219)', () => {
   it('rejects unknown difficulty', () => {
     expect(() =>
       MemoryCardsPayloadSchema.parse({ ...validPayload, difficulty: 'impossible' }),
+    ).toThrow();
+  });
+});
+
+describe('DragdropPuzzlePayloadSchema (Phase 5, OOP-4221)', () => {
+  const validPayload = {
+    photo_url: 'https://example.com/photo.jpg',
+    grid: 3 as const,
+    reveal_message: 'Happy anniversary — from the day we got lost in Tokyo',
+  };
+
+  it('parses a minimal 3x3 payload', () => {
+    const parsed = DragdropPuzzlePayloadSchema.parse(validPayload);
+    expect(parsed.grid).toBe(3);
+    expect(parsed.photo_url).toBe(validPayload.photo_url);
+    expect(parsed.reveal_message).toBe(validPayload.reveal_message);
+  });
+
+  it('accepts grids 3, 4, and 5', () => {
+    for (const g of [3, 4, 5] as const) {
+      const parsed = DragdropPuzzlePayloadSchema.parse({ ...validPayload, grid: g });
+      expect(parsed.grid).toBe(g);
+    }
+  });
+
+  it('rejects grid sizes outside 3/4/5 (game engine only handles those)', () => {
+    expect(() =>
+      DragdropPuzzlePayloadSchema.parse({ ...validPayload, grid: 6 }),
+    ).toThrow();
+    expect(() =>
+      DragdropPuzzlePayloadSchema.parse({ ...validPayload, grid: 2 }),
+    ).toThrow();
+  });
+
+  it('rejects empty reveal_message (would give the recipient nothing)', () => {
+    expect(() =>
+      DragdropPuzzlePayloadSchema.parse({ ...validPayload, reveal_message: '' }),
+    ).toThrow();
+  });
+
+  it('rejects photo_url that is not a URL', () => {
+    expect(() =>
+      DragdropPuzzlePayloadSchema.parse({ ...validPayload, photo_url: 'not-a-url' }),
     ).toThrow();
   });
 });

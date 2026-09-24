@@ -75,6 +75,20 @@ export const MemoryCardsPayloadSchema = z.object({
 });
 export type MemoryCardsPayload = z.infer<typeof MemoryCardsPayloadSchema>;
 
+// ─── dragdrop_puzzle (Phase 5, OOP-4221) ───────────────────────────────────
+// Source of truth: design/04-architecture/architecture.md §3 (locked shape).
+//   photo_url:      one photo the sender uploads; the recipient gats to
+//                   reconstruct it.
+//   grid:           3×3 / 4×4 / 5×5. Determines piece count (9 / 16 / 25).
+//   reveal_message: shown when the recipient completes the puzzle.
+//                   Acts as the gift's "message in a bottle".
+export const DragdropPuzzlePayloadSchema = z.object({
+  photo_url: z.string().url(),
+  grid: z.union([z.literal(3), z.literal(4), z.literal(5)]),
+  reveal_message: z.string().min(1).max(500),
+});
+export type DragdropPuzzlePayload = z.infer<typeof DragdropPuzzlePayloadSchema>;
+
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({
   shareToken: z.string().min(1),

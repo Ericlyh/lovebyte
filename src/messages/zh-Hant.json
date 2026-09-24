@@ -107,6 +107,16 @@
       "faceDownAria": "牌背",
       "winHeading": "全部配對成功 🎉",
       "winBody": "{moves} 步就搵齊所有回覆。寫返個訊息畀對方啦 — 佢會好開心。"
+    },
+    "puzzle": {
+      "tag": "送畀你嘅相片拼圖",
+      "heading": "{name} 收埋咗一張相畀你",
+      "progressPlaying": "已砌啱 {correct} / {total} 塊 · {moves} 步",
+      "progressDone": "{total} 塊全部歸位 · {moves} 步",
+      "boardAria": "相片拼圖格仔",
+      "pieceAria": "拼圖塊 {n}",
+      "winHeading": "砌齊喇 🎉",
+      "winMoves": "用咗 {moves} 步。"
     }
   },
   "Auth": {
@@ -582,6 +592,38 @@
         "pairPreviewAlt": "配對預覽",
         "removeAria": "移除第 {n} 對",
         "remove": "移除"
+      }
+    },
+    "dragdropPuzzle": {
+      "backToPicker": "← 返去禮物類型選擇",
+      "heading": "相片拼圖",
+      "lede": "上載一張相，再揀個拼圖大細。收件人拖返啲拼圖塊番去就睇到你嘅訊息。",
+      "privacyNote": "相片會儲喺你嘅私人 LoveByte 收藏庫，淨係有 share link 嘅人睇得到。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例: 我哋嗰次旅行嘅相",
+      "photoLabel": "相片",
+      "photoUploadAria": "上載拼圖相片",
+      "photoPreviewAlt": "拼圖相片預覽",
+      "photoHint": "PNG / JPG / WEBP，最多 5 MB。正方形嘅相切得最靚。",
+      "uploading": "上載中…",
+      "uploadError": "上載失敗。",
+      "gridLabel": "拼圖大細",
+      "grid": {
+        "3": "簡單(3×3，9 塊)",
+        "4": "中等(4×4，16 塊)",
+        "5": "困難(5×5，25 塊)"
+      },
+      "gridHint": "越大格越有挑戰性。收件人會收到 {pieces} 塊拼圖。",
+      "revealLabel": "揭曉訊息",
+      "revealPlaceholder": "例: 結婚週年快樂 — 嗰次喺東京迷路嘅日子",
+      "revealHint": "{count} / {max} 字。收件人砌完拼圖就會見到。",
+      "submitting": "儲存緊…",
+      "submit": "儲存並攞 share link",
+      "errors": {
+        "titleRequired": "請填寫禮物標題。",
+        "photoRequired": "請上載一張拼圖相片。",
+        "stillUploading": "請等相片上載完。",
+        "revealRequired": "寫低收件人砌完之後會見到嘅訊息。"
       }
     }
   }

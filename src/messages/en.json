@@ -107,6 +107,16 @@
       "faceDownAria": "Face-down card",
       "winHeading": "You matched them all 🎉",
       "winBody": "Every memory in {moves} moves. Now write back — they’d love that."
+    },
+    "puzzle": {
+      "tag": "A photo puzzle for you",
+      "heading": "{name} hid a picture for you",
+      "progressPlaying": "Solved {correct} of {total} pieces · {moves} moves",
+      "progressDone": "All {total} pieces in place · {moves} moves",
+      "boardAria": "Photo puzzle board",
+      "pieceAria": "Puzzle piece {n}",
+      "winHeading": "You pieced it together 🎉",
+      "winMoves": "Solved in {moves} moves."
     }
   },
   "Auth": {
@@ -582,6 +592,38 @@
         "pairPreviewAlt": "Pair preview",
         "removeAria": "Remove pair {n}",
         "remove": "Remove"
+      }
+    },
+    "dragdropPuzzle": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Photo puzzle",
+      "lede": "Upload one photo and pick a grid. The recipient drags the tiles back into place to reveal your message.",
+      "privacyNote": "Your photo is stored in your private LoveByte library. Only people with the share link can see it.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. The photo from our trip",
+      "photoLabel": "Photo",
+      "photoUploadAria": "Upload the puzzle photo",
+      "photoPreviewAlt": "Puzzle photo preview",
+      "photoHint": "PNG, JPG, or WEBP — up to 5 MB. Square photos crop the cleanest.",
+      "uploading": "Uploading…",
+      "uploadError": "Upload failed.",
+      "gridLabel": "Grid size",
+      "grid": {
+        "3": "Easy (3×3, 9 pieces)",
+        "4": "Medium (4×4, 16 pieces)",
+        "5": "Hard (5×5, 25 pieces)"
+      },
+      "gridHint": "Larger grids are more of a challenge. The recipient gets {pieces} pieces.",
+      "revealLabel": "Reveal message",
+      "revealPlaceholder": "e.g. Happy anniversary — from the day we got lost in Tokyo",
+      "revealHint": "{count} / {max} characters. Shown when the recipient completes the puzzle.",
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link",
+      "errors": {
+        "titleRequired": "Add a title for your gift.",
+        "photoRequired": "Upload a photo for the puzzle.",
+        "stillUploading": "Wait for your photo to finish uploading.",
+        "revealRequired": "Write the message the recipient will see when they finish."
       }
     }
   }

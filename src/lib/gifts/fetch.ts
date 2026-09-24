@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMockEnvelope } from './mock';
 import {
   AnimatedLetterPayloadSchema,
+  DragdropPuzzlePayloadSchema,
   MemoryCardsPayloadSchema,
   type RecipientEnvelope,
 } from './schemas';
@@ -60,12 +61,14 @@ async function fetchFromSupabase(
 
   // Validate the payload against the type-specific schema at the
   // type-narrow boundary (architecture §6). Other gift types
-  // (dragdrop_puzzle, etc.) are validated by their own feature-module
-  // schemas once they ship (Phases 5–8).
+  // (quiz, multimedia_collage) are validated by their own feature-module
+  // schemas once they ship (Phases 6+).
   if (row.gifts.type === 'animated_letter') {
     AnimatedLetterPayloadSchema.parse(row.gifts.payload);
   } else if (row.gifts.type === 'memory_cards') {
     MemoryCardsPayloadSchema.parse(row.gifts.payload);
+  } else if (row.gifts.type === 'dragdrop_puzzle') {
+    DragdropPuzzlePayloadSchema.parse(row.gifts.payload);
   }
 
   return {
