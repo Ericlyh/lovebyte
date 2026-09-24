@@ -202,3 +202,14 @@ create policy "gift_replies_delete_own_or_creator"
       where g.id = gift_replies.gift_id and g.owner_id = auth.uid()
     )
   );
+
+-- waitlist ────────────────────────────────────────────────────────────────
+-- Phase 10, OOP-4226. Pre-account email captures for the beta landing page.
+--   read   : NO policy → anon + authenticated denied. service_role
+--            bypasses RLS and is the only path (moderator dashboard).
+--   insert : NO policy → anon + authenticated denied. `joinWaitlistAction`
+--            (src/lib/actions/waitlist.ts) uses the service-role client and
+--            gates with Turnstile before the insert. A client that bypasses
+--            the server action cannot write here.
+-- (RLS already enabled in 0008_waitlist.sql; this file is intentionally
+--  appended-to so reviewers can grep "waitlist" and find the policy intent.)
