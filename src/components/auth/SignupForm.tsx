@@ -25,6 +25,7 @@ import {
   useEmailAvailability,
   type EmailState,
 } from '@/lib/hooks/useEmailAvailability';
+import { BRAND } from '@/lib/brand';
 
 /**
  * /signup form (M-B step 3, OOP-4284; OOP-4284 follow-up: live validation;
@@ -126,7 +127,7 @@ export function SignupForm() {
               : undefined
           }
         />
-        <HandleStatus state={handleState} emptyHint={t('handleHint')} t={tHandle} />
+        <HandleStatus state={handleState} emptyHint={t('handleHint', { domain: BRAND.DOMAIN })} t={tHandle} />
       </label>
 
       <label className="lb-field">

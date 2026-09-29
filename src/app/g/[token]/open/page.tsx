@@ -1,6 +1,8 @@
 import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getEnvelopeByToken } from '@/lib/gifts/fetch';
+import { BRAND } from '@/lib/brand';
 import {
   AnimatedLetterPayloadSchema,
   DragdropPuzzlePayloadSchema,
@@ -36,6 +38,21 @@ export const runtime = 'edge';
 type Props = {
   params: Promise<{ token: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { token } = await params;
+  const envelope = await getEnvelopeByToken(token);
+  // Mirror /g/[token]/page.tsx (Phase 9, OOP-4225): notFound() in metadata
+  // too, so an unknown token commits a 404 instead of serving the page
+  // with a fallback title and HTTP 200.
+  if (!envelope) notFound();
+  return {
+    title: `${envelope.senderName} sent you something — ${BRAND.NAME}`,
+    description:
+      envelope.coverText ??
+      `${envelope.senderName} sent you a one-of-a-kind gift on ${BRAND.NAME}.`,
+  };
+}
 
 export default async function GiftOpenPage({ params }: Props) {
   const { token } = await params;

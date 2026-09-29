@@ -15,6 +15,7 @@ import {
   useHandleAvailability,
   type HandleState,
 } from '@/lib/hooks/useHandleAvailability';
+import { BRAND } from '@/lib/brand';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_AVATAR = 'image/png,image/jpeg,image/webp,image/gif';
@@ -207,7 +208,7 @@ export function OnboardingForm({
               : undefined
           }
         />
-        <small className="lb-field__hint">{t('handle.hint')}</small>
+        <small className="lb-field__hint">{t('handle.hint', { domain: BRAND.DOMAIN })}</small>
         <HandleStatus state={handleState} />
       </label>
 
