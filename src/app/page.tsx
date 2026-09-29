@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
-import { LanguageToggle } from '@/components/LanguageToggle';
+import { Nav } from '@/components/Nav';
 import { WaitlistForm } from '@/components/WaitlistForm';
 
 /**
@@ -19,6 +19,13 @@ import { WaitlistForm } from '@/components/WaitlistForm';
  *   - slice 3: footer links to `/privacy`, `/terms`, `/support`, and
  *     `/status` now point at the Phase 10 routes (legal pages were
  *     `#` placeholders until those pages shipped).
+ *
+ * OOP-5390: replaced the inline anonymous nav with the shared <Nav />
+ * component so signed-in users (e.g. test users landing on `/` after
+ * `signInAction`'s `redirect('/')` in src/lib/actions/auth.ts) see an
+ * authed link set (Browse / Create / View profile / Sign out) instead
+ * of the "Sign in / Start free" CTA. The shared Nav already handles
+ * anon rendering, so no separate anon path is needed.
  */
 export default async function Home() {
   const t = await getTranslations('Landing');
@@ -35,16 +42,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen flex flex-col">
-      <nav className="lb-nav">
-        <Link href="/" className="lb-nav__brand">{t('brand')}</Link>
-        <div className="lb-nav__links">
-          <LanguageToggle />
-          <Link href="/login">{t('nav.signin')}</Link>
-          <Link href="/signup" className="lb-btn lb-btn--primary lb-btn--sm">
-            {t('nav.startFree')}
-          </Link>
-        </div>
-      </nav>
+      <Nav />
 
       <section className="lb-landing-hero">
         <span className="lb-tag">{t('hero.tag')}</span>
