@@ -289,7 +289,7 @@ export async function checkEmailAction(rawEmail: string): Promise<CheckEmailResu
 
 export type ResendConfirmationResult =
   | { ok: true }
-  | { ok: false; error: string };
+  | { ok: false; error: 'already_verified' | 'not_found' | 'rate_limited' | 'generic' };
 
 /**
  * resendConfirmationAction(formData)
@@ -300,11 +300,22 @@ export type ResendConfirmationResult =
  * pre-submit resend that used to fire on every email-field probe and
  * then lied to the user when it failed.
  *
- * Reads `email` from form data. Validates format. Calls GoTrue's
- * `/auth/v1/resend` (type `signup`). On any error — including Supabase's
- * 30/hr OTP rate limit (`over_email_send_rate_limit`) — we surface the
- * error so the user knows nothing was sent, instead of pretending
- * otherwise.
+ * Reads `email` from form data. Validates format. Then mirrors the
+ * pre-check pattern from `signUpAction`: asks GoTrue admin (via
+ * `lookupEmail`) whether the email is already verified. GoTrue's
+ * `/auth/v1/resend` silently returns `{}` (HTTP 200) for an already-
+ * verified account — there is nothing to send — and the previous
+ * implementation rendered "Sent!" anyway, which the user took at face
+ * value as a broken function (OOP-5379: "this function is still broken
+ * … i still cannot get the email for lyheric127@gmail.com"). Pre-checking
+ * lets us tell the truth:
+ *   - verified  → `already_verified`; UI points to /login.
+ *   - pending   → call resend; UI shows the existing "Sent" copy.
+ *   - not_found → `not_found`; UI points to /signup.
+ *
+ * On a `pending` resend error — including Supabase's 30/hr OTP rate
+ * limit (`over_email_send_rate_limit`) — we surface the error so the
+ * user knows nothing was sent, instead of pretending otherwise.
  */
 export async function resendConfirmationAction(
   formData: FormData,
@@ -312,7 +323,22 @@ export async function resendConfirmationAction(
   const raw = formData.get('email');
   const email = typeof raw === 'string' ? raw.trim() : '';
   if (!email || !EMAIL_RE.test(email)) {
-    return { ok: false, error: 'Enter the email you signed up with.' };
+    return { ok: false, error: 'generic' };
+  }
+
+  // Pre-check user state. Same helper `signUpAction` uses — admin
+  // sb_secret_… lookup of `auth.users.email_confirmed_at`. If admin
+  // lookup fails we still fall through to the resend attempt; if the
+  // email genuinely is pending the user gets the email, and if it's
+  // already verified GoTrue's silent-200 path is the worst-case (the
+  // existing behaviour before this fix). The new error branches only
+  // fire when we have a positive answer from the lookup.
+  const lookup = await lookupEmail(email);
+  if (!lookup.error && lookup.data.state === 'verified') {
+    return { ok: false, error: 'already_verified' };
+  }
+  if (!lookup.error && lookup.data.state === 'not_found') {
+    return { ok: false, error: 'not_found' };
   }
 
   const supabase = await createClient();

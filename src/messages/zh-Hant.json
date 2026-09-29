@@ -228,7 +228,13 @@
       "resendSending": "傳送緊…",
       "resendSent": "已 send 咗，睇下你 inbox（連垃圾郵件）。",
       "resendRateLimited": "你最近 request 太多次 resend。等幾分鐘再試。",
-      "resendError": "依家 send 唔到，等陣再試。"
+      "resendError": "依家 send 唔到，等陣再試。",
+      "resendAlreadyVerifiedTitle": "呢個電郵已經驗證咗",
+      "resendAlreadyVerifiedBody": "你個帳戶已經開通，冇嘢需要再確認。直接登入就得。",
+      "resendAlreadyVerifiedCta": "去登入",
+      "resendNotFoundTitle": "搵唔到呢個電郵",
+      "resendNotFoundBody": "睇嚟呢個電郵未註冊過。先註冊帳戶，再返嚟確認。",
+      "resendNotFoundCta": "去註冊"
     }
   },
   "Onboarding": {

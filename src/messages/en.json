@@ -228,7 +228,13 @@
       "resendSending": "Sending…",
       "resendSent": "Sent. Check your inbox (and spam folder).",
       "resendRateLimited": "You've asked for too many resends recently. Wait a few minutes and try again.",
-      "resendError": "Couldn't send right now. Try again in a moment."
+      "resendError": "Couldn't send right now. Try again in a moment.",
+      "resendAlreadyVerifiedTitle": "This email is already verified",
+      "resendAlreadyVerifiedBody": "Your account is set up — there's nothing to confirm. Sign in to continue.",
+      "resendAlreadyVerifiedCta": "Sign in",
+      "resendNotFoundTitle": "We couldn't find that email",
+      "resendNotFoundBody": "It looks like this address isn't registered yet. Sign up first, then come back here to confirm.",
+      "resendNotFoundCta": "Go to sign up"
     }
   },
   "Onboarding": {
