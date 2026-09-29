@@ -176,7 +176,7 @@
       "lede": "Sign up to start building gifts and listing them on the marketplace.",
       "displayName": "Display name",
       "handle": "Pick a handle",
-      "handleHint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be {domain}/u/<handle>.",
+      "handleHint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/&lt;handle&gt;.",
       "email": "Email",
       "password": "Password",
       "submit": "Create account",
@@ -242,7 +242,7 @@
     "lede": "Pick a handle, an avatar, a bio, and links. Buyers will see this on your public profile.",
     "handle": {
       "label": "Handle",
-      "hint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be {domain}/u/<handle>.",
+      "hint": "3–20 characters. Lowercase letters, digits, and dashes. Your URL will be lovebyte.app/u/&lt;handle&gt;.",
       "checking": "Checking…",
       "available": "Available",
       "taken": "That handle is already taken.",

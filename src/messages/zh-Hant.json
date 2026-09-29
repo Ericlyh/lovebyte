@@ -176,7 +176,7 @@
       "lede": "註冊就可以開始整禮物，再放上巿集賣。",
       "displayName": "顯示名稱",
       "handle": "揀個 handle",
-      "handleHint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 {domain}/u/<handle>。",
+      "handleHint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 lovebyte.app/u/&lt;handle&gt;。",
       "email": "電郵",
       "password": "密碼",
       "submit": "開個帳戶",
@@ -242,7 +242,7 @@
     "lede": "揀個 handle、上傳頭像、寫段自介、加啲連結。買家會喺你嘅公開檔案見到。",
     "handle": {
       "label": "Handle",
-      "hint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 {domain}/u/<handle>。",
+      "hint": "3–20 個字元，細楷英文字母、數字、橫線。網址會係 lovebyte.app/u/&lt;handle&gt;。",
       "checking": "檢查緊…",
       "available": "可以用",
       "taken": "呢個 handle 已經俾人用咗。",
