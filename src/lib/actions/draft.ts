@@ -10,7 +10,14 @@ import { createClient } from '@/lib/supabase/server';
  * mount PublishToMarketplaceCard. MVP path — no payload yet, no media yet.
  * Real per-type builders (OOP-4219..OOP-4224) will fill `payload` later.
  *
- * Returns `{ ok: true, giftId }` then redirects to the finish route.
+ * Wired to <CreateDraftForm /> via `useActionState`. On success we
+ * `redirect()` to the finish route — Next.js's form-action response
+ * machinery honours that throw reliably. On failure we return
+ * `{ ok: false, error }` which the form renders below the button.
+ *
+ * Accepts FormData (rather than a plain object) to keep the action shape
+ * consistent with the rest of the marketplace (signInAction,
+ * joinWaitlistAction, save*DraftAction). (OOP-5432.)
  */
 export type CreateDraftGiftResult =
   | { ok: true; giftId: string }
@@ -32,16 +39,25 @@ const createDraftInputSchema = z.object({
 });
 
 export async function createDraftGiftAction(
-  rawInput: unknown,
+  rawInput: FormData | unknown,
 ): Promise<CreateDraftGiftResult> {
-  const parsed = createDraftInputSchema.safeParse(rawInput);
+  const input =
+    rawInput instanceof FormData
+      ? {
+          title: String(rawInput.get('title') ?? ''),
+          type: String(rawInput.get('type') ?? ''),
+        }
+      : (rawInput as { title: string; type: string });
+
+  const parsed = createDraftInputSchema.safeParse(input);
   if (!parsed.success) {
     return {
       ok: false,
       error: parsed.error.issues[0]?.message ?? 'Invalid input.',
     };
   }
-  const { title, type } = parsed.data;
+  const { type } = parsed.data;
+  const title = parsed.data.title;
 
   const supabase = await createClient();
   const {
