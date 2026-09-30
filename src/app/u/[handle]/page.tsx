@@ -114,7 +114,7 @@ export default async function CreatorProfilePage({ params }: Props) {
       <section className="lb-profile-hero">
         <h1>{displayName}</h1>
         <p className="lb-profile-handle">@{profile.handle}</p>
-        {profile.bio ? <p className="lede">{profile.bio}</p> : null}
+        {profile.bio ? <p className="lb-profile-bio">{profile.bio}</p> : null}
         {links.length > 0 ? (
           <ul className="lb-profile-links">
             {links.map((url) => (

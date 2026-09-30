@@ -1606,6 +1606,118 @@ a:hover { color: var(--lb-primary); }
   margin-top: 6px;
 }
 
+/* ─── M-B (OOP-4274): creator profile page — hero, tabs, links, bio ────
+ * The markup was wired in commit f15b133 but no CSS ever shipped for
+ * the hero / handle / bio / links / tabs block; until now those
+ * selectors fell through to UA defaults and the bio rendered as a
+ * raw paragraph next to the display name (OOP-5420 follow-up —
+ * "looks ugly / like SQL injection"). */
+
+.lb-profile-page {
+  background: var(--lb-surface);
+}
+
+.lb-profile-hero {
+  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
+  padding: 72px 24px 56px;
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.lb-profile-hero h1 {
+  font-family: var(--lb-font-display);
+  font-size: clamp(36px, 6vw, 56px);
+  color: var(--lb-primary);
+  line-height: 1.1;
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+
+.lb-profile-handle {
+  font-size: 15px;
+  color: var(--lb-ink-soft);
+  margin: 0 0 20px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+.lb-profile-bio {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--lb-ink);
+  max-width: 560px;
+  margin: 0 auto 20px;
+  font-style: italic;
+}
+
+.lb-profile-links {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: center;
+}
+
+.lb-profile-links li a {
+  font-size: 14px;
+  color: var(--lb-primary-deep);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--lb-primary);
+  padding-bottom: 1px;
+}
+
+.lb-profile-links li a:hover {
+  color: var(--lb-primary);
+  border-bottom-style: solid;
+}
+
+.lb-profile-tabs {
+  max-width: 960px;
+  margin: var(--lb-space-5) auto 0;
+  padding: 0 24px;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #f3e6e3;
+}
+
+.lb-tab {
+  background: transparent;
+  border: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lb-ink-soft);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 120ms ease;
+}
+
+.lb-tab:hover {
+  color: var(--lb-primary-deep);
+}
+
+.lb-tab--active {
+  color: var(--lb-primary-deep);
+  border-bottom-color: var(--lb-primary);
+}
+
+.lb-profile-collection {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--lb-space-4) 24px var(--lb-space-6);
+}
+
+@media (max-width: 540px) {
+  .lb-profile-hero { padding: 56px 20px 40px; }
+  .lb-profile-bio { font-size: 16px; }
+  .lb-profile-tabs { padding: 0 16px; overflow-x: auto; }
+  .lb-profile-collection { padding-left: 16px; padding-right: 16px; }
+}
+
 /* ─── M-D (OOP-4276): profile follow count + followers badge ────────────── */
 
 .lb-profile-hero__actions {
@@ -1614,6 +1726,7 @@ a:hover { color: var(--lb-primary); }
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 12px;
+  justify-content: center;
 }
 .lb-profile-follow {
   display: inline-flex;
