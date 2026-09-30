@@ -134,11 +134,11 @@ export default async function CreatorProfilePage({ params }: Props) {
           />
           <span
             className="lb-profile-followers-badge"
-            aria-label={t('Profile.followersCount', {
+            aria-label={t('followersCount', {
               count: followerCount,
             })}
           >
-            {t('Profile.followersLabel', { count: followerCount })}
+            {t('followersLabel', { count: followerCount })}
           </span>
         </div>
       </section>

@@ -118,8 +118,8 @@ a:hover { color: var(--lb-primary); }
    * sits on the contrasting button background. */
   color: var(--lb-primary-deep);
 }
-.lb-nav__links { display: flex; gap: 28px; align-items: center; }
-.lb-nav__links a:not(.lb-btn) { color: var(--lb-ink); font-size: 14px; font-weight: 600; }
+.lb-nav__links { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.lb-nav__links a:not(.lb-btn) { color: var(--lb-ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
 /* Sign-out is rendered as a tiny inline form next to the other nav
  * links (OOP-4310). No margin so the `gap: 28px` above stays the
  * rhythm — we just reset the default form spacing. */
@@ -311,13 +311,13 @@ a:hover { color: var(--lb-primary); }
 
 @media (max-width: 640px) {
   /* Nav — shrink brand, tighten gaps, smaller button so it never overflows */
-  .lb-nav { padding: 14px 18px; gap: 8px; }
+  .lb-nav { padding: 14px 18px; gap: 8px; flex-wrap: wrap; row-gap: 10px; }
   .lb-nav__brand { font-size: 22px; }
-  .lb-nav__links { gap: 10px; }
-  .lb-nav__links a:not(.lb-btn) { font-size: 13px; }
+  .lb-nav__links { gap: 12px; row-gap: 10px; justify-content: flex-end; }
+  .lb-nav__links a:not(.lb-btn) { font-size: 13px; white-space: nowrap; }
   .lb-btn--sm { padding: 6px 12px; font-size: 12px; }
   .lb-lang-toggle { padding: 3px; }
-  .lb-lang-toggle button { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  .lb-lang-toggle button { padding: 6px 10px; font-size: 12px; min-height: 36px; white-space: nowrap; }
   /* Phase 9 (OOP-4225) — minimum 36px tap target per Apple HIG /
    * Material guidelines; affects every inline pill, tag, and small
    * button on phones. Browsers default to <28px which fails a11y. */
