@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { signOutAction } from '@/lib/actions/auth';
 import { LanguageToggle } from '@/components/LanguageToggle';
 
@@ -44,6 +45,75 @@ export function NavMenuMobile({ items }: { items: NavMenuItem[] }): ReactNode {
     };
   }, [open]);
 
+  // The hamburger button lives inside <nav className="lb-nav">, which has
+  // `backdrop-filter: blur(12px)` for the sticky-blur effect. backdrop-filter
+  // turns the nav into the containing block for fixed-positioned descendants,
+  // so a plain `position: fixed; inset: 0` drawer collapses to the nav's own
+  // ~72px height and the nav list renders below the visible panel. Portal
+  // the drawer into document.body so `inset: 0` resolves against the
+  // viewport again. (Discovered 2026-09-30 via headless Chrome: the drawer's
+  // getBoundingClientRect().height was 72 — exactly the nav bar height.)
+  const drawer = open ? (
+    <div
+      id="lb-mobile-drawer"
+      className="lb-mobile-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Site navigation"
+    >
+      <div
+        className="lb-mobile-drawer__scrim"
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+      <aside className="lb-mobile-drawer__panel">
+        <button
+          type="button"
+          className="lb-mobile-drawer__close"
+          aria-label="Close menu"
+          onClick={() => setOpen(false)}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
+        <nav className="lb-mobile-drawer__nav" aria-label="Primary">
+          <ul className="lb-mobile-drawer__list">
+            {items.map((item, i) => {
+              if (item.kind === 'link') {
+                return (
+                  <li key={`${item.href}-${i}`}>
+                    <Link
+                      href={item.href}
+                      className={
+                        item.primary
+                          ? 'lb-mobile-drawer__link lb-mobile-drawer__link--primary'
+                          : 'lb-mobile-drawer__link'
+                      }
+                      onClick={() => setOpen(false)}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              }
+              return (
+                <li key="signout">
+                  <form action={signOutAction} className="lb-mobile-drawer__signout-form">
+                    <button type="submit" className="lb-mobile-drawer__link lb-mobile-drawer__link--ghost">
+                      {item.label}
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="lb-mobile-drawer__lang">
+            <LanguageToggle />
+          </div>
+        </nav>
+      </aside>
+    </div>
+  ) : null;
+
   return (
     <>
       <button
@@ -64,66 +134,9 @@ export function NavMenuMobile({ items }: { items: NavMenuItem[] }): ReactNode {
         </span>
       </button>
 
-      {open ? (
-        <div
-          id="lb-mobile-drawer"
-          className="lb-mobile-drawer"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Site navigation"
-        >
-          <div
-            className="lb-mobile-drawer__scrim"
-            onClick={() => setOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className="lb-mobile-drawer__panel">
-            <button
-              type="button"
-              className="lb-mobile-drawer__close"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-            >
-              <span aria-hidden="true">×</span>
-            </button>
-            <nav className="lb-mobile-drawer__nav" aria-label="Primary">
-              <ul className="lb-mobile-drawer__list">
-                {items.map((item, i) => {
-                  if (item.kind === 'link') {
-                    return (
-                      <li key={`${item.href}-${i}`}>
-                        <Link
-                          href={item.href}
-                          className={
-                            item.primary
-                              ? 'lb-mobile-drawer__link lb-mobile-drawer__link--primary'
-                              : 'lb-mobile-drawer__link'
-                          }
-                          onClick={() => setOpen(false)}
-                        >
-                          {item.label}
-                        </Link>
-                      </li>
-                    );
-                  }
-                  return (
-                    <li key="signout">
-                      <form action={signOutAction} className="lb-mobile-drawer__signout-form">
-                        <button type="submit" className="lb-mobile-drawer__link lb-mobile-drawer__link--ghost">
-                          {item.label}
-                        </button>
-                      </form>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="lb-mobile-drawer__lang">
-                <LanguageToggle />
-              </div>
-            </nav>
-          </aside>
-        </div>
-      ) : null}
+      {typeof document !== 'undefined' && drawer
+        ? createPortal(drawer, document.body)
+        : null}
     </>
   );
 }
