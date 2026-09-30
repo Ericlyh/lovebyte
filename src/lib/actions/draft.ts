@@ -65,8 +65,17 @@ export async function createDraftGiftAction(
     .single();
 
   if (insertErr || !inserted) {
+    // Surface the real cause in dev so bug reports carry actionable detail;
+    // generic message in prod so we don't leak schema/constraint names.
     console.error('[draft] gift insert failed', insertErr?.message);
-    return { ok: false, error: 'Could not create the draft right now.' };
+    const detail = insertErr?.message ?? '';
+    const isDev = process.env.NODE_ENV !== 'production';
+    return {
+      ok: false,
+      error: isDev && detail
+        ? `Could not create the draft: ${detail}`
+        : 'Could not create the draft right now.',
+    };
   }
 
   revalidatePath('/create');
