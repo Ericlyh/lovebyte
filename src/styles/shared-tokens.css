@@ -125,6 +125,126 @@ a:hover { color: var(--lb-primary); }
  * rhythm — we just reset the default form spacing. */
 .lb-nav__signout-form { margin: 0; display: inline-flex; }
 
+/* === Mobile hamburger + side drawer (OOP-5420 follow-up) =================
+ * Below 640px the horizontal row is hidden and a hamburger pops out a
+ * side drawer that lists the same items vertically. Above 640px the
+ * hamburger is hidden and the drawer is never rendered. */
+.lb-nav__links--desktop { display: contents; }
+.lb-nav__links--mobile { display: none; }
+
+.lb-nav__menu-button {
+  background: transparent;
+  border: 1px solid var(--lb-blush);
+  border-radius: var(--lb-radius-pill);
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  /* 44×44 tap target — meets Apple HIG minimum regardless of breakpoint */
+  color: var(--lb-ink);
+}
+.lb-nav__menu-button:hover, .lb-nav__menu-button:focus-visible {
+  background: var(--lb-blush);
+  outline: none;
+}
+.lb-nav__menu-icon {
+  display: inline-flex; flex-direction: column;
+  gap: 5px;
+  width: 22px;
+}
+.lb-nav__menu-icon span {
+  display: block;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+}
+
+.lb-mobile-drawer {
+  position: fixed; inset: 0;
+  z-index: 100;
+  display: flex; justify-content: flex-end;
+}
+.lb-mobile-drawer__scrim {
+  position: absolute; inset: 0;
+  background: rgba(58, 31, 31, 0.45);
+  animation: lb-mobile-drawer-fade 160ms ease-out;
+}
+.lb-mobile-drawer__panel {
+  position: relative;
+  width: min(320px, 86vw);
+  height: 100%;
+  background: var(--lb-surface);
+  box-shadow: -8px 0 24px rgba(58, 31, 31, 0.12);
+  padding: 24px 20px;
+  display: flex; flex-direction: column;
+  animation: lb-mobile-drawer-slide 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  overflow-y: auto;
+}
+.lb-mobile-drawer__close {
+  background: transparent;
+  border: none;
+  align-self: flex-end;
+  width: 44px; height: 44px;
+  font-size: 28px; line-height: 1;
+  color: var(--lb-ink);
+  cursor: pointer;
+  border-radius: var(--lb-radius-pill);
+}
+.lb-mobile-drawer__close:hover, .lb-mobile-drawer__close:focus-visible {
+  background: var(--lb-blush);
+  outline: none;
+}
+.lb-mobile-drawer__nav { margin-top: 8px; }
+.lb-mobile-drawer__list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.lb-mobile-drawer__link {
+  display: block;
+  padding: 14px 16px;
+  border-radius: var(--lb-radius-md);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--lb-ink);
+  background: transparent;
+  border: none;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  font-family: var(--lb-font-body);
+  text-decoration: none;
+}
+.lb-mobile-drawer__link:hover, .lb-mobile-drawer__link:focus-visible {
+  background: var(--lb-blush);
+  outline: none;
+}
+.lb-mobile-drawer__link--primary {
+  background: var(--lb-primary);
+  color: #fff;
+  margin-top: 8px;
+}
+.lb-mobile-drawer__link--primary:hover, .lb-mobile-drawer__link--primary:focus-visible {
+  background: var(--lb-primary-deep);
+  color: #fff;
+}
+.lb-mobile-drawer__link--ghost {
+  color: var(--lb-ink-soft);
+  font-weight: 500;
+}
+.lb-mobile-drawer__signout-form { margin: 0; padding: 0; }
+.lb-mobile-drawer__lang {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f3e6e3;
+  display: flex; justify-content: flex-start;
+}
+
+@keyframes lb-mobile-drawer-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes lb-mobile-drawer-slide {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
 .lb-tag {
   display: inline-block;
   padding: 4px 12px;
@@ -310,11 +430,13 @@ a:hover { color: var(--lb-primary); }
  * their own ≤540px overrides above — those still apply. */
 
 @media (max-width: 640px) {
-  /* Nav — shrink brand, tighten gaps, smaller button so it never overflows */
-  .lb-nav { padding: 14px 18px; gap: 8px; flex-wrap: wrap; row-gap: 10px; }
+  /* Nav — shrink brand, tighten gaps, smaller button so it never overflows.
+   * Below 640px we swap the horizontal row for a hamburger + side drawer
+   * (OOP-5420 follow-up). The row is hidden; the hamburger is shown. */
+  .lb-nav { padding: 14px 18px; gap: 8px; }
   .lb-nav__brand { font-size: 22px; }
-  .lb-nav__links { gap: 12px; row-gap: 10px; justify-content: flex-end; }
-  .lb-nav__links a:not(.lb-btn) { font-size: 13px; white-space: nowrap; }
+  .lb-nav__links--desktop { display: none; }
+  .lb-nav__links--mobile { display: flex; align-items: center; }
   .lb-btn--sm { padding: 6px 12px; font-size: 12px; }
   .lb-lang-toggle { padding: 3px; }
   .lb-lang-toggle button { padding: 6px 10px; font-size: 12px; min-height: 36px; white-space: nowrap; }
