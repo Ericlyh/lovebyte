@@ -107,8 +107,13 @@ export default async function PurchasesPage() {
                   </div>
                   {shareUrl ? (
                     <p className="lb-purchase-row__share">
-                      <a href={shareUrl} className="lb-link">
-                        {t('rowShareLink')} →
+                      <a
+                        href={shareUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="lb-btn lb-btn--primary lb-btn--sm"
+                      >
+                        {t('rowPlayNow')} →
                       </a>
                       <br />
                       <code>{shareUrl}</code>

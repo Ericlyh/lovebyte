@@ -78,7 +78,7 @@ export async function publishToMarketplaceAction(
   // Load the draft gift. Must belong to the authenticated user.
   const { data: gift, error: giftErr } = await supabase
     .from('gifts')
-    .select('id, owner_id, is_listed, price_cents')
+    .select('id, owner_id, is_listed, price_cents, payload')
     .eq('id', giftId)
     .eq('owner_id', user.id)
     .maybeSingle();
@@ -92,6 +92,24 @@ export async function publishToMarketplaceAction(
   }
   if (gift.is_listed) {
     return { ok: false, needsStripe: false, error: 'This gift is already listed.' };
+  }
+
+  // Empty-payload guard (OOP-5438). A user can only reach the publish
+  // card for a type-with-builder gift by first filling out the builder,
+  // so empty payloads here imply either the legacy animated_letter MVP
+  // path (which has no sender-side builder yet) or a directly-inserted
+  // row that never went through a builder. Both should not list.
+  // Prebuilt seeded gifts are inserted with full payloads by the seed
+  // script, so this guard does not block them.
+  const payload = (gift.payload ?? {}) as Record<string, unknown>;
+  const payloadIsEmpty = Object.keys(payload).length === 0;
+  if (payloadIsEmpty) {
+    return {
+      ok: false,
+      needsStripe: false,
+      error:
+        'This gift has no content yet. Fill out the builder first, then publish.',
+    };
   }
 
   // Determine effective price (null = free, 0 = free, >0 = paid).
