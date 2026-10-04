@@ -1833,11 +1833,111 @@ a:hover { color: var(--lb-primary); }
   padding: var(--lb-space-4) 24px var(--lb-space-6);
 }
 
+/* === Two-collection layout (OOP-5685) =====================================
+   The profile now exposes two gift collections: "For Sale" (public,
+   always rendered) and "My Gifts" (owner-only, gated by RLS in the
+   data layer). Each section is a `.lb-profile-section` with its own
+   title; the owner's private section adds a lock badge + a soft
+   border so visitors can never confuse it with the public surface.
+   Section anchors drive the tab links; :target marks the active tab.
+*/
+
+.lb-profile-section {
+  scroll-margin-top: 96px; /* clear the sticky nav + tabs row */
+}
+
+.lb-profile-section__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: var(--lb-space-3);
+}
+
+.lb-profile-section__title {
+  font-family: var(--lb-font-display);
+  font-size: 22px;
+  color: var(--lb-primary-deep);
+  margin: 0 0 var(--lb-space-3);
+  font-weight: 700;
+}
+
+.lb-profile-section__head .lb-profile-section__title {
+  margin-bottom: 0;
+}
+
+.lb-profile-section--private {
+  background: linear-gradient(180deg, transparent 0, #faf5f1 38%, #faf5f1 100%);
+  border: 1px dashed #e8d5b8;
+  border-radius: var(--lb-radius-md);
+  padding: var(--lb-space-4);
+}
+
+.lb-profile-section__private-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  background: var(--lb-surface);
+  border: 1px solid #e8d5b8;
+  padding: 4px 10px;
+  border-radius: var(--lb-radius-pill);
+  line-height: 1;
+}
+
+.lb-profile-section__about-body {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--lb-ink);
+  margin: 0 0 16px;
+  max-width: 640px;
+}
+
+.lb-profile-section__about-body--muted {
+  color: var(--lb-ink-soft);
+  font-style: italic;
+}
+
+.lb-profile-section__about-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.lb-profile-section__about-links li a {
+  font-size: 14px;
+  color: var(--lb-primary-deep);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--lb-primary);
+  padding-bottom: 1px;
+}
+
+.lb-profile-section__about-links li a:hover {
+  color: var(--lb-primary);
+  border-bottom-style: solid;
+}
+
+/* Anchor-driven tabs (OOP-5685). Tabs are <a href="#..."> links, so
+   they double as section anchors. The "active" class is hard-coded on
+   the first tab in the JSX (it's the default view); we don't wire a
+   client component to track the scroll position because the URL-hash
+   update on click is enough visual feedback — the page scrolls to
+   the section header. Keep the underline removed so the tabs still look
+   like the rest of the IA. */
+.lb-profile-tabs a.lb-tab {
+  text-decoration: none;
+}
+
 @media (max-width: 540px) {
   .lb-profile-hero { padding: 56px 20px 40px; }
   .lb-profile-bio { font-size: 16px; }
   .lb-profile-tabs { padding: 0 16px; overflow-x: auto; }
   .lb-profile-collection { padding-left: 16px; padding-right: 16px; }
+  .lb-profile-section__title { font-size: 19px; }
 }
 
 /* ─── M-D (OOP-4276): profile follow count + followers badge ────────────── */

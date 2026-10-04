@@ -298,7 +298,11 @@
     "joinCta": "免費開個帳戶",
     "tabsAria": "檔案分區",
     "collection": "作品",
+    "forSale": "出售中",
+    "myGifts": "我的禮物",
+    "privateNote": "私人——只有你睇得到",
     "about": "關於",
+    "emptyAbout": "@{handle} 仲未有填自介。",
     "emptyCollection": "仲未有上架嘅禮物。",
     "emptyCollectionCard": {
       "ownerTitle": "你嘅作品集仲未有嘢",
@@ -308,6 +312,11 @@
       "anonTitle": "仲未有上架嘅禮物",
       "anonBody": "@{handle} 暫時未有喺市集上架任何禮物。遲啲再嚟睇下 — 或者先去市集睇下其他創作人嘅作品。",
       "anonCtaPrimary": "去市集逛吓"
+    },
+    "emptyMyGifts": {
+      "title": "仲未有禮物",
+      "body": "整好第一份禮物就可以喺呢度統一管理——草稿、未上架、同已上架嘅都會出現。",
+      "cta": "整一份禮物"
     },
     "notFound": "�唔到呢個創作人（可能未開戶）。",
     "followButton": {

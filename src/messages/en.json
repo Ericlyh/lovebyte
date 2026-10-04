@@ -298,7 +298,11 @@
     "joinCta": "Join free",
     "tabsAria": "Profile sections",
     "collection": "Collection",
+    "forSale": "For Sale",
+    "myGifts": "My Gifts",
+    "privateNote": "Private — only you can see this",
     "about": "About",
+    "emptyAbout": "@{handle} hasn't filled in a bio yet.",
     "emptyCollection": "No listed gifts yet.",
     "emptyCollectionCard": {
       "ownerTitle": "Your collection is quiet",
@@ -308,6 +312,11 @@
       "anonTitle": "Nothing listed yet",
       "anonBody": "@{handle} hasn't published any gifts to the marketplace yet. Check back soon — or browse what other creators have made.",
       "anonCtaPrimary": "Browse the marketplace"
+    },
+    "emptyMyGifts": {
+      "title": "No gifts yet",
+      "body": "Make your first gift and it'll show up here — drafts, unpublished, and listed all in one place.",
+      "cta": "Create a gift"
     },
     "notFound": "This creator doesn't exist (yet).",
     "followButton": {

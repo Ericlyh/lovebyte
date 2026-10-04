@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { EmptyCollectionState } from '@/components/profile/EmptyCollectionState';
+import { EmptyMyGifts } from '@/components/profile/EmptyMyGifts';
 import { GiftCard } from '@/components/catalog/GiftCard';
 import {
   getProfileByHandle,
@@ -12,18 +13,32 @@ import {
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
 import { getFollowerCount } from '@/lib/profiles/followers';
 import { getCatalogFeed } from '@/lib/catalog';
+import { getOwnedGifts } from '@/lib/profiles/ownedGifts';
 import { createClient } from '@/lib/supabase/server';
 import { BRAND } from '@/lib/brand';
 
 /**
  * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
- * with follower count + Followers tab).
+ * with follower count + Followers tab; OOP-5685 splits the single
+ * "Collection" into two: "For Sale" (public) + "My Gifts" (owner only)).
  *
  * Edge-runtime safe: data fetch goes through `profiles_public`
  * (anon-readable view from M-A). The authed follow action is wired
  * via the FollowButton client component (OOP-4285) and updates the
  * follower's local state; the page revalidates with `router.refresh()`
  * so the SSR-rendered follower count stays in sync after a toggle.
+ *
+ * **Two-collection layout (OOP-5685):**
+ *   • `#for-sale` — gifts the creator has listed on the marketplace.
+ *     Public via `gifts_select_public_listed` RLS. Always rendered.
+ *   • `#mine`    — gifts the creator owns, including drafts + unlisted.
+ *     Owner-only via `gifts_select_own` RLS; non-owners get an empty
+ *     array (we gate the section on `viewerIsOwner` so non-owners never
+ *     see the header either).
+ *
+ * The "About" and "Followers" tabs are static placeholders today — same
+ * as before this issue. They're listed in the tab row so the IA stays
+ * consistent for the "Followers (N)" badge copy.
  *
  * **Handle-change redirect (OOP-4284 Part C):** if the requested
  * handle doesn't exist in `profiles_public`, we look up
@@ -107,6 +122,15 @@ export default async function CreatorProfilePage({ params }: Props) {
     sort: 'published_desc',
   });
 
+  // Owner's full gift library (OOP-5685). Drafts + unlisted + listed.
+  // Returns [] for non-owners (RLS `gifts_select_own`); we only render
+  // the section when `viewerIsOwner` so the empty-array branch is
+  // purely defensive — keeping the call here means the server does the
+  // single RLS check whether or not the visitor is authed.
+  const ownedGifts = viewerIsOwner
+    ? await getOwnedGifts(profile.handle)
+    : [];
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -144,18 +168,30 @@ export default async function CreatorProfilePage({ params }: Props) {
       </section>
 
       <section className="lb-profile-tabs" aria-label={t('tabsAria')}>
-        <button type="button" className="lb-tab lb-tab--active">
-          {t('collection')}
-        </button>
-        <button type="button" className="lb-tab">
+        <a href="#for-sale" className="lb-tab lb-tab--active">
+          {t('forSale')}
+        </a>
+        {viewerIsOwner ? (
+          <a href="#mine" className="lb-tab">
+            {t('myGifts')}
+          </a>
+        ) : null}
+        <a href="#about" className="lb-tab">
           {t('about')}
-        </button>
-        <button type="button" className="lb-tab">
+        </a>
+        <a href="#followers" className="lb-tab">
           {t('followersTab', { count: followerCount })}
-        </button>
+        </a>
       </section>
 
-      <section className="lb-profile-collection">
+      <section
+        id="for-sale"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-for-sale-title"
+      >
+        <h2 id="lb-profile-for-sale-title" className="lb-profile-section__title">
+          {t('forSale')}
+        </h2>
         {creatorListings.length > 0 ? (
           <div className="lb-profile-collection-grid">
             {creatorListings.map((gift) => (
@@ -168,6 +204,80 @@ export default async function CreatorProfilePage({ params }: Props) {
             handle={profile.handle}
           />
         )}
+      </section>
+
+      {viewerIsOwner ? (
+        <section
+          id="mine"
+          className="lb-profile-collection lb-profile-section lb-profile-section--private"
+          aria-labelledby="lb-profile-mine-title"
+        >
+          <div className="lb-profile-section__head">
+            <h2
+              id="lb-profile-mine-title"
+              className="lb-profile-section__title"
+            >
+              {t('myGifts')}
+            </h2>
+            <span className="lb-profile-section__private-badge">
+              <span aria-hidden="true">🔒</span>
+              <span>{t('privateNote')}</span>
+            </span>
+          </div>
+          {ownedGifts.length > 0 ? (
+            <div className="lb-profile-collection-grid">
+              {ownedGifts.map((gift) => (
+                <GiftCard key={gift.id} gift={gift} />
+              ))}
+            </div>
+          ) : (
+            <EmptyMyGifts />
+          )}
+        </section>
+      ) : null}
+
+      <section
+        id="about"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-about-title"
+      >
+        <h2 id="lb-profile-about-title" className="lb-profile-section__title">
+          {t('about')}
+        </h2>
+        {profile.bio ? (
+          <p className="lb-profile-section__about-body">{profile.bio}</p>
+        ) : (
+          <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
+            {t('emptyAbout', { handle: profile.handle })}
+          </p>
+        )}
+        {links.length > 0 ? (
+          <ul className="lb-profile-section__about-links">
+            {links.map((url) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <section
+        id="followers"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-followers-title"
+      >
+        <h2
+          id="lb-profile-followers-title"
+          className="lb-profile-section__title"
+        >
+          {t('followersTab', { count: followerCount })}
+        </h2>
+        <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
+          {t('followersEmpty')}
+        </p>
       </section>
     </main>
   );
