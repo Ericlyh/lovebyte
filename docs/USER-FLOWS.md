@@ -72,17 +72,24 @@ Constants: `HANDLE_MIN_LENGTH=3`, `HANDLE_MAX_LENGTH=20`, regex `^[a-z0-9][a-z0-
 ### 1.5 Sign out
 - **Entry**: nav link → `signOutAction` → Supabase cookie cleared → `redirect('/')`.
 
+### 1.6 Session probe
+- **Endpoint**: `GET /api/me` (anon-tolerant, `Cache-Control: no-store`).
+- **Returns**: `{ authed: boolean, userId?: string }`. Used by client components to gate optimistic UI ("Sign in to like" vs the authed variant) without a server round-trip through a page boundary.
+
 ---
 
 ## 2. Marketplace — discovery
 
 Entry: `/browse`, `/l/[giftId]`, `/u/[handle]`, `/u/me`.
-Source files: `src/app/browse/`, `src/app/l/[giftId]/`, `src/app/u/[handle]/`, `src/lib/catalog.ts`, `src/lib/actions/(like|comments|giftReplies).ts`, `src/lib/actions/profile.ts` for follow.
+Source files: `src/app/browse/`, `src/app/l/[giftId]/`, `src/app/u/[handle]/`, `src/app/api/catalog/{feed,search}/`, `src/lib/catalog.ts`, `src/lib/actions/(like|comments|giftReplies).ts`, `src/app/api/comment-reports/`.
 Constants: comment body 1–1000, reply body 1–1000, fee bps 500–10000, `LOVEBYTE_MIN_FEE_BPS=500`, `DEFAULT=1000` (10%).
 
 ### 2.1 Browse the catalog
 - **Actor**: Visitor (lists are public) or any signed-in user (likes + comments enabled).
-- **Entry**: `/browse`. Server component reads `catalogBrowseAction` (server) → `src/lib/catalog.ts` queries `gifts` via the partial index `gifts_listed_published_idx` (`is_listed=true AND deleted_at IS NULL`, ordered `published_at desc`).
+- **Entry**: `/browse`. Initial server render reads `getCatalogFeed`/`searchCatalog` in `src/lib/catalog.ts`; client-side filtering + infinite scroll go through the JSON APIs:
+  - `GET /api/catalog/feed?category=&priceTier=&creator=&sort=&cursor=` → `{ gifts: CatalogGift[], nextCursor }`. Reads `gifts_select_public_listed` (`cache: 'no-store'`).
+  - `GET /api/catalog/search?q=&limit=` → PostgREST FTS via `search_tsv` (GIN index `gifts_search_tsv_idx`).
+- **Index used**: `gifts_listed_published_idx` (`is_listed=true AND deleted_at IS NULL`, ordered `published_at desc`).
 - **Filters**: category (5 enum values), price band (free / under-X / X+), search via `search_tsv` GIN (`setweight('simple',title)='A' || setweight('simple',description)='B'`).
 - **Card data per row**: cover media (signed URL via `profiles_public`-safe join), price, category, like count (cached `gifts.like_count` from M-D fix in `0005_gift_like_count_fix.sql`), creator handle.
 - **Failure modes**: empty result set → "No gifts match yet" empty state (i18n key `Browse.empty`). Stale search index → reads always-on generated column; no drift.
@@ -108,8 +115,10 @@ Constants: comment body 1–1000, reply body 1–1000, fee bps 500–10000, `LOV
 
 ### 2.4 Like / follow
 - **Actor**: signed-in user.
-- **Like**: `toggleLikeAction({ giftId })` → idempotent insert/delete on `gift_likes`; returns `{ liked, likeCount }`. RLS scopes to `auth.uid() = profile_id`.
-- **Follow**: `followCreatorAction({ handle })` → idempotent insert/delete on `creator_follows`. RLS `CHECK (follower_id <> creator_id)` prevents self-follow.
+- **Like**: `toggleLikeAction({ giftId })` → idempotent insert/delete on `gift_likes`; returns `{ liked, likeCount }`. RLS scopes to `auth.uid() = profile_id`. After insert/delete the action calls RPC `gift_like_count(gift_id)` to keep the cached `gifts.like_count` in step (fallback to ±1 if RPC fails).
+- **Follow**: REST endpoints (not server actions — they need optimistic UI but no auth wiring change between insert/delete):
+  - `POST /api/creator-follows { creator_id }` → upsert on `creator_follows (follower_id, creator_id)`; 422 on self-follow (`CHECK follower_id <> creator_id`).
+  - `DELETE /api/creator-follows/[creatorId]` → delete own row.
 - **Anon behaviour**: `useTransition` calls return `unauthenticated`; the client renders "Sign in to like / follow" rather than redirecting (which would tear down the listing page).
 
 ---
@@ -132,18 +141,20 @@ Constants: title ≤100, description ≤500, payload shape per `schemas.ts`, med
 
 Each builder folder under `src/features/<type>/` exposes:
 - **Builder page** (`/create/<type>`) — sender-side authoring UI.
-- **Recipient view** (used inside `/g/[token]` when `gifts.type = <type>`) — public render.
+- **Recipient view** (mounted by `/g/[token]/open` when `gifts.type = <type>`) — public render.
 - **`schemas.ts`** — Zod schema for `gifts.payload`. **Canonical location is `src/lib/gifts/schemas.ts`** (re-exported from features, OOP-4219 architecture §6 note).
 
-The 4 builders and their payload shapes:
+The 4 builders and their payload shapes (Zod bounds, in `src/lib/gifts/schemas.ts`):
 
-| Type | Payload shape (canonical Zod in `src/lib/gifts/schemas.ts`) | Phase / OOP | Media |
+| Type | Payload shape | Phase / OOP | Media |
 |---|---|---|---|
-| `memory_cards` | `{ pairs: [{photo_url, caption}], difficulty, card_back, music_url }` | Phase 4 / OOP-4219 | `/api/upload/photo?kind=memory_cards` |
+| `memory_cards` | `{ pairs: [{photo_url, caption}] (3–12, photos unique), difficulty: 'easy'\|'medium'\|'hard', card_back?, music_url? }` | Phase 4 / OOP-4219 | `/api/upload/photo?kind=memory_cards` |
 | `dragdrop_puzzle` | `{ photo_url, grid: 3\|4\|5, reveal_message }` | Phase 5 / OOP-4221 | `/api/upload/photo?kind=dragdrop_puzzle` |
-| `quiz` | `{ questions: [{q, options, correct_idx, reveal_msg}] }` (text only) | Phase 6 / OOP-4222 | none |
-| `multimedia_collage` | `{ template, media: [{type, url, caption, position}], music_url }` | Phase 7 / OOP-4223 | `/api/upload/media` (photo ≤5 MB, video ≤50 MB, audio ≤25 MB) |
-| `animated_letter` | `{ markdown, paper, envelope_color, inline_media }` | **no builder yet** | n/a |
+| `quiz` | `{ questions: [{q, options (2–6), correct_idx, reveal_msg}] (1–30) }` (text only) | Phase 6 / OOP-4222 | none |
+| `multimedia_collage` | `{ template, media: [{type, url, caption?, position: {x,y,w,h 0..1}}] (1–20), music_url? }` | Phase 7 / OOP-4223 | `/api/upload/photo?kind=multimedia_collage` for photos; `/api/upload/media` (photo ≤5 MB, video ≤50 MB, audio ≤25 MB) |
+| `animated_letter` | `{ markdown, paper: 'cream'\|'kraft'\|'lined', envelope_color: 'honey'\|'blush'\|'sky', inline_media: [{type: 'photo'\|'voice'\|'music'\|'animation', url, caption?}] }` | **no builder yet** | n/a |
+
+> **Boundary check.** `/g/[token]/open` re-validates the stored JSONB with the matching `*PayloadSchema` before mounting the recipient renderer. A parse failure (drift between builder and renderer) renders a "schema mismatch" placeholder rather than a half-broken gift. Treat any such placeholder as a builder/feature-files drift incident, not a network error.
 
 ### 3.3 Save draft
 - Each builder's `save*DraftAction` writes a `gifts` row with `status='draft'` and a matching `shares` row (token reserved but not yet used; RLS for view).
@@ -194,8 +205,13 @@ Source files: `src/app/checkout/`, `src/app/purchases/`, `src/app/api/stripe/(co
 ### 4.3 Success page
 - **Entry**: `/checkout/success?session_id=cs_…`.
 - **Lookup**: `purchases.stripe_session_id` index. Shows the share token link or, for `send_to_recipient`, a "We've sent it" confirmation.
+- **Race**: the webhook is the source of truth for "did this pay". If the redirect lands before the webhook settles, the page reads the session by `stripe_session_id`, finds no `purchases` row, and renders a "Processing — refresh in a moment" state rather than failing.
 
-### 4.4 Purchase history
+### 4.4 Cancel page
+- **Entry**: `/checkout/cancel?session_id=cs_…`.
+- **Behaviour**: public landing page. No DB writes; the Stripe Checkout Session expires on Stripe's side. The user can resume by hitting the listing page's CTA again.
+
+### 4.5 Purchase history
 - **Entry**: `/purchases` (authed).
 - **Data**: `purchases` joined to `gifts` (`share_id IS NULL` filter for buyer-self, populated for sent-on-behalf). "Play now" CTA links to the share token (OOP-5438).
 - **Failure modes**: missing `stripe_charges_enabled` history broken client-side is not expected, the UI renders shared status badges.
@@ -209,15 +225,16 @@ Source files: `src/app/g/[token]/`, `src/lib/actions/giftReplies.ts`, `src/app/a
 
 ### 5.1 Open a gift
 - **Actor**: Recipient (anon OK).
-- **Entry**: `/g/[token]` (token = `encode(gen_random_bytes(16),'hex')`, 32 chars).
+- **Entry**: two routes, both `runtime='edge'`:
+  - `/g/[token]` (`src/app/g/[token]/page.tsx:65`) — the envelope front. Renders the "from X" line, envelope paper, and a "Open" button. Reads `getEnvelopeByToken` (`src/lib/gifts/fetch.ts`).
+  - `/g/[token]/open` (`src/app/g/[token]/open/page.tsx:57`) — the type-dispatched renderer. Validates the stored payload with the matching Zod schema, then mounts `src/features/<type>/recipient/<View>.tsx` (or the inline `AnimatedLetter` component for the no-builder type).
 - **Auth gate**: none — this is the viral loop. RLS `gifts_select_via_share` covers the embedded `gifts:gift_id` leg of `shares_select_public_by_token` ([[lovebyte-gifts-select-via-share-rls]]).
-- **Open tracking**:
+- **Open tracking** (stamped on `/g/[token]` mount):
   - First open → `unique_opened_at = now()` (powers the "opened 🎉" badge the sender sees).
   - Every open → `view_count += 1`, `last_opened_at = now()`.
-- **Renderer dispatches on `gifts.type`** to the right `src/features/<type>/recipient/<View>.tsx`.
 - **Password gate** (optional): `shares.password_hash` → form on first render; bcrypt verify server-side before mount.
 - **Expiry**: `shares.expires_at` → past date renders a polite "this gift has expired" view (recipient still sees a thank-you note; the gift body is hidden).
-- **OG image**: `/api/og/[token]` returns a `next/og` PNG for link unfurls (WhatsApp / iMessage / Slack). This is the viral surface — it must render fast and look good in 300×157 preview crops.
+- **OG image**: `/api/og/[shareToken]` (`runtime='edge'`) returns a `next/og` PNG (1200×630) for link unfurls (WhatsApp / iMessage / Slack). This is the viral surface — it must render fast and look good in 300×157 preview crops.
 
 ### 5.2 Free-gift share path
 - **Trigger**: gift with `price_cents IS NULL` or `price_cents = 0`.
@@ -250,9 +267,13 @@ Source files: `src/app/settings/`, `src/app/u/[handle]/`, `src/app/api/upload/av
   - Bucket: `lovebyte-media` (private). Path: `avatars/<user-id>/<uuid>.<ext>`.
   - Server-side `POST /api/upload/avatar` (sb_secret_… cannot hit Storage REST directly → 404).
   - Updates `profiles.avatar_media_id` (Storage path is private; only signed URLs leak).
+- **Media rendering helper**: `GET /api/media/[mediaId]` (cookie-required) returns a one-shot signed URL for the given `gift_media` row. RLS scopes the lookup to "owner OR attached to a listed gift" so listing pages can pull creator avatars without a separate Storage grant.
 
 ### 6.3 Handle change
-- **Action**: `changeHandleAction(newHandle)` → RPC `handle_history` records old→new with `valid_from`. UI shows the current handle only; history is for audit.
+- **Action**: `changeHandleAction(formData)` (auth.ts) → calls RPC `change_handle(p_id, p_new_handle)` which writes both `profiles.handle` and the `handle_history` audit row in one `SECURITY DEFINER` transaction.
+- **Cooldown**: 30-day window between changes; RPC error code P0001 maps to `{ error: 'cooldown', retryAt }` in the client. Format errors (22023) map to `{ error: 'format', reason }`. The error mapping lives in `changeHandleAction`.
+- **Audit & redirects**: `handle_history` (table) keeps every old handle with `UNIQUE (old_handle)` for 30 days. `getRedirectForOldHandle` is wired into the profile route — handle a handle change is no info leak; someone with an old link 301s to the new handle.
+- **UI surface**: `/u/[handle]/edit` (separate from `/settings`) — `OnboardingForm` handles the first-time handle pick; `ProfileEditForm` handles subsequent changes (with cooldown feedback).
 
 ### 6.4 Account deletion (out of scope)
 - Not implemented for MVP. `auth.users` cascades delete `profiles`, `gifts`, `shares`, `gift_comments`, `gift_replies`, `gift_likes`, `creator_follows` (per FK definitions).
