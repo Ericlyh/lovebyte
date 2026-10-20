@@ -13,11 +13,13 @@
 //   GATE_PERF_MIN   default 95   Lighthouse performance score, per route
 //   GATE_A11Y_MIN   default 98   Lighthouse accessibility score, per route
 //   GATE_ROUTES_MIN default 200  required HTTP status for every critical route
+//   GATE_CATALOG_MIN default 1   gifts the public catalog must serve
 
 const BASE = process.env.AUDIT_BASE ?? 'https://lovebyte-five.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
 const A11Y_MIN = Number(process.env.GATE_A11Y_MIN ?? 98);
 const ROUTES_MIN = Number(process.env.GATE_ROUTES_MIN ?? 200);
+const CATALOG_MIN = Number(process.env.GATE_CATALOG_MIN ?? 1);
 
 // Critical routes: a 5xx/404 on any of these is a P1 for "ready to serve".
 const ROUTES = [
@@ -64,12 +66,74 @@ for (const path of ROUTES) {
   }
 }
 
+// ------------------------------------------------------------ Data-layer probe
+// OOP-6154: HTTP status codes are not readiness. When the Supabase project
+// host stopped resolving, /browse and /api/catalog/feed still answered 200
+// with an empty catalog, so a status-code-only gate called a site with no
+// data layer "ready to serve". These two checks are the difference between
+// "the pages load" and "the site can actually serve a user".
+//
+//   1. /status must report data-status-state="operational" — that marker is
+//      only emitted when the live incident read SUCCEEDED. A dead data layer
+//      renders data-status-state="unknown".
+//   2. /api/catalog/feed must serve at least GATE_CATALOG_MIN gifts — an
+//      empty catalog means nothing is published and nothing is for sale.
+try {
+  const res = await fetch(`${BASE}/status`, { redirect: 'manual' });
+  const html = await res.text();
+  const state = html.match(/data-status-state="([a-z]+)"/)?.[1];
+  if (!state) {
+    fail(
+      'data',
+      '/status did not emit data-status-state — the page is not reporting whether its live read succeeded',
+    );
+  } else if (state !== 'operational') {
+    fail(
+      'data',
+      `/status reports data-status-state="${state}" (expected "operational") — the live incident read did not succeed`,
+    );
+  } else {
+    pass('data', '/status live read → operational');
+  }
+} catch (err) {
+  fail('data', `/status unreadable — ${err.message}`);
+}
+
+try {
+  const res = await fetch(`${BASE}/api/catalog/feed`, { redirect: 'manual' });
+  const body = await res.json().catch(() => null);
+  const n = Array.isArray(body?.gifts) ? body.gifts.length : -1;
+  if (!res.ok) {
+    fail('data', `/api/catalog/feed returned ${res.status}`);
+  } else if (n < 0) {
+    fail('data', '/api/catalog/feed did not return a gifts array');
+  } else if (n < CATALOG_MIN) {
+    fail(
+      'data',
+      `/api/catalog/feed served ${n} gifts (expected >= ${CATALOG_MIN}) — the catalog is empty`,
+    );
+  } else {
+    pass('data', `/api/catalog/feed served ${n} gifts`);
+  }
+} catch (err) {
+  fail('data', `/api/catalog/feed unreadable — ${err.message}`);
+}
+
 // ------------------------------------------------------------ Lighthouse probe
 let lighthouseResults = [];
+let lighthouseRan = false;
 try {
   const { default: lighthouse } = await import('lighthouse');
-  const { default: chromeLauncher } = await import('chrome-launcher');
-  const chrome = await chromeLauncher.launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
+  // chrome-launcher is CJS: its `launch` lives on the namespace object, not
+  // on `.default`. Reading `.default.launch` threw "Cannot read properties
+  // of undefined" and silently skipped the whole Lighthouse pass — which
+  // made the gate report PASS without ever measuring perf or a11y.
+  const chromeLauncher = await import('chrome-launcher');
+  const launch = chromeLauncher.launch ?? chromeLauncher.default?.launch;
+  if (typeof launch !== 'function') {
+    throw new Error('chrome-launcher exposes no launch() function');
+  }
+  const chrome = await launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
   try {
     for (const path of LIGHTHOUSE_ROUTES) {
       try {
@@ -92,6 +156,7 @@ try {
         fail('lighthouse', `${path} audit failed — ${String(err.message).slice(0, 120)}`);
       }
     }
+    lighthouseRan = lighthouseResults.length > 0;
   } finally {
     await chrome.kill();
   }
@@ -138,6 +203,22 @@ console.log('\n--- readiness-gate summary ---');
 console.log(`base=${BASE}`);
 console.log(`routes=${httpResults.length} lighthouse=${lighthouseResults.length}`);
 console.log(JSON.stringify({ http: httpResults, lighthouse: lighthouseResults }, null, 2));
+console.log(
+  JSON.stringify(
+    { data: failures.filter((f) => f.startsWith('data:')).map((f) => f.slice(5)) },
+    null,
+    2,
+  ),
+);
+
+// A probe that could not measure perf/a11y must not report PASS. Exit 2
+// means "the probe itself did not run" — the loop files an issue instead of
+// claiming the site is ready.
+if (!lighthouseRan) {
+  console.log('\nRESULT: INCOMPLETE — the Lighthouse pass did not run, so the probe cannot rule out perf/a11y regressions.');
+  console.log('notes: ' + (notes.join(', ') || 'none'));
+  process.exit(2);
+}
 
 if (failures.length === 0) {
   console.log(`\nRESULT: PASS — ${BASE} is ready to serve.`);
