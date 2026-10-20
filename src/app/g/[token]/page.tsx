@@ -8,15 +8,34 @@ import { BRAND } from '@/lib/brand';
 /**
  * /g/[shareToken] — recipient envelope view (Phase 3, architecture §2).
  *
- * Most-shared surface in the app. Runs on Edge Runtime per
- * OOP-4211 hard constraint. Renders the envelope from
+ * Most-shared surface in the app. Renders the envelope from
  * design/03-mockups/recipient-view.html.
  *
  * Data: src/lib/gifts/fetch.ts — falls back to mock seed until the
  * Supabase Cloud project is provisioned (OOP-4211 blocker #2).
+ *
+ * Runtime: nodejs, not edge (OOP-5816, 2026-10-20). This route was on
+ * the Edge Runtime under the OOP-4211 "hard constraint" — a constraint
+ * inherited from the Next 15-era architecture, on a project that now
+ * runs Next 16.3.2, where the Edge Runtime is DEPRECATED and Next
+ * itself says to use 'nodejs'. A previous run flagged the deprecation
+ * for a decision; this is that decision.
+ *
+ * The measurement that settled it: the edge isolate resolves DNS in a
+ * way that blocks the whole isolate, and it does not observe an abort
+ * signal. So when the Supabase project host stopped resolving, this
+ * page took 8.0s to produce its markup — the visitor saw a blank
+ * white page — and no timeout could interrupt it, because the isolate
+ * was blocked. The same read on the Node runtime fails in 3ms: the
+ * Node runtime reports ENOTFOUND immediately and the network policy in
+ * src/lib/supabase/net.ts short-circuits it (7052ms -> 7ms measured).
+ * Every other route in this app is already 'nodejs'.
+ *
+ * Reverting: put `export const runtime = 'edge'` back. The cost is
+ * that a sick data layer takes this page down with it again.
  */
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 type Props = {
   params: Promise<{ token: string }>;

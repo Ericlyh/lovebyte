@@ -31,9 +31,14 @@ import { QuizGame } from '@/features/quiz/recipient/QuizGame';
  * The Zod schema for the type-specific payload is the type-narrow
  * boundary (architecture §6) — anything that fails safeParse falls back
  * to the placeholder rather than rendering a broken game.
+ *
+ * Runtime: nodejs, not edge (OOP-5816, 2026-10-20) — same reasoning and
+ * same measurement as /g/[token]/page.tsx. The Edge Runtime is
+ * deprecated in Next 16.3.2, and an unreachable data layer blocks an
+ * edge isolate for ~8s with no way to interrupt it.
  */
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 type Props = {
   params: Promise<{ token: string }>;
