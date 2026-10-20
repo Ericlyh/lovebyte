@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import type { NextRequest } from 'next/server';
+import { BRAND } from '@/lib/brand';
 import { getEnvelopeByToken } from '@/lib/gifts/fetch';
 
 /**
@@ -99,7 +100,7 @@ export async function GET(
             fontWeight: 700,
           }}
         >
-          LOVEBYTE
+          {BRAND.NAME}
         </div>
       </div>
     ),

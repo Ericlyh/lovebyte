@@ -30,6 +30,7 @@ environment (`vercel env ls production`).
 | `RESEND_FROM` | verified sender in Resend | transactional email |
 | `STRIPE_SECRET_KEY` | Stripe Dashboard → API keys (live, not test) | checkout |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint signing secret | `/api/stripe/webhook` |
+| `INCIDENT_ADMIN_TOKEN` | any random string ≥ 32 chars | `/api/incidents` (status-page admin) |
 
 > **Note (OOP-4894):** The legacy `eyJ…service_role…` JWT is now
 > 401-rejected at the Supabase gateway because "Disable service role
@@ -42,7 +43,8 @@ environment (`vercel env ls production`).
 > **Phase 10 note:** No `TURNSTILE_SECRET_KEY` yet. The waitlist
 > server action rate-limits by hashed IP + UA (one submission per
 > hour per fingerprint). CAPTCHA goes in when we see real bot
-> pressure; closed-beta traffic doesn't warrant it today.
+> pressure; closed-beta traffic doesn't warrant it today. Tracked in
+> OOP-6161.
 
 ---
 
@@ -199,13 +201,25 @@ In order:
    - The page returns to the "you're on the list" state.
    - `select count(*) from public.waitlist;` in SQL Editor shows the
      new row.
-   - The service log shows `[waitlist] new signup …` (the placeholder
-     line; Resend autoresponder wire-up is in the post-launch
-     backlog).
+   - The service log shows `[waitlist] new signup …`.
+   - The autoresponder arrives (OOP-6156): check Resend → Logs for the
+     "You're on the Lovorithm waitlist." message. If `RESEND_API_KEY`
+     is unset the send falls back to a `[email/stub] waitlist email`
+     log line and no email goes out.
 4. Hit `/status` and verify "All systems operational" + "No incidents
    in the last 7 days." (When there are real incidents, the operator
-   inserts via Dashboard → SQL Editor using the `insert into
-   public.incidents …` shape from migration 0009.)
+   logs them with the admin route — OOP-6156:
+
+   ```bash
+   curl -X POST -H "Authorization: Bearer $INCIDENT_ADMIN_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"severity":"degraded","title":"Elevated 502s on /create","body":"Looking into it."}' \
+     https://lovebyte-five.vercel.app/api/incidents
+   ```
+
+   Close it with `PATCH /api/incidents/<id>` and `{"status":"resolved"}`.
+   The token is the `INCIDENT_ADMIN_TOKEN` env var; if it is unset the
+   route returns 503 and writes are disabled.)
 5. Hit `/support` and confirm all three mailto links open a compose
    window with the right address.
 
@@ -286,7 +300,7 @@ backup for P1 incidents.
    use RLS for the insert, so any auth.uid() failure on waitlist is
    a real bug.
 4. **Resend** — Dashboard → Logs. Watch for bounces (the share-link
-   emails and the future waitlist autoresponder).
+   emails and the waitlist autoresponder).
 5. **Stripe** — Dashboard → Events. The webhook endpoint is
    `https://lovebyte-five.vercel.app/api/stripe/webhook`; if events
    pile up in `pending` or `failed`, the webhook secret rotated
@@ -324,27 +338,25 @@ needs a forward-fix migration that undoes the schema delta.
 
 ## 9. Post-launch follow-ups (not blocking the launch)
 
-These are the known gaps from Phase 10 — listed here so they don't
-get lost, NOT pre-launch work:
+The Phase 10 gaps used to live here. They are tracked as issues with
+named owners now — this section is a pointer, not the tracker. If you
+find a new gap, **file an issue**; don't add it to this list.
 
-1. **Waitlist autoresponder email** — the action currently logs the
-   signup but does not call Resend. Wire `sendWaitlistEmail()` in
-   `src/lib/email.ts` (mirror `sendShareEmail`'s shape, simpler
-   copy: "you're on the list, here's what to expect"). The
-   RESEND_API_KEY env var is already required.
-2. **Turnstile / hCaptcha gate** — add the widget to
-   `src/components/WaitlistForm.tsx` once TURNSTILE_SECRET_KEY is
-   configured. Until then, the IP+UA rate-limit is the placeholder
-   (see `src/lib/actions/waitlist.ts` "Out of scope" comment).
-3. **Status-page admin route** — operators currently insert
-   incidents via the Supabase SQL Editor. A `POST /api/incidents`
-   route would let on-call log an incident without leaving Slack.
-   Skip until the rotation grows past one seat.
-4. **Lovorithm → Lovorithm brand consolidation** — `src/lib/brand.ts`
-   keeps `STORAGE_BUCKET`, `PRODUCTION_URL`, and `DOMAIN` on the
-   LoveByte-era values because each requires external coordination
-   (bucket migration, Vercel rename, domain acquisition). Track
-   these under a follow-up issue when the rename becomes blocking.
+| Issue | Item | Owner |
+|---|---|---|
+| OOP-6161 | Turnstile / hCaptcha gate on the waitlist form | Claude Code (host) — deferred until real bot pressure |
+| OOP-6162 | Lovorithm infra rename — Vercel project + Storage bucket | Claude Code (host) |
+| OOP-6163 | Acquire the canonical production domain | board owner (human) |
+| OOP-6164 | Provision the missing production env vars (RESEND, STRIPE) | board owner (human) |
+
+Shipped in OOP-6156 (no longer a gap):
+
+- **Waitlist autoresponder email** — `sendWaitlistEmail()` in
+  `src/lib/email.ts`, called by `joinWaitlistAction` after the insert.
+  Needs `RESEND_API_KEY` + `RESEND_FROM` to actually send (OOP-6164).
+- **Status-page admin route** — `POST /api/incidents` and
+  `PATCH /api/incidents/[id]`, bearer-token auth, service-role writes.
+  See §6 step 4 for the curl.
 
 ---
 

@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { headers } from 'next/headers';
 import { z } from 'zod';
+import { sendWaitlistEmail } from '@/lib/email';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
 
 /**
@@ -20,16 +21,17 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role';
  *   4. Insert via the service-role client (RLS bypass). Conflict on
  *      `email_lc` is treated as success — re-submitting the same
  *      email is idempotent.
- *   5. Fire-and-forget the autoresponder via Resend. We don't await it
- *      so the user gets a fast UI confirmation; failures are logged
- *      but don't fail the action.
+ *   5. Send the autoresponder via Resend (OOP-6156). We await the
+ *      call so the serverless function is not frozen mid-request
+ *      before the HTTP round-trip completes; a failed send is logged
+ *      but does not fail the action, because the DB row is the source
+ *      of truth and the requester is already on the list.
  *
- * Out of scope for this slice (slice 2):
+ * Out of scope:
  *   - Turnstile / hCaptcha gate. The rate-limit step is the
  *     placeholder; once TURNSTILE_SECRET_KEY is wired we add a verify
- *     call before the insert.
- *   - /support + /status + /privacy + /terms pages. Those are the
- *     rest of the OOP-4226 acceptance criteria.
+ *     call before the insert. Tracked as a separate issue — see
+ *     docs/launch-checklist.md §9.
  *
  * Why a server action and not `/api/waitlist`? Mirrors the
  * `createCommentAction` / `joinWaitlistAction` pattern — the form is
@@ -147,18 +149,23 @@ export async function joinWaitlistAction(
     return { ok: false, error: insertErr.message };
   }
 
-  // Autoresponder — slice 2. The right shape is a separate
-  // `sendWaitlistEmail` helper that builds a confirmation message
-  // ("you're on the list, here's what to expect"), not the share-email
-  // template. Reusing `sendShareEmail` here would say "Someone sent
-  // you a gift" which is wrong. Logged for now so we can wire the
-  // proper helper + Resend template without losing the slice.
   console.log('[waitlist] new signup', {
     email,
     intent: intent ?? null,
     locale,
     ipHashPrefix: ipHash ? ipHash.slice(0, 8) : null,
   });
+
+  // Autoresponder — OOP-6156. Awaited (rather than fire-and-forget)
+  // so the serverless function is not frozen mid-request before the
+  // HTTP round-trip to Resend completes. A failed send is logged but
+  // does NOT fail the action: the DB row is the source of truth and
+  // the requester is already on the list, so failing here would only
+  // make the form look broken for a signup that actually succeeded.
+  const mail = await sendWaitlistEmail({ to: email, locale });
+  if (!mail.ok) {
+    console.error('[waitlist] autoresponder failed', mail.error);
+  }
 
   return { ok: true, status: 'inserted' };
 }

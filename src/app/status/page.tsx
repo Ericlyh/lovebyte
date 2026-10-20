@@ -20,10 +20,11 @@ import { postgrest } from '@/lib/supabase/anon';
  * helper so a fresh row shows up within a minute (Next's default cache
  * would otherwise hold the page for 5 minutes).
  *
- * Why not `revalidate`? Phase 10 doesn't have a write-side control
- * plane yet — operators insert via the Supabase dashboard SQL Editor
- * (see docs/launch-checklist.md). When the admin route exists, swap
- * to `revalidatePath('/status', 'page')` on insert.
+ * Why not `revalidate`? The write side is `POST /api/incidents` +
+ * `PATCH /api/incidents/[id]` (OOP-6156), but this route is
+ * `force-dynamic` and its data read is `cache: 'no-store'`, so there
+ * is no cached render to invalidate — `revalidatePath` would be a
+ * no-op. A newly logged incident shows up on the next request.
  */
 
 export const metadata: Metadata = {
