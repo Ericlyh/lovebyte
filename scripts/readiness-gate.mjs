@@ -43,9 +43,26 @@ const LIGHTHOUSE_ROUTES = ['/', '/g/demo', '/browse'];
 const failures = [];
 const notes = [];
 
-function fail(scope, msg) {
-  failures.push(`${scope}: ${msg}`);
-  console.log(`FAIL  ${scope}: ${msg}`);
+/**
+ * A stable, machine-readable id for a gap.
+ *
+ * The loop files issues against gaps, and a gap that recurs every day
+ * must map to the SAME id every day — otherwise the loop files a new
+ * issue for a cause that is already tracked. `scripts/loop-triage.mjs`
+ * matches these ids against the open issues to decide "already tracked"
+ * vs "new gap".
+ */
+function slug(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function fail(scope, msg, key) {
+  const id = slug(key ?? scope);
+  failures.push({ id, scope, message: msg });
+  console.log(`FAIL  ${id}: ${msg}`);
 }
 function pass(scope, msg) {
   console.log(`ok    ${scope}: ${msg}`);
@@ -69,18 +86,19 @@ for (const path of ROUTES) {
     const ms = Date.now() - started;
     httpResults.push({ path, status: res.status, ms });
     if (res.status < ROUTES_MIN) {
-      fail('http', `${path} returned ${res.status} (expected >= ${ROUTES_MIN})`);
+      fail('http', `${path} returned ${res.status} (expected >= ${ROUTES_MIN})`, `http-${path}-status`);
     } else if (ms > ROUTE_MAX_MS) {
       fail(
         'http',
         `${path} served in ${ms}ms (expected <= ${ROUTE_MAX_MS}ms) — too slow to serve`,
+        `http-${path}-slow`,
       );
     } else {
       pass('http', `${path} ${res.status} in ${ms}ms`);
     }
   } catch (err) {
     httpResults.push({ path, status: 0, ms: Date.now() - started });
-    fail('http', `${path} unreachable — ${err.message}`);
+    fail('http', `${path} unreachable — ${err.message}`, `http-${path}-unreachable`);
   }
 }
 
@@ -104,22 +122,25 @@ try {
     fail(
       'data',
       '/status did not emit data-status-state — the page is not reporting whether its live read succeeded',
+      'data-status-missing',
     );
   } else if (state === 'unknown') {
     fail(
       'data',
       '/status reports data-status-state="unknown" — the live incident read FAILED, so the data layer is not serving',
+      'data-status-unknown',
     );
   } else if (state !== 'operational') {
     fail(
       'data',
       `/status reports data-status-state="${state}" (expected "operational") — the live read succeeded but the site is not fully operational`,
+      `data-status-${state}`,
     );
   } else {
     pass('data', '/status live read → operational');
   }
 } catch (err) {
-  fail('data', `/status unreadable — ${err.message}`);
+  fail('data', `/status unreadable — ${err.message}`, 'data-status-unreadable');
 }
 
 try {
@@ -127,19 +148,20 @@ try {
   const body = await res.json().catch(() => null);
   const n = Array.isArray(body?.gifts) ? body.gifts.length : -1;
   if (!res.ok) {
-    fail('data', `/api/catalog/feed returned ${res.status}`);
+    fail('data', `/api/catalog/feed returned ${res.status}`, 'data-catalog-error');
   } else if (n < 0) {
-    fail('data', '/api/catalog/feed did not return a gifts array');
+    fail('data', '/api/catalog/feed did not return a gifts array', 'data-catalog-malformed');
   } else if (n < CATALOG_MIN) {
     fail(
       'data',
       `/api/catalog/feed served ${n} gifts (expected >= ${CATALOG_MIN}) — the catalog is empty`,
+      'data-catalog-empty',
     );
   } else {
     pass('data', `/api/catalog/feed served ${n} gifts`);
   }
 } catch (err) {
-  fail('data', `/api/catalog/feed unreadable — ${err.message}`);
+  fail('data', `/api/catalog/feed unreadable — ${err.message}`, 'data-catalog-unreadable');
 }
 
 // ------------------------------------------------------------ Lighthouse probe
@@ -170,13 +192,13 @@ try {
         const perf = Math.round(c.performance.score * 100);
         const a11y = Math.round(c.accessibility.score * 100);
         lighthouseResults.push({ path, perf, a11y });
-        if (perf < PERF_MIN) fail('lighthouse', `${path} perf=${perf} (< ${PERF_MIN})`);
+        if (perf < PERF_MIN) fail('lighthouse', `${path} perf=${perf} (< ${PERF_MIN})`, `lighthouse-${path}-perf`);
         else pass('lighthouse', `${path} perf=${perf}`);
-        if (a11y < A11Y_MIN) fail('lighthouse', `${path} a11y=${a11y} (< ${A11Y_MIN})`);
+        if (a11y < A11Y_MIN) fail('lighthouse', `${path} a11y=${a11y} (< ${A11Y_MIN})`, `lighthouse-${path}-a11y`);
         else pass('lighthouse', `${path} a11y=${a11y}`);
       } catch (err) {
         lighthouseResults.push({ path, perf: null, a11y: null });
-        fail('lighthouse', `${path} audit failed — ${String(err.message).slice(0, 120)}`);
+        fail('lighthouse', `${path} audit failed — ${String(err.message).slice(0, 120)}`, `lighthouse-${path}-audit`);
       }
     }
     lighthouseRan = lighthouseResults.length > 0;
@@ -192,33 +214,33 @@ try {
 try {
   const html = await (await fetch(`${BASE}/`)).text();
   for (const tag of ['og:title', 'og:description', 'twitter:card']) {
-    if (!html.includes(tag)) fail('og', `missing ${tag} on /`);
+    if (!html.includes(tag)) fail('og', `missing ${tag} on /`, `og-missing-${tag}`);
   }
   // OOP-6155 — the static card image ships now (public/og.png), so a
   // missing og:image is a failure rather than a warning. The tag is also
   // resolved: an og:image that 404s (or is not a PNG) fails the gate.
   if (!html.includes('og:image')) {
-    fail('og', 'missing og:image on /');
+    fail('og', 'missing og:image on /', 'og-missing-og-image');
   } else {
     const tag = html.match(/<meta[^>]*property="og:image"[^>]*>/)?.[0];
     const src = tag?.match(/content="([^"]+)"/)?.[1];
     if (!src) {
-      fail('og', 'og:image tag on / has no content URL');
+      fail('og', 'og:image tag on / has no content URL', 'og-image-no-url');
     } else {
       try {
         const img = await fetch(src, { redirect: 'follow' });
         const ct = img.headers.get('content-type') ?? '';
-        if (!img.ok) fail('og', `og:image ${src} returned ${img.status}`);
-        else if (!ct.startsWith('image/png')) fail('og', `og:image ${src} is ${ct} (expected image/png)`);
+        if (!img.ok) fail('og', `og:image ${src} returned ${img.status}`, 'og-image-not-ok');
+        else if (!ct.startsWith('image/png')) fail('og', `og:image ${src} is ${ct} (expected image/png)`, 'og-image-not-png');
         else pass('og', `og:image ${src} ${img.status} ${ct}`);
       } catch (err) {
-        fail('og', `og:image ${src} unreachable — ${err.message}`);
+        fail('og', `og:image ${src} unreachable — ${err.message}`, 'og-image-unreachable');
       }
     }
   }
-  if (failures.filter((f) => f.startsWith('og:')).length === 0) pass('og', 'og:/twitter: tags present');
+  if (failures.filter((f) => f.scope === 'og').length === 0) pass('og', 'og:/twitter: tags present');
 } catch (err) {
-  fail('og', `could not fetch / — ${err.message}`);
+  fail('og', `could not fetch / — ${err.message}`, 'og-unfetchable');
 }
 
 // ------------------------------------------------------------------- summary
@@ -228,11 +250,66 @@ console.log(`routes=${httpResults.length} lighthouse=${lighthouseResults.length}
 console.log(JSON.stringify({ http: httpResults, lighthouse: lighthouseResults }, null, 2));
 console.log(
   JSON.stringify(
-    { data: failures.filter((f) => f.startsWith('data:')).map((f) => f.slice(5)) },
+    { data: failures.filter((f) => f.scope === 'data').map((f) => f.message) },
     null,
     2,
   ),
 );
+
+// A probe that could not measure perf/a11y must not report PASS. Exit 2
+// means "the probe itself did not run" — the loop files an issue instead of
+// claiming the site is ready.
+const verdict = !lighthouseRan ? 'INCOMPLETE' : failures.length === 0 ? 'PASS' : 'FAIL';
+
+// Machine-readable output for the loop's triage step
+// (scripts/loop-triage.mjs): the gap ids are what the loop matches
+// against open issues, so a gap that recurs maps to the same issue
+// instead of filing a new one every day.
+if (process.argv.includes('--json')) {
+  console.log(
+    JSON.stringify(
+      {
+        base: BASE,
+        verdict,
+        exitCode: verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2,
+        gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
+        http: httpResults,
+        lighthouse: lighthouseResults,
+        notes,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+// `--json-file <path>` writes the same payload to a file instead of
+// stdout, so a caller can consume it without parsing the log.
+const jsonFileIndex = process.argv.indexOf('--json-file');
+if (jsonFileIndex !== -1) {
+  const path = process.argv[jsonFileIndex + 1];
+  if (!path) {
+    console.error('--json-file needs a path');
+    process.exit(2);
+  }
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(
+    path,
+    JSON.stringify(
+      {
+        base: BASE,
+        verdict,
+        exitCode: verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2,
+        gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
+        http: httpResults,
+        lighthouse: lighthouseResults,
+        notes,
+      },
+      null,
+      2,
+    ),
+  );
+}
 
 // A probe that could not measure perf/a11y must not report PASS. Exit 2
 // means "the probe itself did not run" — the loop files an issue instead of
@@ -249,6 +326,6 @@ if (failures.length === 0) {
 }
 
 console.log(`\nRESULT: FAIL — ${failures.length} gap(s):`);
-for (const f of failures) console.log(`  - ${f}`);
+for (const f of failures) console.log(`  - ${f.id}: ${f.message}`);
 if (notes.length) console.log(`notes: ${notes.join(', ')}`);
 process.exit(1);

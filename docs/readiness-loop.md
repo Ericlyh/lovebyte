@@ -59,7 +59,34 @@ The gate checks, against `https://lovebyte-five.vercel.app`:
 `og:image` is currently a **warning**, not a failure — no static OG
 asset ships yet. It is tracked as its own issue.
 
-## 2. Pick the top gap
+## 2. Triage the gaps against the board
+
+```bash
+node scripts/readiness-gate.mjs --json-file /tmp/gate.json
+node scripts/loop-triage.mjs /tmp/gate.json
+```
+
+The gate is honest, which means a gap that is caused by something you
+cannot fix comes back every single morning. Triage separates the two
+kinds:
+
+- **`already-tracked`** — an open issue already claims this gap. Post
+  the current gate result as a comment on that issue and move on. If
+  the tracking issue is `blocked`, do **not** try to fix the gap and do
+  **not** file a new issue — the cause is with a human.
+- **`new`** — nothing tracks this gap. File an issue for it, and put
+  `gap:<id>` in the description so the next firing recognises it.
+
+An issue claims a gap by containing the marker `gap:<id>` in its title
+or description. The gate's gap ids are stable, so the marker is stable:
+`data-status-unknown`, `data-catalog-empty`,
+`lighthouse-browse-perf`, `http-browse-slow`, `og-missing-og-image`,
+and so on. Today `OOP-6154` claims the two data-layer gaps.
+
+This step exists so the loop does not fill the board with one duplicate
+issue per gap per day — a loop that spams is a loop nobody reads.
+
+## 3. Pick the top gap
 
 Order by blast radius, not by how easy it is to fix:
 
@@ -73,15 +100,17 @@ Order by blast radius, not by how easy it is to fix:
 4. Lighthouse perf < 95 or a11y < 98.
 5. Missing `og:`/`twitter:` metadata.
 
-Exactly **one** gap per firing. The loop is a loop, not a batch.
+Skip anything triage marked `already-tracked` — it is not a gap you
+can close this firing. Exactly **one** gap per firing. The loop is a
+loop, not a batch.
 
-## 3. Fix it
+## 4. Fix it
 
 - Reproduce locally first (`pnpm dev`), then fix.
 - `pnpm typecheck && pnpm test` must be green before you commit.
 - Commit with a message that names the gate line that was red.
 
-## 4. Verify and ship
+## 5. Verify and ship
 
 ```bash
 git push origin main            # triggers the Vercel GitHub deploy
@@ -92,7 +121,7 @@ node scripts/readiness-gate.mjs
 The deploy is verified, never assumed: check `readyState === 'READY'`
 and `aliasAssigned` on the deployment object before re-running the gate.
 
-## 5. Publish the result
+## 6. Publish the result
 
 Post the run summary as a comment on the triage target (OOP-5816):
 
@@ -104,8 +133,8 @@ Post the run summary as a comment on the triage target (OOP-5816):
 - Remaining: <list>
 ```
 
-Also update the routine's own state on the triage issue so the next
-firing knows what was already attempted.
+Also comment the result on every issue triage marked `already-tracked`,
+so the tracker issue carries the current state of its gap.
 
 ---
 
