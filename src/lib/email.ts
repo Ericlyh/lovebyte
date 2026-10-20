@@ -163,9 +163,20 @@ async function deliverEmail({
   const resendFrom = process.env.RESEND_FROM;
 
   if (!resendApiKey) {
-    // Dev / staging fallback — never ship to prod without this set.
-    // Production builds should fail loud here, but for now we log so
-    // webhook flows still complete end-to-end during local testing.
+    // Production must fail loud (OOP-6168). A stubbed "sent" id in prod
+    // is a lie: the waitlist would tell a visitor they are on the list
+    // while no email was ever sent, and a paid gift would never reach
+    // its recipient. Dev / test keep the stub so local flows work
+    // without a live ESP.
+    if (process.env.NODE_ENV === 'production') {
+      console.error(
+        '[email] RESEND_API_KEY is not set — refusing to report an unsent email as sent',
+      );
+      return {
+        ok: false,
+        error: 'RESEND_API_KEY is not set — transactional email is not configured.',
+      };
+    }
     console.log(`[email/stub] ${kind} email`, { to, subject, ...meta });
     return { ok: true, id: `stub-${Date.now()}` };
   }

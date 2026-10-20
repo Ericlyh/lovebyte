@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sendShareEmail, sendWaitlistEmail } from './email';
 
 /**
@@ -9,6 +9,13 @@ import { sendShareEmail, sendWaitlistEmail } from './email';
  * stub fallback when `RESEND_API_KEY` is unset, the error shapes — is
  * exercised for real.
  */
+
+// The stub-vs-production branch keys off NODE_ENV, so it is pinned
+// rather than inherited — the ambient shell may well export
+// NODE_ENV=production (OOP-6168).
+beforeEach(() => {
+  vi.stubEnv('NODE_ENV', 'test');
+});
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -37,6 +44,19 @@ describe('sendWaitlistEmail', () => {
 
     expect(result.ok).toBe(true);
     expect(result.ok && result.id).toMatch(/^stub-/);
+  });
+
+  it('refuses to report an unsent email as sent in production (OOP-6168)', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('RESEND_API_KEY', '');
+    vi.stubEnv('RESEND_FROM', '');
+
+    const result = await sendWaitlistEmail({ to: 'a@example.com' });
+
+    // A stubbed "sent" id in prod is a lie: the waitlist would tell a
+    // visitor they are on the list while no email was ever sent.
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toMatch(/RESEND_API_KEY/);
   });
 
   it('sends through Resend and returns the message id', async () => {
