@@ -785,7 +785,9 @@
       "home": "主頁",
       "support": "支援",
       "privacy": "私隱"
-    }
+    },
+    "overallUnknown": "狀態未知 — 未能連接即時資料",
+    "statusUnavailable": "未能連接即時狀態資料，最近的事故可能未有顯示。"
   },
   "Support": {
     "title": "支援",

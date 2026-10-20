@@ -785,7 +785,9 @@
       "home": "Home",
       "support": "Support",
       "privacy": "Privacy"
-    }
+    },
+    "overallUnknown": "Status unknown — live data unreachable",
+    "statusUnavailable": "We could not reach the live status data, so recent incidents may not be shown."
   },
   "Support": {
     "title": "Support",

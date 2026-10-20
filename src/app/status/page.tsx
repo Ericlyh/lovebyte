@@ -84,21 +84,28 @@ export default async function StatusPage() {
   });
 
   // Render even on read error — never let a status page 500, that
-  // defeats the point. Fall back to "all operational" with a small
-  // note so the operator notices the data layer is misbehaving.
+  // defeats the point. But a failed read is NOT "operational" (OOP-6154):
+  // when the Supabase host does not resolve, this page used to render a
+  // green "All systems operational" pill over a totally dead data layer,
+  // which is exactly how a P1 stayed hidden. Report "unknown" instead.
   const allRows: Incident[] = Array.isArray(data) ? data : [];
-  const headline = error ? 'operational' : pickHeadline(allRows);
+  const readFailed = Boolean(error);
+  const headline: IncidentSeverity | 'unknown' = readFailed
+    ? 'unknown'
+    : pickHeadline(allRows);
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const recent = allRows.filter((r) => new Date(r.created_at).getTime() >= cutoff);
 
   const headlineText =
-    headline === 'operational'
-      ? t('overallOperational')
-      : headline === 'maintenance'
-        ? t('overallMaintenance')
-        : headline === 'degraded'
-          ? t('overallDegraded')
-          : t('overallOutage');
+    headline === 'unknown'
+      ? t('overallUnknown')
+      : headline === 'operational'
+        ? t('overallOperational')
+        : headline === 'maintenance'
+          ? t('overallMaintenance')
+          : headline === 'degraded'
+            ? t('overallDegraded')
+            : t('overallOutage');
 
   const headlineDotClass = `lb-status-dot lb-status-dot--${
     headline === 'operational' ? 'ok' : headline === 'outage' ? 'down' : 'warn'
@@ -124,7 +131,15 @@ export default async function StatusPage() {
           <p className="lede">{t('lede')}</p>
         </header>
 
-        <div className="lb-status-overall" aria-live="polite">
+        {/* data-status-state is the machine-readable contract: the readiness
+            gate (scripts/readiness-gate.mjs) reads it to tell "the live
+            incident read succeeded" apart from "the page rendered while the
+            data layer was dead". Keep it in sync with `headline`. */}
+        <div
+          className="lb-status-overall"
+          aria-live="polite"
+          data-status-state={headline}
+        >
           <span className={headlineDotClass} aria-hidden="true" />
           <span className="lb-status-overall-text">{headlineText}</span>
           <span className="lb-status-overall-time">
@@ -134,7 +149,9 @@ export default async function StatusPage() {
 
         <div className="lb-status-section">
           <h2>{t('last7')}</h2>
-          {recent.length === 0 ? (
+          {readFailed ? (
+            <p className="lb-status-empty">{t('statusUnavailable')}</p>
+          ) : recent.length === 0 ? (
             <p className="lb-status-empty">{t('noIncidents')}</p>
           ) : (
             recent.map((row) => {
