@@ -109,7 +109,7 @@ describe('supabaseFetch', () => {
     expect(elapsed).toBeLessThan(1000);
   });
 
-  it('gives reads a deadline but leaves writes alone', async () => {
+  it('gives reads and writes a deadline but exempts Storage uploads', async () => {
     const signals: (AbortSignal | null | undefined)[] = [];
     vi.stubGlobal('fetch', vi.fn(async (_input: unknown, init: RequestInit) => {
       signals.push(init.signal);
@@ -117,10 +117,13 @@ describe('supabaseFetch', () => {
     }));
 
     await supabaseFetch('https://x.supabase.co/rest/v1/gifts', { method: 'GET' });
+    await supabaseFetch('https://x.supabase.co/rest/v1/gifts', { method: 'POST' });
     await supabaseFetch('https://x.supabase.co/storage/v1/object', { method: 'POST' });
 
-    // A read gets a deadline; an upload (POST) must not be cut short.
+    // A read and a write are both bounded; a 50MB upload must not be
+    // cut off by a deadline.
     expect(signals[0]).toBeInstanceOf(AbortSignal);
-    expect(signals[1]).toBeUndefined();
+    expect(signals[1]).toBeInstanceOf(AbortSignal);
+    expect(signals[2]).toBeUndefined();
   });
 });

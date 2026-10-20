@@ -21,9 +21,17 @@
  *      (`fetchWithRetry` rethrows AbortError before it considers a
  *      retry). 503/520 responses still get their upstream retries,
  *      because those genuinely are transient.
- *   2. **Reads have a deadline.** A hung read must not be able to hold a
- *      page render open forever. Writes and uploads are exempt: a 50MB
- *      video upload is a legitimate multi-minute request.
+ *   2. **Every request has a deadline.** A hung request must not be able
+ *      to hold a page render open forever. Reads get a tight one; writes
+ *      get a looser one; Storage uploads get none, because a 50MB video
+ *      is a legitimate multi-minute request.
+ *
+ * The deadline is what makes rule 1 runtime-independent. The Node
+ * runtime reports an unresolvable host as `ENOTFOUND` within ~3ms, so
+ * rule 1 catches it. The edge runtime hangs on the same lookup for
+ * ~7 seconds and reports it with a different error shape, so there the
+ * deadline is what bounds the damage. Both paths end at the same place:
+ * an `AbortError`, which postgrest-js does not retry.
  *
  * The plain `fetch` helper in `anon.ts` has no retry layer, but it gets
  * the deadline for the same reason.
@@ -35,7 +43,15 @@
  * (empty catalog, "status unknown") rather than hanging.
  */
 export const READ_DEADLINE_MS = Number(
-  process.env.SUPABASE_READ_TIMEOUT_MS ?? 5000,
+  process.env.SUPABASE_READ_TIMEOUT_MS ?? 2000,
+);
+
+/**
+ * Deadline for writes (POST/PATCH/PUT to PostgREST). Looser than a read
+ * because a write may wait on a lock or a trigger.
+ */
+export const WRITE_DEADLINE_MS = Number(
+  process.env.SUPABASE_WRITE_TIMEOUT_MS ?? 10000,
 );
 
 /**
@@ -89,17 +105,30 @@ export function unreachableError(err: unknown): Error {
 }
 
 /**
- * Combine the caller's signal with the read deadline. `AbortSignal.any`
- * is available in Node 20+ and the edge runtime; the fallback keeps the
+ * Combine the caller's signal with a deadline. `AbortSignal.any` is
+ * available in Node 20+ and the edge runtime; the fallback keeps the
  * caller's signal alone rather than silently dropping it.
  */
-function withDeadline(signal: AbortSignal | null | undefined): AbortSignal {
-  const deadline = AbortSignal.timeout(READ_DEADLINE_MS);
+function withDeadline(
+  signal: AbortSignal | null | undefined,
+  ms: number,
+): AbortSignal {
+  const deadline = AbortSignal.timeout(ms);
   if (!signal) return deadline;
   if (typeof AbortSignal.any === 'function') {
     return AbortSignal.any([signal, deadline]);
   }
   return signal;
+}
+
+/**
+ * Storage uploads are exempt from the deadline: a 50MB video on a slow
+ * link is a legitimate multi-minute request, and cutting it off would
+ * look to the user like a failed upload.
+ */
+function isUpload(input: RequestInfo | URL): boolean {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  return url.includes('/storage/v1/');
 }
 
 /**
@@ -114,7 +143,12 @@ export function supabaseFetch(
 ): Promise<Response> {
   const method = (init?.method ?? 'GET').toUpperCase();
   const isRead = method === 'GET' || method === 'HEAD';
-  const signal = isRead ? withDeadline(init?.signal) : init?.signal;
+  const deadline = isUpload(input)
+    ? null
+    : isRead
+      ? READ_DEADLINE_MS
+      : WRITE_DEADLINE_MS;
+  const signal = deadline === null ? init?.signal : withDeadline(init?.signal, deadline);
 
   return fetch(input, { ...init, signal }).catch((err: unknown) => {
     if (isUnreachable(err)) throw unreachableError(err);
