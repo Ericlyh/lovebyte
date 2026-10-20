@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { supabaseFetch } from './net';
 
 /**
  * Server-side Supabase client (Server Components, Server Actions, Route Handlers).
@@ -39,6 +40,10 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey,
     {
+      // OOP-5816: an unreachable host must fail fast. Without this the
+      // postgrest-js retry policy burns 7s of backoff on every read
+      // against a dead project host — see src/lib/supabase/net.ts.
+      global: { fetch: supabaseFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

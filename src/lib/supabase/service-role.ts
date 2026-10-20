@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
+import { supabaseFetch } from './net';
 
 /**
  * Service-role Supabase client (M-E, OOP-4277).
@@ -48,6 +49,11 @@ let cached: ReturnType<typeof createClient> | null = null;
 export async function createServiceRoleClient() {
   if (cached) return cached;
   cached = createClient(SUPABASE_URL!, SECRET_KEY!, {
+    // OOP-5816: an unreachable host must fail fast — the postgrest-js
+    // retry policy otherwise burns 7s of backoff per request against a
+    // dead project host. Uploads are POSTs, so they keep their (absent)
+    // deadline: a 50MB video is a legitimate multi-minute request.
+    global: { fetch: supabaseFetch },
     auth: {
       autoRefreshToken: false,
       persistSession: false,

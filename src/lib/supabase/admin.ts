@@ -1,4 +1,5 @@
 import type { PostgrestError } from '@/lib/supabase/anon';
+import { supabaseFetch } from './net';
 
 /**
  * Server-only Supabase admin lookup helper.
@@ -60,7 +61,7 @@ export async function lookupEmail(
 
   let res: Response;
   try {
-    res = await fetch(url.toString(), {
+    res = await supabaseFetch(url.toString(), {
       headers: {
         apikey: SECRET_KEY!,
         Authorization: `Bearer ${SECRET_KEY}`,

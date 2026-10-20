@@ -10,6 +10,8 @@
  * have a cookie store. For authed reads/writes use `@/lib/supabase/server`.
  */
 
+import { supabaseFetch } from './net';
+
 // OOP-5048: prefer the publishable key (sb_publishable_…) over the legacy
 // anon JWT. Since OOP-4894 the legacy JWT is 401-rejected at the Supabase
 // gateway; the publishable key keeps working. See
@@ -58,7 +60,7 @@ export async function postgrest<T>(
 
   let res: Response;
   try {
-    res = await fetch(url.toString(), {
+    res = await supabaseFetch(url.toString(), {
       method: init.method ?? 'GET',
       headers: {
         apikey: SUPABASE_KEY!,

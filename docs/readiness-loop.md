@@ -40,6 +40,11 @@ The gate checks, against `https://lovebyte-five.vercel.app`:
 
 - HTTP 200 on `/`, `/browse`, `/g/demo`, `/status`, `/support`,
   `/privacy`, `/terms`, `/login`, `/signup`
+- Each critical route is served **in full** within `GATE_ROUTE_MAX_MS`
+  (default 3000ms). The gate reads the response body, not just the
+  headers: `/browse` once answered 200 with its first byte in 350ms and
+  its markup 6.5s later, so a visitor saw a blank white page while a
+  database read timed out. A slow route is a failed route.
 - The **data layer** is live (OOP-6154): `/status` must emit
   `data-status-state="operational"` — that marker is only rendered when
   the incident read actually succeeded, and `"unknown"` means the read
@@ -62,8 +67,11 @@ Order by blast radius, not by how easy it is to fix:
 2. Any route returning 200 but rendering an empty/error state (e.g. the
    catalog feed returns `{"gifts":[]}` because the data layer is down —
    this is a *silent* failure and is worse than a 500).
-3. Lighthouse perf < 95 or a11y < 98.
-4. Missing `og:`/`twitter:` metadata.
+3. Any critical route served slower than `GATE_ROUTE_MAX_MS` — a route
+   that takes 7 seconds to produce its markup is unusable even though
+   it answers 200.
+4. Lighthouse perf < 95 or a11y < 98.
+5. Missing `og:`/`twitter:` metadata.
 
 Exactly **one** gap per firing. The loop is a loop, not a batch.
 
@@ -112,3 +120,8 @@ firing knows what was already attempted.
 - **The data layer is the first thing to check.** If the Supabase host
   does not resolve, every DB-backed route degrades to an empty state
   rather than an error. An empty catalog is a P1, not a quiet success.
+- **A slow dependency is a failure, not a slow success.** `/browse` once
+  held its whole body open for 6.5 seconds while a database read sat in
+  a client-library retry backoff, and the visitor saw a blank page. Fix
+  the failure mode at the source — `src/lib/supabase/net.ts` caps the
+  cost of an unreachable host — rather than the symptom.

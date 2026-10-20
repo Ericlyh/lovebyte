@@ -13,12 +13,14 @@
 //   GATE_PERF_MIN   default 95   Lighthouse performance score, per route
 //   GATE_A11Y_MIN   default 98   Lighthouse accessibility score, per route
 //   GATE_ROUTES_MIN default 200  required HTTP status for every critical route
+//   GATE_ROUTE_MAX_MS default 3000  max time to serve a critical route in full
 //   GATE_CATALOG_MIN default 1   gifts the public catalog must serve
 
 const BASE = process.env.AUDIT_BASE ?? 'https://lovebyte-five.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
 const A11Y_MIN = Number(process.env.GATE_A11Y_MIN ?? 98);
 const ROUTES_MIN = Number(process.env.GATE_ROUTES_MIN ?? 200);
+const ROUTE_MAX_MS = Number(process.env.GATE_ROUTE_MAX_MS ?? 3000);
 const CATALOG_MIN = Number(process.env.GATE_CATALOG_MIN ?? 1);
 
 // Critical routes: a 5xx/404 on any of these is a P1 for "ready to serve".
@@ -50,18 +52,34 @@ function pass(scope, msg) {
 }
 
 // ---------------------------------------------------------------- HTTP probe
+// OOP-5816: the response must be served IN FULL within GATE_ROUTE_MAX_MS.
+//
+// A status code alone does not mean the page is usable. `/browse` was
+// answering 200 with its first byte in 350ms and its markup 6.5 seconds
+// later — the server held the whole body while a database read timed
+// out, so the visitor saw a blank white page. Reading the body here
+// (rather than just the headers) is what makes that visible: a route
+// that streams slowly fails the budget instead of passing as 200.
 let httpResults = [];
 for (const path of ROUTES) {
+  const started = Date.now();
   try {
     const res = await fetch(`${BASE}${path}`, { redirect: 'manual' });
-    httpResults.push({ path, status: res.status });
+    await res.text();
+    const ms = Date.now() - started;
+    httpResults.push({ path, status: res.status, ms });
     if (res.status < ROUTES_MIN) {
       fail('http', `${path} returned ${res.status} (expected >= ${ROUTES_MIN})`);
+    } else if (ms > ROUTE_MAX_MS) {
+      fail(
+        'http',
+        `${path} served in ${ms}ms (expected <= ${ROUTE_MAX_MS}ms) — too slow to serve`,
+      );
     } else {
-      pass('http', `${path} ${res.status}`);
+      pass('http', `${path} ${res.status} in ${ms}ms`);
     }
   } catch (err) {
-    httpResults.push({ path, status: 0 });
+    httpResults.push({ path, status: 0, ms: Date.now() - started });
     fail('http', `${path} unreachable — ${err.message}`);
   }
 }
