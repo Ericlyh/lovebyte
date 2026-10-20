@@ -164,6 +164,60 @@ try {
   fail('data', `/api/catalog/feed unreadable — ${err.message}`, 'data-catalog-unreadable');
 }
 
+// ------------------------------------------------------------- Money-path probe
+// A marketplace that cannot take a payment is not ready to serve, and
+// the failure mode is the worst kind: the customer pays and nothing is
+// fulfilled. The Stripe webhook is where a paid order is turned into a
+// gift, so it is where "can we take money" is decided.
+//
+// This checks the CONFIGURATION, not a live charge. A POST with a bogus
+// signature must come back 400 ("signature verification failed") when
+// STRIPE_WEBHOOK_SECRET is set, and 500 ("webhook secret not
+// configured") when it is not.
+//
+// Two Stripe env vars gate the money path and they fail differently, so
+// the probe must tell them apart — a message that names the wrong key
+// sends the reader to the wrong dashboard. `STRIPE_WEBHOOK_SECRET` is
+// checked first and returns a JSON error naming itself; `STRIPE_SECRET_KEY`
+// is not checked at all, so the Stripe SDK throws on first use and the
+// route dies with an opaque 5xx.
+try {
+  const res = await fetch(`${BASE}/api/stripe/webhook`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'stripe-signature': 't=1,v1=readiness-gate-probe',
+    },
+    body: JSON.stringify({ type: 'checkout.session.completed' }),
+  });
+  const body = await res.json().catch(() => ({}));
+  const errText = typeof body?.error === 'string' ? body.error : '';
+
+  if (res.status === 400) {
+    pass('money', 'stripe webhook is configured (bogus signature rejected as expected)');
+  } else if (errText === 'webhook secret not configured') {
+    fail(
+      'money',
+      'STRIPE_WEBHOOK_SECRET is missing from the deployed env — a paid order could be taken but never fulfilled',
+      'stripe-webhook-secret-missing',
+    );
+  } else if (res.status >= 500) {
+    fail(
+      'money',
+      `/api/stripe/webhook returned ${res.status} (${errText || 'no error detail'}) — check STRIPE_SECRET_KEY; the Stripe SDK throws on first use when it is unset`,
+      'stripe-money-path-error',
+    );
+  } else {
+    fail(
+      'money',
+      `/api/stripe/webhook returned ${res.status} (expected 400 for a bogus signature)`,
+      'stripe-webhook-unexpected',
+    );
+  }
+} catch (err) {
+  fail('money', `/api/stripe/webhook unreachable — ${err.message}`, 'stripe-webhook-unreachable');
+}
+
 // ------------------------------------------------------------ Lighthouse probe
 let lighthouseResults = [];
 let lighthouseRan = false;
