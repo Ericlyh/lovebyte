@@ -132,6 +132,43 @@ function isUpload(input: RequestInfo | URL): boolean {
 }
 
 /**
+ * A deadline error shaped like an abort, so postgrest-js rethrows it
+ * instead of retrying it.
+ */
+function deadlineError(ms: number, method: string): Error {
+  const message = `Supabase ${method} exceeded the ${ms}ms deadline`;
+  const err = new DOMException(message, 'AbortError') as Error & { cause?: unknown };
+  err.cause = new Error(message);
+  return err;
+}
+
+/**
+ * Bound how long a caller WAITS for a request, independently of whether
+ * the underlying fetch can be cancelled.
+ *
+ * This is the runtime-independent half of the deadline. The abort
+ * signal alone is not enough: the edge runtime resolves DNS in a way
+ * that does not observe the signal, so an aborted fetch there still
+ * waits the full ~8 seconds for the lookup to give up. Racing the
+ * request against a timer bounds the caller's wait no matter what the
+ * runtime does with the signal. The losing promise is still awaited by
+ * `Promise.race`, so a later rejection is handled rather than unhandled.
+ */
+function softDeadline<T>(
+  request: Promise<T>,
+  ms: number,
+  method: string,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expiry = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(deadlineError(ms, method)), ms);
+  });
+  return Promise.race([request, expiry]).finally(() => {
+    if (timer !== undefined) clearTimeout(timer);
+  });
+}
+
+/**
  * The `fetch` every Supabase client in this app uses.
  *
  * Pass it as `global: { fetch: supabaseFetch }` to the supabase-js
@@ -150,8 +187,11 @@ export function supabaseFetch(
       : WRITE_DEADLINE_MS;
   const signal = deadline === null ? init?.signal : withDeadline(init?.signal, deadline);
 
-  return fetch(input, { ...init, signal }).catch((err: unknown) => {
+  const request = fetch(input, { ...init, signal }).catch((err: unknown) => {
     if (isUnreachable(err)) throw unreachableError(err);
     throw err;
   });
+
+  if (deadline === null) return request;
+  return softDeadline(request, deadline, method);
 }

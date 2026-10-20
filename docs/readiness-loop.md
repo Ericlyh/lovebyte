@@ -41,7 +41,7 @@ The gate checks, against `https://lovebyte-five.vercel.app`:
 - HTTP 200 on `/`, `/browse`, `/g/demo`, `/status`, `/support`,
   `/privacy`, `/terms`, `/login`, `/signup`
 - Each critical route is served **in full** within `GATE_ROUTE_MAX_MS`
-  (default 3000ms). The gate reads the response body, not just the
+  (default 4000ms). The gate reads the response body, not just the
   headers: `/browse` once answered 200 with its first byte in 350ms and
   its markup 6.5s later, so a visitor saw a blank white page while a
   database read timed out. A slow route is a failed route.

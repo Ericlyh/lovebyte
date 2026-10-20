@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isUnreachable, supabaseFetch, unreachableError } from './net';
+import {
+  isUnreachable,
+  READ_DEADLINE_MS,
+  supabaseFetch,
+  unreachableError,
+} from './net';
 
 /**
  * Tests for the Supabase network policy (OOP-5816).
@@ -125,5 +130,18 @@ describe('supabaseFetch', () => {
     expect(signals[0]).toBeInstanceOf(AbortSignal);
     expect(signals[1]).toBeInstanceOf(AbortSignal);
     expect(signals[2]).toBeUndefined();
+  });
+
+  it('gives up on a request that hangs, even when the signal is ignored', async () => {
+    // The edge runtime resolves DNS in a way that does not observe the
+    // abort signal, so the soft deadline is what actually bounds the
+    // wait there. A fetch that never settles must not hang the caller.
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+
+    const started = Date.now();
+    await expect(
+      supabaseFetch('https://x.supabase.co/rest/v1/gifts', { method: 'GET' }),
+    ).rejects.toThrow(expect.objectContaining({ name: 'AbortError' }));
+    expect(Date.now() - started).toBeLessThan(READ_DEADLINE_MS + 1000);
   });
 });
