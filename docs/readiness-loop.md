@@ -40,6 +40,13 @@ The gate checks, against `https://lovebyte-five.vercel.app`:
 
 - HTTP 200 on `/`, `/browse`, `/g/demo`, `/status`, `/support`,
   `/privacy`, `/terms`, `/login`, `/signup`
+- The **data layer** is live (OOP-6154): `/status` must emit
+  `data-status-state="operational"` — that marker is only rendered when
+  the incident read actually succeeded, and `"unknown"` means the read
+  failed — and `/api/catalog/feed` must serve at least one gift
+  (`GATE_CATALOG_MIN`, default 1). HTTP 200 alone is not readiness: with
+  a dead Supabase host every route still answered 200 over an empty
+  catalog.
 - Lighthouse performance ≥ 95 and accessibility ≥ 98 on `/`, `/g/demo`,
   `/browse`
 - `og:title`, `og:description`, `twitter:card` present on `/`

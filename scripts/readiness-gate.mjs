@@ -87,10 +87,15 @@ try {
       'data',
       '/status did not emit data-status-state — the page is not reporting whether its live read succeeded',
     );
+  } else if (state === 'unknown') {
+    fail(
+      'data',
+      '/status reports data-status-state="unknown" — the live incident read FAILED, so the data layer is not serving',
+    );
   } else if (state !== 'operational') {
     fail(
       'data',
-      `/status reports data-status-state="${state}" (expected "operational") — the live incident read did not succeed`,
+      `/status reports data-status-state="${state}" (expected "operational") — the live read succeeded but the site is not fully operational`,
     );
   } else {
     pass('data', '/status live read → operational');
