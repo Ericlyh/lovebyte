@@ -56,16 +56,34 @@ export async function postgrest<T>(
     url.searchParams.set('limit', '1');
   }
 
-  const res = await fetch(url.toString(), {
-    method: init.method ?? 'GET',
-    headers: {
-      apikey: SUPABASE_KEY!,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: init.body,
-    cache: 'no-store',
-  });
+  let res: Response;
+  try {
+    res = await fetch(url.toString(), {
+      method: init.method ?? 'GET',
+      headers: {
+        apikey: SUPABASE_KEY!,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: init.body,
+      cache: 'no-store',
+    });
+  } catch (err) {
+    // Network/DNS failure — e.g. the project host does not resolve.
+    // OOP-5816: /status returned HTTP 500 because this fetch threw
+    // straight through the Server Component. Every caller is written to
+    // degrade on `error`, so convert the throw into that shape rather
+    // than letting a page blow up.
+    return {
+      data: null,
+      error: {
+        message: `postgrest ${init.method ?? 'GET'} ${table} → network error: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+        code: 'network_error',
+      },
+    };
+  }
 
   if (!res.ok) {
     let body: unknown = null;

@@ -20,9 +20,27 @@ const overlock = Overlock({
   display: 'swap',
 });
 
+const DESCRIPTION = `${BRAND.NAME} turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they would know how to pass.`;
+
 export const metadata: Metadata = {
   title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
-  description: `${BRAND.NAME} turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they would know how to pass.`,
+  description: DESCRIPTION,
+  // OOP-5816 — social share previews. The launch checklist expects
+  // og:/twitter: tags on the landing page; without them a shared link
+  // unfurls with no title, no description, no card.
+  openGraph: {
+    type: 'website',
+    siteName: BRAND.NAME,
+    title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
+    description: DESCRIPTION,
+    url: BRAND.PRODUCTION_URL,
+    locale: 'en_GB',
+  },
+  twitter: {
+    card: 'summary',
+    title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
+    description: DESCRIPTION,
+  },
 };
 
 export default async function RootLayout({ children }: LayoutProps<'/'>) {
