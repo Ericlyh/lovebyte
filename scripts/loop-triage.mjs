@@ -53,6 +53,10 @@ const OPEN_STATUSES = new Set(['todo', 'in_progress', 'in_review', 'blocked']);
 function priorityFor(scope, id) {
   if (id.endsWith('-status') || id.endsWith('-unreachable')) return 'high';
   if (scope === 'data') return 'high';
+  // A dead money path is the worst failure mode there is: the customer
+  // pays and nothing is fulfilled. Same for the env vars behind it —
+  // no key means no email and no checkout (OOP-6168).
+  if (scope === 'money' || scope === 'env') return 'high';
   return 'medium';
 }
 

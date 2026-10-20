@@ -33,6 +33,7 @@ import { sendShareEmail } from '@/lib/email';
  *   200 { ok: true, dedup: true }          — duplicate event, no-op
  *   400 { error }                          — missing/invalid signature
  *   500 { error }                          — missing STRIPE_WEBHOOK_SECRET
+ *   503 { error }                          — missing STRIPE_SECRET_KEY
  *   500 { error }                          — unhandled exception (Stripe retries)
  */
 
@@ -54,6 +55,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'webhook secret not configured' },
       { status: 500 },
+    );
+  }
+
+  // The Stripe SDK needs the secret key to exist at all — `getStripe()`
+  // throws without it. Checking it HERE (before `constructEvent`) turns
+  // a missing key into a distinguishable answer instead of a 400 that
+  // is indistinguishable from a genuine signature rejection. Without
+  // this the readiness gate read that 400 as "the money path is
+  // configured" while no payment could actually be created (OOP-6168).
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('[stripe/webhook] STRIPE_SECRET_KEY is not set — cannot verify or process events');
+    return NextResponse.json(
+      { error: 'stripe secret key not configured' },
+      { status: 503 },
     );
   }
 

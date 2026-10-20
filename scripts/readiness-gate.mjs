@@ -61,6 +61,13 @@ function slug(value) {
 
 function fail(scope, msg, key) {
   const id = slug(key ?? scope);
+  // A gap id is the tracking key the loop matches issues against, so one
+  // id must mean one gap. Two probes can see the same missing var (the
+  // webhook route and /api/readiness); report it once.
+  if (failures.some((f) => f.id === id)) {
+    console.log(`FAIL  ${id}: ${msg} (already reported)`);
+    return;
+  }
   failures.push({ id, scope, message: msg });
   console.log(`FAIL  ${id}: ${msg}`);
 }
@@ -172,15 +179,19 @@ try {
 //
 // This checks the CONFIGURATION, not a live charge. A POST with a bogus
 // signature must come back 400 ("signature verification failed") when
-// STRIPE_WEBHOOK_SECRET is set, and 500 ("webhook secret not
-// configured") when it is not.
+// both Stripe vars are present, and the route now names which one is
+// missing when they are not:
 //
-// Two Stripe env vars gate the money path and they fail differently, so
-// the probe must tell them apart — a message that names the wrong key
-// sends the reader to the wrong dashboard. `STRIPE_WEBHOOK_SECRET` is
-// checked first and returns a JSON error naming itself; `STRIPE_SECRET_KEY`
-// is not checked at all, so the Stripe SDK throws on first use and the
-// route dies with an opaque 5xx.
+//   500 { error: 'webhook secret not configured' }  → STRIPE_WEBHOOK_SECRET
+//   503 { error: 'stripe secret key not configured' } → STRIPE_SECRET_KEY
+//
+// The 503 branch is load-bearing (OOP-6168). Without it a missing
+// STRIPE_SECRET_KEY made `getStripe()` throw inside the SDK call, the
+// route caught it and answered 400 "signature verification failed" —
+// indistinguishable from a genuine signature rejection. The gate read
+// that 400 as "the money path is configured" while checkout could not
+// create a single PaymentIntent. A green gate on a dead money path is
+// worse than a red one, because it silences the alarm.
 try {
   const res = await fetch(`${BASE}/api/stripe/webhook`, {
     method: 'POST',
@@ -201,10 +212,16 @@ try {
       'STRIPE_WEBHOOK_SECRET is missing from the deployed env — a paid order could be taken but never fulfilled',
       'stripe-webhook-secret-missing',
     );
+  } else if (errText === 'stripe secret key not configured') {
+    fail(
+      'money',
+      'STRIPE_SECRET_KEY is missing from the deployed env — the webhook cannot verify signatures and checkout cannot create a payment',
+      'stripe-secret-key-missing',
+    );
   } else if (res.status >= 500) {
     fail(
       'money',
-      `/api/stripe/webhook returned ${res.status} (${errText || 'no error detail'}) — check STRIPE_SECRET_KEY; the Stripe SDK throws on first use when it is unset`,
+      `/api/stripe/webhook returned ${res.status} (${errText || 'no error detail'}) — the money path is broken in a way the readiness probe cannot name`,
       'stripe-money-path-error',
     );
   } else {
@@ -216,6 +233,51 @@ try {
   }
 } catch (err) {
   fail('money', `/api/stripe/webhook unreachable — ${err.message}`, 'stripe-webhook-unreachable');
+}
+
+// --------------------------------------------------------------- Env-var probe
+// The money probe can only see the Stripe side. The Resend side was
+// invisible to the gate: with no RESEND_API_KEY, every email — the
+// waitlist autoresponder, the purchase receipt — is a silent no-op while
+// the site renders perfectly and every route returns 200. A deployment
+// in that state passed the gate.
+//
+// `/api/readiness` reports the NAMES of the missing required vars (never
+// values). Each name maps to a stable gap id so the loop files one
+// issue per missing var and this tracker keeps owning them.
+const REQUIRED_ENV_IDS = {
+  STRIPE_SECRET_KEY: 'stripe-secret-key-missing',
+  STRIPE_WEBHOOK_SECRET: 'stripe-webhook-secret-missing',
+  RESEND_API_KEY: 'resend-api-key-missing',
+  RESEND_FROM: 'resend-from-missing',
+};
+try {
+  const res = await fetch(`${BASE}/api/readiness`, { redirect: 'manual' });
+  const body = await res.json().catch(() => null);
+  const missing = Array.isArray(body?.missing) ? body.missing : null;
+
+  if (!res.ok) {
+    fail('env', `/api/readiness returned ${res.status}`, 'readiness-probe-error');
+  } else if (!missing) {
+    fail(
+      'env',
+      '/api/readiness did not return a missing[] array — env readiness is invisible to the gate',
+      'readiness-probe-malformed',
+    );
+  } else if (missing.length === 0) {
+    pass('env', 'every required production env var is present');
+  } else {
+    for (const name of missing) {
+      const id = REQUIRED_ENV_IDS[name] ?? `env-${slug(name)}-missing`;
+      fail(
+        'env',
+        `${name} is missing from the deployed env`,
+        id,
+      );
+    }
+  }
+} catch (err) {
+  fail('env', `/api/readiness unreachable — ${err.message}`, 'readiness-probe-unreachable');
 }
 
 // ------------------------------------------------------------ Lighthouse probe
