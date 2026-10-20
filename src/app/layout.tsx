@@ -22,6 +22,16 @@ const overlock = Overlock({
 
 const DESCRIPTION = `${BRAND.NAME} turns your photos, voice notes, and words into a one-of-a-kind digital gift — a memory card game, a love letter, a quiz only they would know how to pass.`;
 
+// OOP-6155 — the social card image. Static asset rendered from the brand
+// tokens by `scripts/generate-og-image.mjs`; absolute URL so crawlers can
+// fetch it from the canonical host.
+const OG_IMAGE = {
+  url: `${BRAND.PRODUCTION_URL}/og.png`,
+  width: 1200,
+  height: 630,
+  alt: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
+};
+
 export const metadata: Metadata = {
   title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
   description: DESCRIPTION,
@@ -35,11 +45,15 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: BRAND.PRODUCTION_URL,
     locale: 'en_GB',
+    images: [OG_IMAGE],
   },
   twitter: {
-    card: 'summary',
+    // `summary_large_image` (not `summary`) so the 1200x630 card renders
+    // full-width rather than as a small thumbnail.
+    card: 'summary_large_image',
     title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
     description: DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 

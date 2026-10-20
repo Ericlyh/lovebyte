@@ -106,10 +106,27 @@ try {
   for (const tag of ['og:title', 'og:description', 'twitter:card']) {
     if (!html.includes(tag)) fail('og', `missing ${tag} on /`);
   }
-  // og:image is tracked separately (no static asset ships yet) — warn only.
+  // OOP-6155 — the static card image ships now (public/og.png), so a
+  // missing og:image is a failure rather than a warning. The tag is also
+  // resolved: an og:image that 404s (or is not a PNG) fails the gate.
   if (!html.includes('og:image')) {
-    notes.push('og:image missing on / (tracked in the launch-readiness follow-up)');
-    console.log('warn  og: missing og:image on /');
+    fail('og', 'missing og:image on /');
+  } else {
+    const tag = html.match(/<meta[^>]*property="og:image"[^>]*>/)?.[0];
+    const src = tag?.match(/content="([^"]+)"/)?.[1];
+    if (!src) {
+      fail('og', 'og:image tag on / has no content URL');
+    } else {
+      try {
+        const img = await fetch(src, { redirect: 'follow' });
+        const ct = img.headers.get('content-type') ?? '';
+        if (!img.ok) fail('og', `og:image ${src} returned ${img.status}`);
+        else if (!ct.startsWith('image/png')) fail('og', `og:image ${src} is ${ct} (expected image/png)`);
+        else pass('og', `og:image ${src} ${img.status} ${ct}`);
+      } catch (err) {
+        fail('og', `og:image ${src} unreachable — ${err.message}`);
+      }
+    }
   }
   if (failures.filter((f) => f.startsWith('og:')).length === 0) pass('og', 'og:/twitter: tags present');
 } catch (err) {
