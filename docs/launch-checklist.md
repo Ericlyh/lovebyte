@@ -31,6 +31,8 @@ environment (`vercel env ls production`).
 | `STRIPE_SECRET_KEY` | Stripe Dashboard → API keys (live, not test) | checkout |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint signing secret | `/api/stripe/webhook` |
 | `INCIDENT_ADMIN_TOKEN` | any random string ≥ 32 chars | `/api/incidents` (status-page admin) |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare → Turnstile → widget site key | waitlist CAPTCHA — **optional**, see the Phase 10 note below |
+| `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → widget secret key | waitlist CAPTCHA — **optional**, server-only |
 
 > **Note (OOP-6168):** `RESEND_FROM` must be a sender domain that is
 > **verified** in Resend. `lovebyte.app` is not acquired (§2), so until
@@ -83,11 +85,30 @@ be true in the Stripe account:
 > without warning; treat its presence as a sanity check, not a
 > requirement.
 
-> **Phase 10 note:** No `TURNSTILE_SECRET_KEY` yet. The waitlist
-> server action rate-limits by hashed IP + UA (one submission per
-> hour per fingerprint). CAPTCHA goes in when we see real bot
-> pressure; closed-beta traffic doesn't warrant it today. Tracked in
-> OOP-6161.
+> **Phase 10 note (OOP-6161):** The Turnstile gate is **implemented but
+> dormant** — it is off until `TURNSTILE_SECRET_KEY` is set, and the
+> waitlist server action rate-limits by hashed IP + UA (one submission
+> per hour per fingerprint) as the second layer. CAPTCHA goes in when
+> we see real bot pressure; closed-beta traffic doesn't warrant it
+> today.
+>
+> To turn it on (~10 min, no code change):
+>
+> 1. Create a Turnstile widget for the production hostnames
+>    (`lovorithm.vercel.app` and `lovebyte-five.vercel.app`) at
+>    https://dash.cloudflare.com → Turnstile → Add widget. Cloudflare
+>    will not verify a token for a hostname that is not on the widget.
+> 2. `vercel env add NEXT_PUBLIC_TURNSTILE_SITE_KEY production` (the
+>    site key — public, ends in `0x…`) and
+>    `vercel env add TURNSTILE_SECRET_KEY production` (the secret key
+>    — server-only).
+> 3. Redeploy. The widget renders and the server starts verifying.
+>
+> The gate fails **closed**: once the secret key is set, a submission
+> with no token, an invalid token, or an unreachable Cloudflare is
+> rejected and no row is inserted. Do not set the secret key without
+> the site key — the widget would not render and every submission
+> would be rejected.
 
 ---
 
@@ -411,8 +432,8 @@ find a new gap, **file an issue**; don't add it to this list.
 
 | Issue | Item | Owner |
 |---|---|---|
-| OOP-6161 | Turnstile / hCaptcha gate on the waitlist form | Claude Code (host) — deferred until real bot pressure |
-| OOP-6162 | Lovorithm infra rename — Vercel project + Storage bucket | Claude Code (host) |
+| OOP-6161 | Turnstile / hCaptcha gate on the waitlist form | Claude Code (host) — gate **built and dormant**; switch on with `TURNSTILE_SECRET_KEY` when bot pressure appears (§1) |
+| OOP-6162 | Lovorithm infra rename — Vercel project + Storage bucket | Claude Code (host) — Vercel leg done; Storage leg blocked on OOP-6154 |
 | OOP-6163 | Acquire the canonical production domain | board owner (human) |
 | OOP-6164 | Provision the missing production env vars (RESEND, STRIPE) | board owner (human) |
 

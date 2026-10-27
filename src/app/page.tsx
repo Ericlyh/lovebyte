@@ -2,6 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { WaitlistForm } from '@/components/WaitlistForm';
+import { turnstileEnabled } from '@/lib/turnstile';
 
 /**
  * Landing page — Phase 2 (architecture.md §12).
@@ -96,7 +97,7 @@ export default async function Home() {
           <span className="lb-tag">{t('waitlist.tag')}</span>
           <h2 id="waitlist-heading">{t('waitlist.heading')}</h2>
           <p className="lede">{t('waitlist.lede')}</p>
-          <WaitlistForm />
+          <WaitlistForm turnstileEnabled={turnstileEnabled()} />
         </div>
       </section>
 

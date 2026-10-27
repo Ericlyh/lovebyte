@@ -1,11 +1,12 @@
 'use client';
 
-import { useActionState, useEffect, useRef } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import {
   joinWaitlistAction,
   type JoinWaitlistResult,
 } from '@/lib/actions/waitlist';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
 
 /**
  * Landing-page waitlist form (Phase 10, OOP-4226).
@@ -19,18 +20,24 @@ import {
  * uniqueness concern because the server action rejects duplicates
  * with a friendly "already on the list" status).
  *
- * Why no Turnstile/hCaptcha widget here yet? The action's IP+UA
- * rate-limit is the placeholder (see src/lib/actions/waitlist.ts
- * "Out of scope" comment). Once TURNSTILE_SECRET_KEY is wired, the
- * verify call goes inside the action and the widget is added to this
- * component — that's a single-file change. Shipping without the
- * CAPTCHA is acceptable for the closed beta because the landing
- * traffic is low; the rate-limit + service-role-only path keeps the
- * table from filling with bot rows.
+ * The Turnstile CAPTCHA (OOP-6161) is DORMANT by default. The server
+ * passes `turnstileEnabled` down from the server component, which sets
+ * it only when `TURNSTILE_SECRET_KEY` is configured. With the gate off
+ * no widget is rendered and the action skips verification entirely, so
+ * the form behaves exactly as it did before. Turning the gate on is an
+ * env-var change plus a redeploy — no code change.
+ *
+ * The IP+UA rate-limit in the action stays in place as the second
+ * layer: the CAPTCHA answers "is this a human", the rate-limit answers
+ * "is this the same human again".
  */
-export function WaitlistForm() {
+export function WaitlistForm({ turnstileEnabled = false }: { turnstileEnabled?: boolean }) {
   const t = useTranslations('Landing.waitlist');
   const locale = useLocale();
+
+  // The Turnstile token, when the gate is on. Empty string means "no
+  // token yet" — the widget has not solved, or the token expired.
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   const [state, action, isPending] = useActionState<JoinWaitlistResult | null, FormData>(
     async (_prev, formData) => {
@@ -39,6 +46,7 @@ export function WaitlistForm() {
         email: String(formData.get('email') ?? ''),
         intent,
         locale: locale === 'zh-Hant' ? 'zh-Hant' : 'en',
+        turnstileToken: turnstileToken || undefined,
       });
     },
     null,
@@ -91,6 +99,12 @@ export function WaitlistForm() {
           <option value="creator">{t('intentCreator')}</option>
         </select>
       </label>
+      {turnstileEnabled ? (
+        <TurnstileWidget
+          siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+          onToken={setTurnstileToken}
+        />
+      ) : null}
       <button type="submit" className="lb-btn lb-btn--primary" disabled={isPending}>
         {isPending ? t('submitting') : t('submit')}
       </button>

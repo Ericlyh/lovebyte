@@ -303,9 +303,10 @@ Source files: `src/app/(support|status|privacy|terms)/`, `src/app/api/incidents/
   1. Zod-validate (email, intent ≤64, locale ∈ {en, zh-Hant}).
   2. Hash IP + UA (SHA-256) so the table carries no raw PII.
   3. Rate-limit: one submission per (ip_hash OR ua_hash) per hour.
-  4. Insert via service-role client (RLS bypass). Conflict on `email_lc` is treated as success.
-  5. Fire-and-forget autoresponder via Resend (deferred — not wired as of OOP-4226).
-- **Deferred**: Turnstile gate, autoresponder, /support-ticket backend.
+  4. Turnstile gate (OOP-6161) — dormant until `TURNSTILE_SECRET_KEY` is set; fails closed when on.
+  5. Insert via service-role client (RLS bypass). Conflict on `email_lc` is treated as success.
+  6. Awaited autoresponder via Resend (OOP-6156). Needs `RESEND_API_KEY` + `RESEND_FROM` to actually send (OOP-6164).
+- **Deferred**: /support-ticket backend.
 
 ---
 

@@ -3454,6 +3454,13 @@ a:hover { color: var(--lb-primary); }
 .lb-waitlist .lb-form-error {
   margin-top: 4px;
 }
+/* Cloudflare Turnstile widget (OOP-6161). The iframe is Cloudflare's
+   own; we only control the box it sits in, so it lines up with the
+   fields above it. */
+.lb-turnstile {
+  margin: 16px 0;
+  min-height: 65px;
+}
 .lb-waitlist-foot {
   font-size: 12px;
   color: var(--lb-ink-soft, #6b4a4a);
