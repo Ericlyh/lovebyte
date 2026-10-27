@@ -53,7 +53,11 @@ The gate checks, against `https://lovorithm.vercel.app`:
   a dead Supabase host every route still answered 200 over an empty
   catalog.
 - Lighthouse performance ≥ 95 and accessibility ≥ 98 on `/`, `/g/demo`,
-  `/browse`
+  `/browse`. Each route is sampled `GATE_LH_SAMPLES` times (default 3) and
+  the **median** is scored: the unchanged homepage measured perf 81–99
+  across ten runs while the host was loaded, so one sample against a 95
+  threshold is a coin flip (OOP-6548). The samples are printed with each
+  result, so a firing stays auditable.
 - `og:title`, `og:description`, `twitter:card` present on `/`
 
 `og:image` is currently a **warning**, not a failure — no static OG
