@@ -134,6 +134,14 @@ export async function joinWaitlistAction(
   // call in that case. With the gate on, this runs BEFORE the insert so
   // an unverified request never reaches the table, and it fails CLOSED:
   // a missing token, a network error, or `success: false` all reject.
+  //
+  // Ordering note: the rate-limit is checked BEFORE this, not after.
+  // Both must pass before the insert either way, but the rate-limit is
+  // a cheap DB read while this is an outbound HTTPS call to Cloudflare
+  // — so checking it first keeps a flood of rejected submissions from
+  // spending a Cloudflare round-trip each. It also means a rate-limited
+  // request never burns the user's single-use CAPTCHA token, so they
+  // are not left staring at a solved widget that no longer verifies.
   if (turnstileEnabled()) {
     const verdict = await verifyTurnstileToken({ token: turnstileToken, remoteIp: ip });
     if (!verdict.ok) {
