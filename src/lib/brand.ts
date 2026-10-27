@@ -19,21 +19,36 @@
  *      that copy.
  *
  * Infra tokens (`STORAGE_BUCKET`, `PRODUCTION_URL`, `DOMAIN`) are kept
- * centralised so a future rename is one diff. They currently still point
- * at the LoveByte-era resources because renaming them requires external
- * coordination:
+ * centralised so a future rename is one diff. Status as of 2026-10-28
+ * (OOP-6162):
  *
- *   - `STORAGE_BUCKET` requires a Supabase bucket migration (create new,
- *     copy or re-upload, update RLS, delete old). Blocked on OOP-6154 —
- *     the Supabase project host does not resolve.
- *   - `PRODUCTION_URL` was renamed to `lovorithm.vercel.app` on
- *     2026-10-28 (OOP-6162): the Vercel project `lovebyte` was renamed
- *     to `lovorithm` and `lovorithm.vercel.app` was claimed as a domain
- *     on it. The old `lovebyte-five.vercel.app` stays attached to the
- *     same project, so links already in circulation keep resolving.
- *   - `DOMAIN` is the literal that powers handle-URL hints like
- *     "Your URL will be {domain}/u/{handle}". Today it shows the .app
- *     domain the team has not yet acquired; once that exists, flip it.
+ *   - `PRODUCTION_URL` → `lovorithm.vercel.app`. The Vercel project
+ *     `lovebyte` was renamed to `lovorithm` and `lovorithm.vercel.app`
+ *     was claimed as a domain on it, in the same deploy that moved
+ *     `NEXT_PUBLIC_SITE_URL`. The old `lovebyte-five.vercel.app` stays
+ *     attached to the same project, so links already in circulation keep
+ *     resolving — it is now the secondary alias, not the canonical one.
+ *
+ *   - `STORAGE_BUCKET` → `lovorithm-media`. The bucket was renamed on
+ *     the Supabase project `xsfbfqzmvjfxppvoxbze`. Two things matter
+ *     here, and the second is not obvious:
+ *       1. `storage.buckets` carries both an `id` and a `name`, and the
+ *          Storage API resolves a bucket by **`id` only**. The old row
+ *          had `id = <uuid>` / `name = 'lovebyte-media'`, so
+ *          `supabase.storage.from('lovebyte-media')` never resolved and
+ *          every upload failed with "Bucket not found". The new row has
+ *          `id = name = 'lovorithm-media'`, which does resolve.
+ *       2. The `storage.objects` RLS policies cannot be created over
+ *          the Storage REST API (there is no policy endpoint) — they
+ *          live in `supabase/migrations/0010_storage_bucket_rename.sql`
+ *          and need SQL. Until that file is applied, uploads are denied
+ *          by RLS rather than by a missing bucket.
+ *
+ *   - `DOMAIN` → `lovorithm.app`. The previous value, `lovebyte.app`,
+ *     is a parked domain-for-sale lander, not this product — it was
+ *     actively pointing users at a squatter. The new domain is not
+ *     acquired yet (tracked in OOP-6163); no code reads this constant
+ *     yet, so flipping it changes no user-visible surface today.
  */
 export const BRAND = {
   /** Display name shown in titles, nav, emails, Stripe dashboard. */
@@ -43,9 +58,9 @@ export const BRAND = {
   /** One-line marketing hook. */
   TAGLINE: 'Send a feeling, not just a gift',
   /** Domain surfaced in handle hints (e.g. "Your URL will be {DOMAIN}/u/{handle}"). */
-  DOMAIN: 'lovebyte.app',
+  DOMAIN: 'lovorithm.app',
   /** Supabase Storage bucket. */
-  STORAGE_BUCKET: 'lovebyte-media',
+  STORAGE_BUCKET: 'lovorithm-media',
   /** Canonical production URL — used by lh-prod audit script + share-link emails. */
   PRODUCTION_URL: 'https://lovorithm.vercel.app',
 } as const;
