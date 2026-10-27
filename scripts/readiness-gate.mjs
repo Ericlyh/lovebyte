@@ -15,6 +15,9 @@
 //   GATE_ROUTES_MIN default 200  required HTTP status for every critical route
 //   GATE_ROUTE_MAX_MS default 4000  max time to serve a critical route in full
 //   GATE_CATALOG_MIN default 1   gifts the public catalog must serve
+//   GATE_LH_SAMPLES default 3    Lighthouse samples per route; the MEDIAN is
+//                                 scored. One sample is a coin flip against a
+//                                 95 threshold (see the Lighthouse probe below).
 
 const BASE = process.env.AUDIT_BASE ?? 'https://lovorithm.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
@@ -281,6 +284,29 @@ try {
 }
 
 // ------------------------------------------------------------ Lighthouse probe
+//
+// Lighthouse is a noisy instrument, and the gate's verdict is a threshold
+// comparison against it. OOP-6548 measured the UNCHANGED homepage ten times
+// and got perf = 81, 87, 93, 94, 96, 97, 97, 99, 99, 99 — a 18-point spread
+// around a 95 threshold. The spread tracks host CPU contention (total
+// blocking time swung 0ms → 450ms with the machine loaded), not the site:
+// the same page measured perf=99 unthrottled.
+//
+// A single sample against that threshold is a coin flip, so the loop used to
+// fire on measurement noise and file a "regression" issue against an
+// unchanged page. Sample each route N times and take the median — the
+// standard CI practice for Lighthouse. The threshold, the routes and the
+// exit codes are unchanged; only the estimator gets less noisy.
+const LIGHTHOUSE_SAMPLES = Math.max(1, Number(process.env.GATE_LH_SAMPLES ?? 3));
+
+/** Median of a numeric sample. Even-length medians average the two middles. */
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[mid];
+  return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
 let lighthouseResults = [];
 let lighthouseRan = false;
 try {
@@ -297,25 +323,42 @@ try {
   const chrome = await launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
   try {
     for (const path of LIGHTHOUSE_ROUTES) {
-      try {
-        const r = await lighthouse(`${BASE}${path}`, {
-          port: chrome.port,
-          output: 'json',
-          logLevel: 'error',
-          onlyCategories: ['performance', 'accessibility'],
-        });
-        const c = r.lhr.categories;
-        const perf = Math.round(c.performance.score * 100);
-        const a11y = Math.round(c.accessibility.score * 100);
-        lighthouseResults.push({ path, perf, a11y });
-        if (perf < PERF_MIN) fail('lighthouse', `${path} perf=${perf} (< ${PERF_MIN})`, `lighthouse-${path}-perf`);
-        else pass('lighthouse', `${path} perf=${perf}`);
-        if (a11y < A11Y_MIN) fail('lighthouse', `${path} a11y=${a11y} (< ${A11Y_MIN})`, `lighthouse-${path}-a11y`);
-        else pass('lighthouse', `${path} a11y=${a11y}`);
-      } catch (err) {
-        lighthouseResults.push({ path, perf: null, a11y: null });
-        fail('lighthouse', `${path} audit failed — ${String(err.message).slice(0, 120)}`, `lighthouse-${path}-audit`);
+      const perfSamples = [];
+      const a11ySamples = [];
+      let auditError = null;
+      for (let i = 0; i < LIGHTHOUSE_SAMPLES; i++) {
+        try {
+          const r = await lighthouse(`${BASE}${path}`, {
+            port: chrome.port,
+            output: 'json',
+            logLevel: 'error',
+            onlyCategories: ['performance', 'accessibility'],
+          });
+          const c = r.lhr.categories;
+          perfSamples.push(Math.round(c.performance.score * 100));
+          a11ySamples.push(Math.round(c.accessibility.score * 100));
+        } catch (err) {
+          auditError = err;
+          break;
+        }
       }
+      if (auditError || perfSamples.length === 0) {
+        lighthouseResults.push({ path, perf: null, a11y: null, samples: perfSamples.length });
+        fail(
+          'lighthouse',
+          `${path} audit failed — ${String(auditError?.message ?? 'no samples collected').slice(0, 120)}`,
+          `lighthouse-${path}-audit`,
+        );
+        continue;
+      }
+      const perf = median(perfSamples);
+      const a11y = median(a11ySamples);
+      const spread = `samples ${perfSamples.join(',')}`;
+      lighthouseResults.push({ path, perf, a11y, samples: perfSamples.length, perfSamples, a11ySamples });
+      if (perf < PERF_MIN) fail('lighthouse', `${path} perf=${perf} (< ${PERF_MIN}) — ${spread}`, `lighthouse-${path}-perf`);
+      else pass('lighthouse', `${path} perf=${perf} — ${spread}`);
+      if (a11y < A11Y_MIN) fail('lighthouse', `${path} a11y=${a11y} (< ${A11Y_MIN}) — ${spread}`, `lighthouse-${path}-a11y`);
+      else pass('lighthouse', `${path} a11y=${a11y} — ${spread}`);
     }
     lighthouseRan = lighthouseResults.length > 0;
   } finally {
