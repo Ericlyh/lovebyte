@@ -132,6 +132,12 @@ create policy "media_owner_all"
 
 
 -- ---- 3. Drop the old bucket -----------------------------------------------
+-- Already done on 2026-10-28: `lovebyte-media` was empty (zero objects
+-- since 2026-09-01) and was deleted over the Storage REST API, so the
+-- `delete` at the end of this section is now a no-op. The emptiness
+-- assertion below stays — it is what makes this step safe to run against
+-- any project where the old bucket still holds objects.
+--
 -- The old bucket must be empty first. It is (zero objects since
 -- 2026-09-01), but this migration refuses to run if that ever stops being
 -- true — a silent object loss is not an acceptable outcome of a rename.
