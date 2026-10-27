@@ -60,7 +60,7 @@ const TOKEN = 'test-incident-token';
 function authedRequest(body: unknown, token: string | null = TOKEN): Request {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token !== null) headers.Authorization = `Bearer ${token}`;
-  return new Request('https://lovebyte-five.vercel.app/api/incidents', {
+  return new Request('https://lovorithm.vercel.app/api/incidents', {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
@@ -120,7 +120,7 @@ describe('POST /api/incidents', () => {
 
   it('rejects a malformed JSON body', async () => {
     const res = await POST(
-      new Request('https://lovebyte-five.vercel.app/api/incidents', {
+      new Request('https://lovorithm.vercel.app/api/incidents', {
         method: 'POST',
         headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
         body: 'not json',
@@ -183,7 +183,7 @@ describe('PATCH /api/incidents/[id]', () => {
   function patchRequest(body: unknown, token: string | null = TOKEN): Request {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token !== null) headers.Authorization = `Bearer ${token}`;
-    return new Request(`https://lovebyte-five.vercel.app/api/incidents/${id}`, {
+    return new Request(`https://lovorithm.vercel.app/api/incidents/${id}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(body),

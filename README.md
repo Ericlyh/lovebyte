@@ -56,7 +56,7 @@ Blocked on user-provided credentials. See OOP-4211 blockers 1–3.
 
 ```bash
 vercel login                     # one-time
-vercel link                      # bind to lovebyte project
+vercel link                      # bind to the lovorithm project
 vercel env add NEXT_PUBLIC_SUPABASE_URL production
 vercel env add NEXT_PUBLIC_SUPABASE_ANON_KEY production
 vercel env add SUPABASE_SECRET_KEY production

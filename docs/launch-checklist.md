@@ -58,7 +58,7 @@ be true in the Stripe account:
    | `account.updated` | `profiles.stripe_charges_enabled` is never set to true, so **every** listing is refused with "This creator is not set up to receive payouts yet" |
    | `charge.refunded` | refunds never reconcile — the purchase row keeps `status='paid'` |
 
-   Endpoint URL: `https://lovebyte-five.vercel.app/api/stripe/webhook`.
+   Endpoint URL: `https://lovorithm.vercel.app/api/stripe/webhook`.
    The signing secret (`whsec_…`) is shown when the endpoint is created.
 
 3. **At least one creator must complete Express onboarding**
@@ -93,14 +93,14 @@ be true in the Stripe account:
 
 ## 2. Pre-deploy — DNS plan
 
-Production hostname: `lovebyte-five.vercel.app` (Vercel-generated).
+Production hostname: `lovorithm.vercel.app` (Vercel-generated).
 Future canonical: `lovebyte.app` (deferred; not yet acquired — see
 BRAND.TS §DOMAIN).
 
 **What the on-call needs to know:**
 
 1. The Vercel project domain and any custom domains are visible at
-   `vercel domains ls`. Confirm `lovebyte-five.vercel.app` is
+   `vercel domains ls`. Confirm `lovorithm.vercel.app` is
    `production` and assigned to the current production deploy.
 2. If a custom domain is added later, ensure the A / CNAME points at
    Vercel's load balancer (`76.76.21.21` / `cname.vercel-dns.com`)
@@ -109,7 +109,7 @@ BRAND.TS §DOMAIN).
    `PRODUCTION_URL`).
 3. **Domain decisions** for the launch are deferred per OOP-4211 §3:
    `lovebyte.app` is **not acquired**. The Vercel subdomain
-   `lovebyte-five.vercel.app` is the live URL for the public beta.
+   `lovorithm.vercel.app` is the live URL for the public beta.
 
 ---
 
@@ -214,7 +214,7 @@ curl -s http://localhost:3000/ | grep -E 'og:|twitter:'
 #   <meta name="twitter:card" content="..." />
 
 # Production (after deploy)
-PROD=https://lovebyte-five.vercel.app
+PROD=https://lovorithm.vercel.app
 curl -s "$PROD/" | grep -E 'og:|twitter:'
 # Same expected output. If the build is missing og:* tags, the
 # /api/og/* image route is also likely broken — check
@@ -260,7 +260,7 @@ In order:
    curl -X POST -H "Authorization: Bearer $INCIDENT_ADMIN_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{"severity":"degraded","title":"Elevated 502s on /create","body":"Looking into it."}' \
-     https://lovebyte-five.vercel.app/api/incidents
+     https://lovorithm.vercel.app/api/incidents
    ```
 
    Close it with `PATCH /api/incidents/<id>` and `{"status":"resolved"}`.
@@ -325,7 +325,7 @@ After the deploy is `READY`, **smoke test against the live URL** (not
 localhost):
 
 ```bash
-PROD=https://lovebyte-five.vercel.app
+PROD=https://lovorithm.vercel.app
 for path in / /status /support /privacy /terms; do
   code=$(curl -s -o /dev/null -w "%{http_code}" "$PROD$path")
   echo "$code  $PROD$path"
@@ -356,7 +356,7 @@ backup for P1 incidents.
 ### What to watch
 
 1. **Error rate** — Vercel Runtime Logs at
-   https://vercel.com/lovebyte/logs. Filter on `level=error`. A
+   https://vercel.com/lovorithm/logs. Filter on `level=error`. A
    sustained spike (>5 errors/min for >10 min) is a P1.
 2. **LCP / Core Web Vitals** — Run `pnpm lh:prod` (alias for
    `node scripts/lh-prod.mjs`) once at T+2h and once at T+24h.
@@ -369,7 +369,7 @@ backup for P1 incidents.
 4. **Resend** — Dashboard → Logs. Watch for bounces (the share-link
    emails and the waitlist autoresponder).
 5. **Stripe** — Dashboard → Events. The webhook endpoint is
-   `https://lovebyte-five.vercel.app/api/stripe/webhook`; if events
+   `https://lovorithm.vercel.app/api/stripe/webhook`; if events
    pile up in `pending` or `failed`, the webhook secret rotated
    without the env var following.
 6. **Support inbox** — `support@lovorithm.app`,

@@ -24,9 +24,13 @@
  * coordination:
  *
  *   - `STORAGE_BUCKET` requires a Supabase bucket migration (create new,
- *     copy or re-upload, update RLS, delete old).
- *   - `PRODUCTION_URL` requires a Vercel project rename or a manual DNS
- *     redirect from the old hostname to the new.
+ *     copy or re-upload, update RLS, delete old). Blocked on OOP-6154 —
+ *     the Supabase project host does not resolve.
+ *   - `PRODUCTION_URL` was renamed to `lovorithm.vercel.app` on
+ *     2026-10-28 (OOP-6162): the Vercel project `lovebyte` was renamed
+ *     to `lovorithm` and `lovorithm.vercel.app` was claimed as a domain
+ *     on it. The old `lovebyte-five.vercel.app` stays attached to the
+ *     same project, so links already in circulation keep resolving.
  *   - `DOMAIN` is the literal that powers handle-URL hints like
  *     "Your URL will be {domain}/u/{handle}". Today it shows the .app
  *     domain the team has not yet acquired; once that exists, flip it.
@@ -43,5 +47,5 @@ export const BRAND = {
   /** Supabase Storage bucket. */
   STORAGE_BUCKET: 'lovebyte-media',
   /** Canonical production URL — used by lh-prod audit script + share-link emails. */
-  PRODUCTION_URL: 'https://lovebyte-five.vercel.app',
+  PRODUCTION_URL: 'https://lovorithm.vercel.app',
 } as const;

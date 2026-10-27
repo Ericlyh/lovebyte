@@ -16,7 +16,7 @@
 //   GATE_ROUTE_MAX_MS default 4000  max time to serve a critical route in full
 //   GATE_CATALOG_MIN default 1   gifts the public catalog must serve
 
-const BASE = process.env.AUDIT_BASE ?? 'https://lovebyte-five.vercel.app';
+const BASE = process.env.AUDIT_BASE ?? 'https://lovorithm.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
 const A11Y_MIN = Number(process.env.GATE_A11Y_MIN ?? 98);
 const ROUTES_MIN = Number(process.env.GATE_ROUTES_MIN ?? 200);

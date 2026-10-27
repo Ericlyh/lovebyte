@@ -36,7 +36,7 @@ Exit codes:
 | 1 | gaps found | go to step 2 (fix the top gap) |
 | 2 | probe could not run (no Chrome / no network) | file a `priority=medium` issue; stop |
 
-The gate checks, against `https://lovebyte-five.vercel.app`:
+The gate checks, against `https://lovorithm.vercel.app`:
 
 - HTTP 200 on `/`, `/browse`, `/g/demo`, `/status`, `/support`,
   `/privacy`, `/terms`, `/login`, `/signup`
