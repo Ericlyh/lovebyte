@@ -51,7 +51,9 @@ describe('React gift document', () => {
     expect(reactDomAt).toBeGreaterThan(reactAt);
     expect(giftAt).toBeGreaterThan(reactDomAt);
     expect(mountAt).toBeGreaterThan(giftAt);
-    expect(doc).toContain(REACT_MOUNT_SCRIPT.split('\n')[0]);
+    // The mount has to be a script element — as bare body text it would
+    // render as text instead of running.
+    expect(doc).toContain(`<script>${REACT_MOUNT_SCRIPT.split('\n')[0]}`);
   });
 
   it('leaves a plain code gift alone', () => {

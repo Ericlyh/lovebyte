@@ -97,7 +97,9 @@ export function composeCodeGiftDocument(source: CodeGiftSource): string {
   const reactScripts = source.react
     ? `<script src="${REACT_UMD_URLS.react}"></script>\n<script src="${REACT_UMD_URLS.reactDom}"></script>\n`
     : '';
-  const mountScript = source.react ? `\n${escapeJsForScriptElement(REACT_MOUNT_SCRIPT)}` : '';
+  const mountScript = source.react
+    ? `\n<script>${escapeJsForScriptElement(REACT_MOUNT_SCRIPT)}</script>`
+    : '';
 
   return `<!doctype html>
 <html lang="en">
