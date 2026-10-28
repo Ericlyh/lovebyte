@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 /**
  * Code-gift e2e (Playwright, real session) — OOP-5688.
  *
- * Drives the whole sender path a code gift takes:
+ * Drives the whole gift path, sender and recipient:
  *
  *   1. the picker offers "Code" and routes to /create/code;
  *   2. the live safety scan blocks a gift that reads host state and
@@ -14,7 +14,10 @@ import { readFileSync } from 'node:fs';
  *      LOVEBYTE_AI_* env vars reached the deployment);
  *   5. saving either lands on the share page, or fails with the
  *      "not switched on yet" message that says the only thing missing
- *      is the migration that adds the `code` gift type.
+ *      is the migration that adds the `code` gift type;
+ *   6. the recipient view renders a saved code gift, the gift's own
+ *      JavaScript runs inside the frame, and the frame stays opaque to
+ *      the page around it.
  *
  * It creates a throwaway user over the GoTrue admin API and deletes it
  * again in the `finally` block, so a run leaves nothing behind.
@@ -67,6 +70,34 @@ page.on('console', (m) => {
 });
 
 try {
+  // 0. The recipient view. `/g/demo-code` is the seeded mock envelope,
+  //    so this works before any code gift can be saved.
+  await page.goto(`${BASE}/g/demo-code/open`, { waitUntil: 'networkidle' });
+  const frame = page.locator('.lb-code-gift__frame');
+  check('recipient view renders the code frame', (await frame.count()) === 1);
+  check('recipient frame is sandboxed', (await frame.getAttribute('sandbox')) === 'allow-scripts');
+
+  const inner = page.frames().find((f) => f !== page.mainFrame());
+  check('the gift document loaded in the frame', Boolean(inner));
+  if (inner) {
+    const h1 = await inner.locator('h1').innerText().catch(() => '');
+    check('the gift rendered its own markup', h1.includes('Happy birthday'), h1);
+    await inner.locator('#go').click();
+    await inner.waitForTimeout(400);
+    check('the gift JavaScript ran', await inner.locator('#out').isVisible());
+  }
+
+  const opaque = await page.evaluate(() => {
+    const el = document.querySelector('.lb-code-gift__frame');
+    try {
+      // A same-origin frame would let the page read into the gift.
+      return el.contentDocument === null ? 'opaque' : 'same-origin';
+    } catch {
+      return 'opaque';
+    }
+  });
+  check('the page around the gift cannot read into it', opaque === 'opaque', opaque);
+
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' });
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', PASSWORD);
