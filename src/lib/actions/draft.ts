@@ -47,6 +47,7 @@ const BUILDER_ROUTE: Partial<Record<GiftType, string>> = {
   dragdrop_puzzle: '/create/dragdrop-puzzle',
   quiz: '/create/quiz',
   multimedia_collage: '/create/multimedia-collage',
+  code: '/create/code',
 };
 
 const createDraftInputSchema = z.object({
@@ -61,6 +62,7 @@ const createDraftInputSchema = z.object({
     'quiz',
     'multimedia_collage',
     'animated_letter',
+    'code',
   ]),
 });
 

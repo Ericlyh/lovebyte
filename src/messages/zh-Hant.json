@@ -161,7 +161,10 @@
       "lede": "相、影片、音樂 — 自己撳播放慢慢睇。",
       "musicPlay": "播音樂",
       "musicPause": "暫停音樂"
-    }
+    },
+    "codeTag": "一小段程式碼",
+    "codeFrameTitle": "有人為你寫的禮物",
+    "codeFoot": "一字一句寫給你。"
   },
   "Auth": {
     "errors": {
@@ -760,6 +763,85 @@
         "tooManyMedia": "太多喇,最多 {max} 個。",
         "stillUploading": "等多陣,媒體仲上傳緊。"
       }
+    },
+    "code": {
+      "backToPicker": "← 回到選擇禮物類型",
+      "heading": "程式碼",
+      "lede": "把一個小網頁當成禮物：HTML 是內容、CSS 是外觀、JavaScript 是互動。我們會先掃描一遍才讓它上線。",
+      "privacyNote": "你的程式碼會存在你私人的 Lovorithm 收藏裡。它會在對方的手機上、在一個碰不到本網站的沙盒裡執行。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例如：給最好的朋友的小頁面",
+      "htmlLabel": "HTML",
+      "htmlPlaceholder": "<h1>打開我</h1>\n<button id=\"go\">點一下</button>",
+      "cssLabel": "CSS",
+      "cssPlaceholder": "h1 { color: #a83e3e; }",
+      "jsLabel": "JavaScript",
+      "jsPlaceholder": "document.getElementById(\"go\").addEventListener(\"click\", () => {\n  document.body.style.background = \"#fff3d6\";\n});",
+      "previewLabel": "即時預覽",
+      "previewHint": "這個預覽和收禮物的人看到的是同一個沙盒 —— 這裡擋掉的，到那邊也一樣會擋掉。",
+      "scanHeading": "安全檢查",
+      "scanSafe": "沒有發現問題，這個禮物可以安全上架。",
+      "scanNeedsReview": "這個禮物可以運作，但送出前有幾個地方值得你再看一眼。",
+      "scanBlocked": "這個禮物無法上架。它伸到了沙盒外面 —— 把下面被擋掉的部份移除。",
+      "scanClean": "沒有發現任何問題。",
+      "scanLocation": "{field}，第 {line} 行",
+      "severity": {
+        "block": "擋下",
+        "warn": "請確認",
+        "info": "提醒"
+      },
+      "field": {
+        "html": "HTML",
+        "css": "CSS",
+        "js": "JavaScript"
+      },
+      "scan": {
+        "host-state-access": "想讀取本網站的 cookie 或儲存空間，沙盒不允許。",
+        "sandbox-escape": "想存取禮物外層的頁面。",
+        "outbound-beacon": "把資料傳送到別的網站。",
+        "outbound-socket": "建立網路連線，沙盒不允許。",
+        "outbound-request": "抓取網址，沙盒不允許。",
+        "outbound-url": "裡面有網址，請確認是你信任的網站。",
+        "crypto-miner": "看起來像是挖加密貨幣的程式。",
+        "dynamic-eval": "把字串當成程式執行，沙盒會擋掉。",
+        "obfuscation": "程式碼被編碼藏起來了。",
+        "popup": "可以開新視窗，沙盒會擋掉。",
+        "document-write": "在載入時重寫頁面。",
+        "keystroke-capture": "在監聽按鍵。",
+        "external-script": "從別的網站載入程式。",
+        "external-stylesheet": "從別的網站載入樣式。",
+        "external-image": "從別的網站載入圖片。",
+        "nested-iframe": "嵌入別的頁面，沙盒會擋掉。",
+        "embed": "嵌入檔案或物件，沙盒會擋掉。",
+        "form": "含有表單，沙盒裡無法送出表單。",
+        "base-tag": "設定了 base URL，可能會壞掉相對路徑。",
+        "meta-refresh": "會把禮物導向另一個頁面。",
+        "inline-handler": "使用了 inline 事件處理器。",
+        "css-import": "從別的網站匯入樣式。",
+        "css-external-url": "從別的網站載入圖片或字型。",
+        "minified-line": "有一行超長，很難用眼睛檢查。"
+      },
+      "aiHeading": "AI 檢查",
+      "aiLede": "上面的安全檢查是機械式的。AI 會像人一樣閱讀你的禮物：能不能運作、有沒有還沒完成的地方、有沒有只有你知道才能填的細節。",
+      "aiButton": "請 AI 看看這個禮物",
+      "aiPending": "正在閱讀你的禮物…",
+      "aiSummary": "結論",
+      "aiQuestionsHeading": "AI 需要你提供一些東西",
+      "aiAnswersLabel": "你的回答",
+      "aiAnswersPlaceholder": "例如：用我們在海邊的合照，稱她為「小 Sunny」。",
+      "aiReReview": "帶著我的回答再檢查一次",
+      "aiSuggestionsHeading": "建議的修改",
+      "aiApply": "套用這個修改",
+      "aiApplied": "已套用",
+      "aiSuggestionField": "套用在 {field}",
+      "errors": {
+        "titleRequired": "先幫你的禮物取個標題。",
+        "emptyGift": "先寫一點 HTML、CSS 或 JavaScript。",
+        "blocked": "安全檢查發現這個禮物做不到的事。請先修正上面被擋掉的項目再儲存。",
+        "applyFailed": "這個修改已經對不上你的程式碼了，可能剛剛被改過。其餘的修改請繼續套用。"
+      },
+      "submitting": "正在儲存你的禮物…",
+      "submit": "儲存並取得分享連結"
     }
   },
   "Status": {

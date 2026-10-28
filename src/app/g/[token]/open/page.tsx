@@ -5,6 +5,7 @@ import { getEnvelopeByToken } from '@/lib/gifts/fetch';
 import { BRAND } from '@/lib/brand';
 import {
   AnimatedLetterPayloadSchema,
+  CodeGiftPayloadSchema,
   DragdropPuzzlePayloadSchema,
   MemoryCardsPayloadSchema,
   MultimediaCollagePayloadSchema,
@@ -14,6 +15,7 @@ import { MemoryCardsGame } from '@/features/memory-cards/recipient/MemoryCardsGa
 import { DragdropPuzzleGame } from '@/features/dragdrop-puzzle/recipient/DragdropPuzzleGame';
 import { MultimediaCollageView } from '@/features/multimedia-collage/recipient/MultimediaCollageView';
 import { QuizGame } from '@/features/quiz/recipient/QuizGame';
+import { CodeGiftView } from '@/features/code/recipient/CodeGiftView';
 
 /**
  * /g/[shareToken]/open — in-experience view (Phase 3 envelope + Phase 4
@@ -94,6 +96,14 @@ export default async function GiftOpenPage({ params }: Props) {
       return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
     }
     return <MultimediaCollageView payload={parsed.data} senderName={envelope.senderName} />;
+  }
+
+  if (envelope.giftType === 'code') {
+    const parsed = CodeGiftPayloadSchema.safeParse(envelope.payload);
+    if (!parsed.success) {
+      return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
+    }
+    return <CodeGiftView payload={parsed.data} senderName={envelope.senderName} />;
   }
 
   if (envelope.giftType !== 'animated_letter') {

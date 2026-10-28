@@ -161,7 +161,10 @@
       "lede": "Photos, video clips, audio moments — drag the play controls to explore.",
       "musicPlay": "Play music",
       "musicPause": "Pause music"
-    }
+    },
+    "codeTag": "A little code",
+    "codeFrameTitle": "The gift someone wrote for you",
+    "codeFoot": "Written by hand, sent with love."
   },
   "Auth": {
     "errors": {
@@ -760,6 +763,85 @@
         "tooManyMedia": "Too many items — max is {max}.",
         "stillUploading": "Wait for your media to finish uploading."
       }
+    },
+    "code": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Code",
+      "lede": "Write a small web page as the gift: HTML for the body, CSS for the look, JavaScript for the moment. We scan it before it goes live.",
+      "privacyNote": "Your code is stored in your private Lovorithm library. It runs on the recipient’s device inside a sandbox that cannot reach this site.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. A tiny page for your best friend",
+      "htmlLabel": "HTML",
+      "htmlPlaceholder": "<h1>Open me</h1>\n<button id=\"go\">Click</button>",
+      "cssLabel": "CSS",
+      "cssPlaceholder": "h1 { color: #a83e3e; }",
+      "jsLabel": "JavaScript",
+      "jsPlaceholder": "document.getElementById(\"go\").addEventListener(\"click\", () => {\n  document.body.style.background = \"#fff3d6\";\n});",
+      "previewLabel": "Live preview",
+      "previewHint": "This preview runs in the same sandbox the recipient sees — if something is blocked here, it is blocked there too.",
+      "scanHeading": "Safety check",
+      "scanSafe": "Nothing flagged. This gift is safe to host.",
+      "scanNeedsReview": "This gift works, but a few things are worth a look before you send it.",
+      "scanBlocked": "This gift cannot be hosted. It reaches outside the sandbox — remove the flagged code below.",
+      "scanClean": "No issues found.",
+      "scanLocation": "{field}, line {line}",
+      "severity": {
+        "block": "Blocked",
+        "warn": "Check this",
+        "info": "Note"
+      },
+      "field": {
+        "html": "HTML",
+        "css": "CSS",
+        "js": "JavaScript"
+      },
+      "scan": {
+        "host-state-access": "Tries to read this site’s cookies or storage. The sandbox does not allow it.",
+        "sandbox-escape": "Tries to reach the page around the gift.",
+        "outbound-beacon": "Sends data to another site.",
+        "outbound-socket": "Opens a network connection. Not allowed in the sandbox.",
+        "outbound-request": "Fetches a web address. Not allowed in the sandbox.",
+        "outbound-url": "Contains a web address. Check it is one you trust.",
+        "crypto-miner": "Looks like a crypto miner.",
+        "dynamic-eval": "Runs code from a string. The sandbox blocks this.",
+        "obfuscation": "Hides code behind encoding.",
+        "popup": "Can open a new window. Blocked in the sandbox.",
+        "document-write": "Rewrites the page while it loads.",
+        "keystroke-capture": "Listens for key presses.",
+        "external-script": "Loads a script from another site.",
+        "external-stylesheet": "Loads a stylesheet from another site.",
+        "external-image": "Loads an image from another site.",
+        "nested-iframe": "Embeds another page. Blocked in the sandbox.",
+        "embed": "Embeds a file or object. Blocked in the sandbox.",
+        "form": "Has a form. Forms cannot be submitted in the sandbox.",
+        "base-tag": "Sets a base URL, which can break relative links.",
+        "meta-refresh": "Redirects the gift to another page.",
+        "inline-handler": "Uses inline event handlers.",
+        "css-import": "Imports a stylesheet from another site.",
+        "css-external-url": "Loads an image or font from another site.",
+        "minified-line": "One very long line — hard to check by eye."
+      },
+      "aiHeading": "AI review",
+      "aiLede": "The safety check above is mechanical. The AI reads the gift as a person would: does it work, is anything unfinished, and is there a detail only you can fill in.",
+      "aiButton": "Ask the AI to review this gift",
+      "aiPending": "Reading your gift…",
+      "aiSummary": "Summary",
+      "aiQuestionsHeading": "The AI needs something from you",
+      "aiAnswersLabel": "Your answers",
+      "aiAnswersPlaceholder": "e.g. Use the photo of us at the beach, and call her “Sunny”.",
+      "aiReReview": "Review again with my answers",
+      "aiSuggestionsHeading": "Suggested changes",
+      "aiApply": "Apply this change",
+      "aiApplied": "Applied",
+      "aiSuggestionField": "Applies to {field}",
+      "errors": {
+        "titleRequired": "Give your gift a title first.",
+        "emptyGift": "Write some HTML, CSS or JavaScript first.",
+        "blocked": "The safety check found something this gift cannot do. Fix the blocked items above, then save.",
+        "applyFailed": "That change no longer matches your code — it was probably already edited. Apply the rest."
+      },
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link"
     }
   },
   "Status": {

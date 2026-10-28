@@ -4193,3 +4193,232 @@ a:hover { color: var(--lb-primary); }
   margin-top: 8px;
 }
 
+
+/* === Code gift (OOP-5688) ===============================================
+ * Sender-side builder (/create/code) and the recipient-side sandboxed
+ * frame. The frame is the security boundary for user-authored code, so
+ * it gets its own height and a visible edge rather than borrowing the
+ * letter's paper styling. */
+
+.lb-code-builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-5);
+}
+
+.lb-code-builder__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--lb-space-5);
+  align-items: start;
+}
+
+.lb-code-builder__editors {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-4);
+  min-width: 0;
+}
+
+.lb-code-builder__preview {
+  min-width: 0;
+  position: sticky;
+  top: var(--lb-space-4);
+}
+
+.lb-code-builder__preview-title {
+  font-family: var(--lb-font-display);
+  font-size: 18px;
+  color: var(--lb-ink);
+  margin-bottom: var(--lb-space-2);
+}
+
+.lb-code-editor {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+/* The gift itself. Height is fixed so a long gift scrolls inside the
+ * frame instead of stretching the recipient's page. */
+.lb-code-gift__frame {
+  display: block;
+  width: 100%;
+  height: 520px;
+  border: 1px solid var(--lb-blush);
+  border-radius: var(--lb-radius-lg);
+  background: var(--lb-surface);
+  overflow: hidden;
+}
+
+.lb-code-gift__frame--preview {
+  height: 340px;
+}
+
+.lb-code-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--lb-space-8) var(--lb-space-4);
+}
+
+.lb-code-page__head {
+  margin-bottom: var(--lb-space-4);
+}
+
+.lb-code-page__foot {
+  margin-top: var(--lb-space-4);
+  text-align: center;
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+}
+
+/* --- safety scan panel --- */
+
+.lb-code-builder__scan,
+.lb-code-builder__ai {
+  background: var(--lb-surface);
+  border: 1px solid var(--lb-blush);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-3);
+}
+
+.lb-code-builder__scan h3,
+.lb-code-builder__ai h3 {
+  font-family: var(--lb-font-display);
+  font-size: 18px;
+  color: var(--lb-ink);
+}
+
+.lb-code-verdict {
+  font-weight: 600;
+  margin: 0;
+}
+
+.lb-code-verdict--safe { color: #1e6b3a; }
+.lb-code-verdict--needs_review { color: #8a5a12; }
+.lb-code-verdict--blocked { color: #a3302f; }
+
+.lb-code-findings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-2);
+}
+
+.lb-code-finding {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px var(--lb-space-2);
+  align-items: baseline;
+  padding: var(--lb-space-2) var(--lb-space-3);
+  border-radius: var(--lb-radius-md);
+  border-left: 3px solid var(--lb-blush);
+  background: var(--lb-surface-raised);
+  font-size: 14px;
+  color: var(--lb-ink);
+}
+
+.lb-code-finding--block { border-left-color: #a3302f; }
+.lb-code-finding--warn { border-left-color: #c08a1e; }
+.lb-code-finding--info { border-left-color: var(--lb-accent); }
+
+.lb-code-finding__severity {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lb-ink-soft);
+}
+
+.lb-code-finding__title { font-weight: 600; }
+
+.lb-code-finding__where {
+  grid-column: 2;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+
+.lb-code-finding__excerpt {
+  grid-column: 2;
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* --- AI review panel --- */
+
+.lb-code-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-4);
+}
+
+.lb-code-review__summary {
+  margin: 0;
+  color: var(--lb-ink);
+}
+
+.lb-code-review__questions h4,
+.lb-code-review__suggestions h4 {
+  font-family: var(--lb-font-display);
+  font-size: 15px;
+  color: var(--lb-ink);
+  margin-bottom: var(--lb-space-2);
+}
+
+.lb-code-review__questions ul,
+.lb-code-review__suggestions ul {
+  list-style: none;
+  margin: 0 0 var(--lb-space-3);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-2);
+}
+
+.lb-code-review__questions li {
+  font-size: 14px;
+  color: var(--lb-ink);
+  padding-left: var(--lb-space-3);
+  border-left: 3px solid var(--lb-honey);
+}
+
+.lb-code-suggestion {
+  border: 1px solid var(--lb-blush);
+  border-radius: var(--lb-radius-md);
+  padding: var(--lb-space-3);
+  background: var(--lb-surface-raised);
+}
+
+.lb-code-suggestion strong {
+  display: block;
+  color: var(--lb-ink);
+  margin-bottom: 2px;
+}
+
+.lb-code-suggestion p {
+  margin: 0 0 var(--lb-space-2);
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+}
+
+@media (max-width: 860px) {
+  .lb-code-builder__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lb-code-builder__preview {
+    position: static;
+  }
+  .lb-code-gift__frame {
+    height: 400px;
+  }
+}

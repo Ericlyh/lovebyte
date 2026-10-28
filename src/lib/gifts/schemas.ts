@@ -22,6 +22,7 @@ export const GiftTypeSchema = z.enum([
   'quiz',
   'multimedia_collage',
   'animated_letter',
+  'code',
 ]);
 export type GiftType = z.infer<typeof GiftTypeSchema>;
 
@@ -183,6 +184,30 @@ export const MultimediaCollagePayloadSchema = z.object({
   music_url: z.string().url().nullable().default(null),
 });
 export type MultimediaCollagePayload = z.infer<typeof MultimediaCollagePayloadSchema>;
+
+// ─── code (OOP-5688) ───────────────────────────────────────────────────────
+// A `code` gift is a small web page the sender wrote: an HTML body, a
+// stylesheet and a script. It renders inside a sandboxed iframe — see
+// `code-render.ts` for the document composition and `code-scan.ts` for the
+// safety gate that runs before a gift may be stored.
+//
+// The three fields are stored verbatim (the scanner and the renderer both
+// treat them as opaque text) and the size caps keep a single gift from
+// bloating the `gifts.payload` JSONB column:
+//
+//   - html: ≤ 100 KB — the body of the gift.
+//   - css:  ≤  50 KB — one stylesheet.
+//   - js:   ≤  50 KB — one script.
+export const CODE_GIFT_MAX_HTML = 100_000;
+export const CODE_GIFT_MAX_CSS = 50_000;
+export const CODE_GIFT_MAX_JS = 50_000;
+
+export const CodeGiftPayloadSchema = z.object({
+  html: z.string().max(CODE_GIFT_MAX_HTML),
+  css: z.string().max(CODE_GIFT_MAX_CSS),
+  js: z.string().max(CODE_GIFT_MAX_JS),
+});
+export type CodeGiftPayload = z.infer<typeof CodeGiftPayloadSchema>;
 
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({

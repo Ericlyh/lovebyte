@@ -10,6 +10,7 @@ const GIFT_TYPES = [
   { value: 'dragdrop_puzzle', label: 'Drag-and-drop puzzle' },
   { value: 'quiz', label: 'Quiz' },
   { value: 'multimedia_collage', label: 'Multimedia collage' },
+  { value: 'code', label: 'Code' },
 ] as const;
 
 /**
