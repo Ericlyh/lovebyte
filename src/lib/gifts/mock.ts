@@ -88,6 +88,7 @@ button {
   document.getElementById('go').hidden = true;
   document.body.style.background = '#fff3d6';
 });`,
+      react: false,
     } satisfies CodeGiftPayload,
   },
 };

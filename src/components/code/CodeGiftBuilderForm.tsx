@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
+  compileJsxAction,
   saveCodeGiftAction,
   reviewCodeGiftAction,
   type SaveCodeGiftResult,
@@ -29,6 +30,11 @@ import type { CodeAiReview } from '@/lib/gifts/code-ai';
  * few KB) so the sender sees the consequence of a line before they save.
  * The server re-runs the same scan before it writes anything, so the
  * browser's copy is a convenience, never the control.
+ *
+ * React mode: the JS field then holds JSX. The compiler is imported
+ * dynamically so it only reaches the browser when the sender actually
+ * asks for React — it is a big dependency and most code gifts never
+ * touch it.
  */
 
 const MAX_TITLE = 100;
@@ -43,6 +49,7 @@ export function CodeGiftBuilderForm() {
   const [html, setHtml] = useState('');
   const [css, setCss] = useState('');
   const [js, setJs] = useState('');
+  const [useReact, setUseReact] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
 
@@ -52,10 +59,44 @@ export function CodeGiftBuilderForm() {
   const [isReviewing, startReviewing] = useTransition();
   const [applied, setApplied] = useState<string[]>([]);
 
+  // The compiled JSX, once the server has compiled it.
+  const [compiledJs, setCompiledJs] = useState('');
+  const [jsxError, setJsxError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!useReact) {
+      setCompiledJs('');
+      setJsxError(null);
+      return;
+    }
+    let cancelled = false;
+    // Debounced: the compiler lives on the server (it is far too big to
+    // ship to the browser), so every keystroke would be a round trip.
+    const timer = setTimeout(() => {
+      void (async () => {
+        const result = await compileJsxAction(js);
+        if (cancelled) return;
+        if (result.ok) {
+          setCompiledJs(result.code);
+          setJsxError(null);
+        } else {
+          setCompiledJs('');
+          setJsxError(result.error);
+        }
+      })();
+    }, 700);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [js, useReact]);
+
+  const effectiveJs = useReact ? compiledJs : js;
+
   const scan = useMemo(() => scanCodeGift({ html, css, js }), [html, css, js]);
   const preview = useMemo(
-    () => composeCodeGiftDocument({ html, css, js }),
-    [html, css, js],
+    () => composeCodeGiftDocument({ html, css, js: effectiveJs, react: useReact }),
+    [html, css, effectiveJs, useReact],
   );
 
   const fieldValue: Record<Field, string> = { html, css, js };
@@ -95,6 +136,10 @@ export function CodeGiftBuilderForm() {
       setError(t('errors.blocked'));
       return;
     }
+    if (useReact && jsxError) {
+      setError(t('errors.jsxFailed'));
+      return;
+    }
 
     startSave(async () => {
       const result: SaveCodeGiftResult = await saveCodeGiftAction({
@@ -102,6 +147,7 @@ export function CodeGiftBuilderForm() {
         html,
         css,
         js,
+        react: useReact,
       });
       if (!result.ok) {
         setError(result.error);
@@ -119,6 +165,7 @@ export function CodeGiftBuilderForm() {
         html,
         css,
         js,
+        react: useReact,
         answers: answers.trim() || undefined,
       });
       if (!result.ok) {
@@ -148,6 +195,19 @@ export function CodeGiftBuilderForm() {
 
       <div className="lb-code-builder__grid">
         <div className="lb-code-builder__editors">
+          <div className="lb-field lb-code-builder__react">
+            <label htmlFor="code-react">
+              <input
+                id="code-react"
+                type="checkbox"
+                checked={useReact}
+                onChange={(e) => setUseReact(e.target.checked)}
+              />
+              {t('reactLabel')}
+            </label>
+            <p className="lb-field-hint">{t('reactHint')}</p>
+          </div>
+
           <div className="lb-field">
             <label htmlFor="code-html">{t('htmlLabel')}</label>
             <textarea
@@ -175,16 +235,26 @@ export function CodeGiftBuilderForm() {
           </div>
 
           <div className="lb-field">
-            <label htmlFor="code-js">{t('jsLabel')}</label>
+            <label htmlFor="code-js">
+              {useReact ? t('jsxLabel') : t('jsLabel')}
+            </label>
             <textarea
               id="code-js"
               value={js}
               onChange={(e) => setJs(e.target.value)}
               rows={6}
-              placeholder={t('jsPlaceholder')}
+              placeholder={useReact ? t('jsxPlaceholder') : t('jsPlaceholder')}
               className="lb-input lb-textarea lb-code-editor"
               spellCheck={false}
             />
+            {useReact && (
+              <p className="lb-field-hint">{t('jsxHint')}</p>
+            )}
+            {jsxError && (
+              <p className="lb-form-error" role="alert">
+                {t('jsxError', { error: jsxError })}
+              </p>
+            )}
           </div>
         </div>
 

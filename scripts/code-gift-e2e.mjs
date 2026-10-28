@@ -162,6 +162,34 @@ try {
   const sandbox = await page.locator('.lb-code-gift__frame--preview').getAttribute('sandbox');
   check('preview frame is sandboxed without same-origin', sandbox === 'allow-scripts', String(sandbox));
 
+  // React mode: the sender writes JSX, the server compiles it, and the
+  // preview mounts the component on React 18.
+  await page.check('#code-react');
+  await page.fill('#code-html', '<div id="root"></div>');
+  await page.fill(
+    '#code-js',
+    'function App() { return <h1 id="jsx-out">Hello from JSX</h1>; }',
+  );
+  await page.waitForTimeout(3000);
+  const reactSrcDoc = await page.locator('.lb-code-gift__frame--preview').getAttribute('srcdoc');
+  check(
+    'React mode loads React 18',
+    Boolean(reactSrcDoc?.includes('react@18')) && Boolean(reactSrcDoc?.includes('react-dom')),
+  );
+  check('React mode compiles the JSX', Boolean(reactSrcDoc?.includes('React.createElement')));
+  const reactFrame = page
+    .frames()
+    .find((f) => f !== page.mainFrame() && f.url().includes('about:srcdoc'));
+  const jsxText = reactFrame
+    ? await reactFrame.locator('#jsx-out').innerText().catch(() => '')
+    : '';
+  check('the React component mounted in the preview', jsxText.includes('Hello from JSX'), jsxText);
+
+  await page.uncheck('#code-react');
+  await page.fill('#code-html', '<h1 id="msg">Hi</h1><button id="go">Open</button>');
+  await page.fill('#code-js', 'document.getElementById("go").onclick = () => {};');
+  await page.waitForTimeout(1200);
+
   // 4. the AI review (proves the deployment has the model configured).
   await page.click('button:has-text("Ask the AI")');
   const reviewSummary = page.locator('.lb-code-review__summary');

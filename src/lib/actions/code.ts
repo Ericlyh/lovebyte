@@ -5,8 +5,9 @@ import { redirect } from 'next/navigation';
 import { randomBytes } from 'node:crypto';
 import { createClient } from '@/lib/supabase/server';
 import { CodeDraftInputSchema, CodeReviewInputSchema } from '@/features/code/schemas';
-import { CodeGiftPayloadSchema } from '@/lib/gifts/schemas';
+import { CodeGiftPayloadSchema, CODE_GIFT_MAX_JS } from '@/lib/gifts/schemas';
 import { isCodeGiftStorable, scanCodeGift } from '@/lib/gifts/code-scan';
+import { transpileJsx } from '@/lib/gifts/code-react';
 import { reviewCodeGift, type CodeAiReviewResult } from '@/lib/gifts/code-ai';
 
 /**
@@ -99,10 +100,22 @@ export async function saveCodeGiftAction(
     };
   }
 
+  // JSX is compiled here, at save time, so the stored gift is plain
+  // JavaScript and the recipient's browser needs no transpiler.
+  let js = input.js;
+  if (input.react) {
+    const compiled = transpileJsx(input.js);
+    if (!compiled.ok) {
+      return { ok: false, error: `Your JSX did not compile: ${compiled.error}` };
+    }
+    js = compiled.code;
+  }
+
   const payload = CodeGiftPayloadSchema.parse({
     html: input.html,
     css: input.css,
-    js: input.js,
+    js,
+    react: input.react,
   });
 
   // 1. Insert the gift row first so the share FK has something to point at.
@@ -190,6 +203,38 @@ export async function reviewCodeGiftAction(
     },
     parsed.data.answers,
   );
+}
+
+/**
+ * Compile sender JSX to plain JavaScript, for the builder's live preview.
+ *
+ * The compiler is a 1.5 MB dependency — far too much to pull into the
+ * browser bundle — so the preview compiles on the server through the same
+ * `transpileJsx` the save path uses. That also means the preview is
+ * exactly what will be stored, not an approximation of it.
+ *
+ * Auth-gated like the review action: it is server work, and an open
+ * endpoint would be a free transpiling service for anyone.
+ */
+export async function compileJsxAction(
+  rawInput: unknown,
+): Promise<{ ok: true; code: string } | { ok: false; error: string }> {
+  const source =
+    typeof rawInput === 'string' ? rawInput : String((rawInput as { source?: unknown })?.source ?? '');
+
+  if (source.length > CODE_GIFT_MAX_JS) {
+    return { ok: false, error: 'That is longer than a code gift can be.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: 'Sign in to use the React preview.' };
+  }
+
+  return transpileJsx(source);
 }
 
 /**

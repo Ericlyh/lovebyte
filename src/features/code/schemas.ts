@@ -43,6 +43,9 @@ export const CodeDraftInputSchema = z.object({
   html: z.string().max(CODE_GIFT_MAX_HTML),
   css: z.string().max(CODE_GIFT_MAX_CSS),
   js: z.string().max(CODE_GIFT_MAX_JS),
+  // true → the `js` field holds JSX; it is transpiled at save time and
+  // the gift runs on React 18.
+  react: z.boolean().default(false),
 });
 export type CodeDraftInput = z.infer<typeof CodeDraftInputSchema>;
 

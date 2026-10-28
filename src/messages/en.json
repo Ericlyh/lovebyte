@@ -840,10 +840,17 @@
         "titleRequired": "Give your gift a title first.",
         "emptyGift": "Write some HTML, CSS or JavaScript first.",
         "blocked": "The safety check found something this gift cannot do. Fix the blocked items above, then save.",
-        "applyFailed": "That change no longer matches your code — it was probably already edited. Apply the rest."
+        "applyFailed": "That change no longer matches your code — it was probably already edited. Apply the rest.",
+        "jsxFailed": "Your JSX did not compile yet. Fix the error above, then save."
       },
       "submitting": "Saving your gift…",
-      "submit": "Save & get share link"
+      "submit": "Save & get share link",
+      "reactLabel": "Write it in React (JSX)",
+      "reactHint": "Turn this on to write JSX. We compile it when you save and load React 18 for the recipient.",
+      "jsxLabel": "JSX",
+      "jsxPlaceholder": "function App() {\n  return <h1>Hi {name}</h1>;\n}",
+      "jsxHint": "Name your component App. Put <div id=\"root\"></div> in the HTML where the page should appear — we add one if it is missing.",
+      "jsxError": "That JSX did not compile: {error}"
     }
   },
   "Status": {

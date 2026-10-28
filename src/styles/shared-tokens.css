@@ -4422,3 +4422,27 @@ a:hover { color: var(--lb-primary); }
     height: 400px;
   }
 }
+
+.lb-code-builder__react {
+  border-bottom: 1px solid var(--lb-blush);
+  padding-bottom: var(--lb-space-4);
+}
+
+.lb-code-builder__react label {
+  display: flex;
+  align-items: center;
+  gap: var(--lb-space-2);
+  font-weight: 600;
+  color: var(--lb-ink);
+  cursor: pointer;
+}
+
+.lb-code-builder__react input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--lb-primary-deep);
+}
+
+.lb-code-builder__react .lb-field-hint {
+  margin-top: var(--lb-space-2);
+}

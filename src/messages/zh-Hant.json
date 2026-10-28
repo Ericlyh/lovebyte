@@ -840,10 +840,17 @@
         "titleRequired": "先幫你的禮物取個標題。",
         "emptyGift": "先寫一點 HTML、CSS 或 JavaScript。",
         "blocked": "安全檢查發現這個禮物做不到的事。請先修正上面被擋掉的項目再儲存。",
-        "applyFailed": "這個修改已經對不上你的程式碼了，可能剛剛被改過。其餘的修改請繼續套用。"
+        "applyFailed": "這個修改已經對不上你的程式碼了，可能剛剛被改過。其餘的修改請繼續套用。",
+        "jsxFailed": "你的 JSX 還沒編譯成功。先修好上面的錯誤再儲存。"
       },
       "submitting": "正在儲存你的禮物…",
-      "submit": "儲存並取得分享連結"
+      "submit": "儲存並取得分享連結",
+      "reactLabel": "用 React 寫（JSX）",
+      "reactHint": "打開這個就能寫 JSX。儲存時我們會編譯，並為收禮物的人載入 React 18。",
+      "jsxLabel": "JSX",
+      "jsxPlaceholder": "function App() {\n  return <h1>Hi {name}</h1>;\n}",
+      "jsxHint": "元件請命名為 App。在 HTML 裡放一個 <div id=\"root\"></div> 作為頁面出現的位置 —— 沒有我們會自動加上。",
+      "jsxError": "這段 JSX 編譯不過：{error}"
     }
   },
   "Status": {

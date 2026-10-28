@@ -206,6 +206,9 @@ export const CodeGiftPayloadSchema = z.object({
   html: z.string().max(CODE_GIFT_MAX_HTML),
   css: z.string().max(CODE_GIFT_MAX_CSS),
   js: z.string().max(CODE_GIFT_MAX_JS),
+  // true → the gift was authored as JSX and runs on React 18. The `js`
+  // field then holds the transpiled JavaScript (see code-react.ts).
+  react: z.boolean().default(false),
 });
 export type CodeGiftPayload = z.infer<typeof CodeGiftPayloadSchema>;
 

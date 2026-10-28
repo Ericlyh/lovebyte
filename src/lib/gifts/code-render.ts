@@ -72,10 +72,14 @@ export function escapeJsForScriptElement(js: string): string {
   return js.replace(/<\/script/gi, (match) => `<\\/${match.slice(2)}`);
 }
 
+import { REACT_MOUNT_SCRIPT, REACT_UMD_URLS } from './code-react-runtime';
+
 export type CodeGiftSource = {
   html: string;
   css: string;
   js: string;
+  /** true → load React 18 and mount the gift's `App` component. */
+  react?: boolean;
 };
 
 /**
@@ -87,6 +91,14 @@ export function composeCodeGiftDocument(source: CodeGiftSource): string {
   const css = escapeCssForStyleElement(source.css);
   const js = escapeJsForScriptElement(source.js);
 
+  // React's two classic scripts have to come before the gift's own
+  // script: a classic script runs in document order, so `React` is
+  // defined by the time the gift's code (and the mount script) run.
+  const reactScripts = source.react
+    ? `<script src="${REACT_UMD_URLS.react}"></script>\n<script src="${REACT_UMD_URLS.reactDom}"></script>\n`
+    : '';
+  const mountScript = source.react ? `\n${escapeJsForScriptElement(REACT_MOUNT_SCRIPT)}` : '';
+
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -97,7 +109,7 @@ export function composeCodeGiftDocument(source: CodeGiftSource): string {
 </head>
 <body>
 ${source.html}
-<script>${js}</script>
+${reactScripts}<script>${js}</script>${mountScript}
 </body>
 </html>`;
 }
