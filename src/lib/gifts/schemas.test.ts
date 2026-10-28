@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   AnimatedLetterPayloadSchema,
+  CodeGiftPayloadSchema,
   DragdropPuzzlePayloadSchema,
   GiftTypeSchema,
   MemoryCardsPayloadSchema,
@@ -19,18 +20,19 @@ import { MOCK_GIFTS, getMockEnvelope } from './mock';
  *      (so the /g/[token] page renders even before Supabase is live).
  *   2. The animated_letter payload schema matches the architecture
  *      doc §3 contract.
- *   3. The gift-type enum is exactly the five Phase 4–8 builders.
+ *   3. The gift-type enum is exactly the shipped gift types.
  *   4. Unknown tokens return null (so callers can 404).
  */
 
 describe('GiftTypeSchema', () => {
-  it('accepts all five Phase 4–8 gift types', () => {
+  it('accepts every gift type', () => {
     for (const t of [
       'memory_cards',
       'dragdrop_puzzle',
       'quiz',
       'multimedia_collage',
       'animated_letter',
+      'code',
     ]) {
       expect(GiftTypeSchema.parse(t)).toBe(t);
     }
@@ -81,6 +83,15 @@ describe('RecipientEnvelopeSchema', () => {
     expect(parsed.shareToken).toBe('demo');
     expect(parsed.senderName).toBe('Eric');
     expect(parsed.giftType).toBe('animated_letter');
+  });
+
+  it('parses the seeded demo code envelope', () => {
+    const parsed = RecipientEnvelopeSchema.parse(MOCK_GIFTS['demo-code']);
+    expect(parsed.giftType).toBe('code');
+    const payload = CodeGiftPayloadSchema.parse(parsed.payload);
+    expect(payload.html).toContain('<h1>');
+    expect(payload.css).toContain('body');
+    expect(payload.js).toContain('addEventListener');
   });
 });
 

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMockEnvelope } from './mock';
 import {
   AnimatedLetterPayloadSchema,
+  CodeGiftPayloadSchema,
   DragdropPuzzlePayloadSchema,
   MemoryCardsPayloadSchema,
   MultimediaCollagePayloadSchema,
@@ -71,6 +72,8 @@ async function fetchFromSupabase(
     DragdropPuzzlePayloadSchema.parse(row.gifts.payload);
   } else if (row.gifts.type === 'multimedia_collage') {
     MultimediaCollagePayloadSchema.parse(row.gifts.payload);
+  } else if (row.gifts.type === 'code') {
+    CodeGiftPayloadSchema.parse(row.gifts.payload);
   }
 
   return {
