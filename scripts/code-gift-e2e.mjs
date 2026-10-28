@@ -6,18 +6,21 @@ import { readFileSync } from 'node:fs';
  *
  * Drives the whole gift path, sender and recipient:
  *
- *   1. the picker offers "Code" and routes to /create/code;
- *   2. the live safety scan blocks a gift that reads host state and
- *      clears a clean one;
- *   3. the preview renders the sender's code inside the sandbox;
- *   4. the AI review comes back with a summary (this is what proves the
- *      LOVEBYTE_AI_* env vars reached the deployment);
- *   5. saving either lands on the share page, or fails with the
- *      "not switched on yet" message that says the only thing missing
- *      is the migration that adds the `code` gift type;
- *   6. the recipient view renders a saved code gift, the gift's own
+ *   1. the landing page lists the code gift as one of the six formats;
+ *   2. the recipient view renders a saved code gift, the gift's own
  *      JavaScript runs inside the frame, and the frame stays opaque to
- *      the page around it.
+ *      the page around it;
+ *   3. the create page shows a visible "code gift" section that routes
+ *      to /create/code;
+ *   4. the picker offers "Code" and routes to /create/code;
+ *   5. the live safety scan blocks a gift that reads host state and
+ *      clears a clean one;
+ *   6. the preview renders the sender's code inside the sandbox;
+ *   7. the AI review comes back with a summary (this is what proves the
+ *      LOVEBYTE_AI_* env vars reached the deployment);
+ *   8. saving either lands on the share page, or fails with the
+ *      "not switched on yet" message that says the only thing missing
+ *      is the migration that adds the `code` gift type.
  *
  * It creates a throwaway user over the GoTrue admin API and deletes it
  * again in the `finally` block, so a run leaves nothing behind.
@@ -70,7 +73,16 @@ page.on('console', (m) => {
 });
 
 try {
-  // 0. The recipient view. `/g/demo-code` is the seeded mock envelope,
+  // 0. The landing page lists the code gift. It used to say "Five gift
+  //    formats" and show five cards — the code gift existed but was
+  //    invisible to anyone who had not opened the create picker.
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  const featureTitles = await page.locator('.lb-features .lb-feature h3').allTextContents();
+  check('landing page lists the code gift', featureTitles.includes('Code'), featureTitles.join(', '));
+  const featureHeading = await page.locator('.lb-features').getAttribute('aria-label');
+  check('landing page counts six formats', /six/i.test(featureHeading ?? ''), featureHeading ?? '');
+
+  // 1. The recipient view. `/g/demo-code` is the seeded mock envelope,
   //    so this works before any code gift can be saved.
   await page.goto(`${BASE}/g/demo-code/open`, { waitUntil: 'networkidle' });
   const frame = page.locator('.lb-code-gift__frame');
@@ -108,7 +120,27 @@ try {
   await page.waitForTimeout(2000);
   console.log('after login url:', page.url());
 
-  // 1. the picker offers "Code" and routes to the builder.
+  // 2. the visible code section on /create. The code gift used to be
+  //    reachable only by opening the type dropdown, which is why the
+  //    report said "I cannot see a section that allows me to upload code".
+  await page.goto(`${BASE}/create`, { waitUntil: 'domcontentloaded' });
+  const codeSection = page.locator('.lb-create-code');
+  check('the create page shows a code gift section', (await codeSection.count()) === 1);
+  check(
+    'the code section is visible without opening a dropdown',
+    await codeSection.isVisible().catch(() => false),
+  );
+  const codeHeading = await codeSection.locator('h2').innerText().catch(() => '');
+  check('the code section is labelled', codeHeading.includes('Code'), codeHeading);
+
+  await Promise.all([
+    page.waitForURL(/\/create\/code$/, { timeout: 30000 }).catch(() => {}),
+    page.click('.lb-create-code a.lb-btn'),
+  ]);
+  await page.waitForTimeout(1000);
+  check('the code section routes to /create/code', page.url().endsWith('/create/code'), page.url());
+
+  // 3. the picker offers "Code" and routes to the builder.
   await page.goto(`${BASE}/create`, { waitUntil: 'domcontentloaded' });
   const options = await page.locator('select[name="type"] option').allTextContents();
   check('picker offers a Code option', options.includes('Code'), options.join(', '));
@@ -124,7 +156,7 @@ try {
   await page.waitForTimeout(1500);
   check('picker routes to /create/code', page.url().endsWith('/create/code'), page.url());
 
-  // 2. the scan blocks a gift that reads host state.
+  // 4. the scan blocks a gift that reads host state.
   await page.fill('#code-title', 'A tiny page for you');
   await page.fill(
     '#code-html',
@@ -152,7 +184,7 @@ try {
   verdict = await verdictOf();
   check('clearing the block clears the verdict', verdict.toLowerCase().includes('safe'), verdict);
 
-  // 3. the preview carries the sender's code and the sandbox CSP.
+  // 5. the preview carries the sender's code and the sandbox CSP.
   const srcDoc = await page.locator('.lb-code-gift__frame--preview').getAttribute('srcdoc');
   check(
     'preview embeds the sender code',
@@ -190,7 +222,7 @@ try {
   await page.fill('#code-js', 'document.getElementById("go").onclick = () => {};');
   await page.waitForTimeout(1200);
 
-  // 4. the AI review (proves the deployment has the model configured).
+  // 6. the AI review (proves the deployment has the model configured).
   await page.click('button:has-text("Ask the AI")');
   const reviewSummary = page.locator('.lb-code-review__summary');
   const gotReview = await reviewSummary
@@ -207,7 +239,7 @@ try {
     console.log('  ai error:', aiErrText);
   }
 
-  // 5. saving. Either it works (migration applied) or it says exactly
+  // 7. saving. Either it works (migration applied) or it says exactly
   //    what is missing.
   await Promise.all([
     page.waitForURL(/\/create\/[^/]+\/finish/, { timeout: 30000 }).catch(() => {}),

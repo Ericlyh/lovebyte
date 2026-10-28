@@ -37,6 +37,7 @@ export default async function Home() {
     { id: 'quiz', emoji: '💬' },
     { id: 'collage', emoji: '🎞️' },
     { id: 'letter', emoji: '💌' },
+    { id: 'code', emoji: '💻' },
   ] as const;
 
   const steps = [1, 2, 3] as const;

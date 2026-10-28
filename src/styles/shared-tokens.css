@@ -1007,6 +1007,29 @@ a:hover { color: var(--lb-primary); }
   font-size: 14px;
   color: var(--lb-ink-soft);
 }
+
+/* OOP-5688 — the visible "code gift" section on /create. The code gift is
+ * the one format with a builder of its own, so it gets its own block
+ * instead of hiding inside the type dropdown. */
+.lb-create-code {
+  background: var(--lb-blush);
+  border-radius: var(--lb-radius-md);
+  padding: var(--lb-space-4);
+  margin-bottom: var(--lb-space-4);
+}
+.lb-create-code__title {
+  font-family: var(--lb-font-display);
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--lb-ink);
+  margin-bottom: var(--lb-space-2);
+}
+.lb-create-code__lede {
+  color: var(--lb-ink-soft);
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: var(--lb-space-4);
+}
 .lb-auth-foot a {
   font-weight: 600;
 }

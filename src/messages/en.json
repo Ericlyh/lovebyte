@@ -33,7 +33,7 @@
       "ctaSecondary": "See an example"
     },
     "features": {
-      "heading": "Five gift formats",
+      "heading": "Six gift formats",
       "cards": {
         "title": "Memory card game",
         "body": "Pick photos. We turn them into a matching game. Every match unlocks a memory."
@@ -53,6 +53,10 @@
       "letter": {
         "title": "Animated letter",
         "body": "A scroll-reveal letter that opens like a real envelope. Photos and voice notes drop in as you read."
+      },
+      "code": {
+        "title": "Code",
+        "body": "Write a small web page — HTML, CSS, JavaScript. We scan it first, then host it in a sandbox the recipient can't break out of."
       }
     },
     "how": {
@@ -61,7 +65,7 @@
       "steps": {
         "1": {
           "title": "Pick a format",
-          "body": "Five gift types to choose from. Each one designed for a different kind of \"I love you\"."
+          "body": "Six gift types to choose from. Each one designed for a different kind of \"I love you\"."
         },
         "2": {
           "title": "Add the personal bits",
@@ -585,6 +589,11 @@
     "submit": "Create draft",
     "submitting": "Creating…",
     "browseInstead": "Browse the marketplace instead →",
+    "codeEntry": {
+      "heading": "Code gifts",
+      "lede": "Write HTML, CSS or JavaScript as the gift. We scan it before it goes live, then host it in a sandbox the recipient cannot break out of.",
+      "cta": "Start a code gift →"
+    },
     "finish": {
       "heading": "Publish to the marketplace",
       "lede": "Fill in a description, pick a cover photo (optional), and decide whether it's free or paid. Paid gifts require a connected Stripe account.",

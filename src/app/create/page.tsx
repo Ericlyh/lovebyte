@@ -41,6 +41,23 @@ export default async function CreatePage() {
         <h1>{t('heading')}</h1>
         <p className="lede">{t('lede')}</p>
 
+        {/*
+          OOP-5688 — the code gift gets its own section instead of living
+          only in the type dropdown. It is the one format with a builder of
+          its own (three editors, a live sandbox preview, an AI review), and
+          "I cannot see a section for code gifts" was the actual ask — a
+          row in a <select> is not visible until you open it.
+        */}
+        <div className="lb-create-code">
+          <h2 className="lb-create-code__title">{t('codeEntry.heading')}</h2>
+          <p className="lb-create-code__lede">{t('codeEntry.lede')}</p>
+          <Link href="/create/code" className="lb-btn lb-btn--primary">
+            {t('codeEntry.cta')}
+          </Link>
+        </div>
+
+        <div className="lb-divider" />
+
         <CreateDraftForm />
 
         <p className="lb-auth-foot">
