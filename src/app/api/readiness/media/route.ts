@@ -37,10 +37,21 @@ export const dynamic = 'force-dynamic';
 const PROBE_PATH = `gifts/_readiness/probe-${randomUUID()}.png`;
 
 // 1x1 transparent PNG.
-const PROBE_BYTES = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-  'base64',
+//
+// `new Uint8Array(Buffer.from(...))` copies the 33 decoded bytes into an
+// ArrayBuffer of exactly that size. Passing `Buffer.from(...)` directly
+// would hand over the whole pooled 64 KB ArrayBuffer behind it, and the
+// object written to the bucket would be 33 bytes of PNG followed by
+// 65 KB of unrelated pool memory.
+const PROBE_BYTES = new Uint8Array(
+  Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  ),
 );
+
+// PNG magic number — the first 8 bytes of every PNG file.
+const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
 export async function GET() {
   const result: {
@@ -54,7 +65,7 @@ export async function GET() {
   let publicUrl: string | null = null;
 
   try {
-    const { error } = await uploadMediaObject(PROBE_PATH, PROBE_BYTES.buffer as ArrayBuffer, {
+    const { error } = await uploadMediaObject(PROBE_PATH, PROBE_BYTES.buffer, {
       contentType: 'image/png',
     });
     if (error) {
@@ -77,9 +88,12 @@ export async function GET() {
       bytes: bytes.length,
     };
 
-    result.ok = res.status === 200 && bytes.length > 0;
+    const isPng = PNG_SIGNATURE.every((byte, i) => bytes[i] === byte);
+    result.ok = res.status === 200 && bytes.length === PROBE_BYTES.length && isPng;
     if (!result.ok) {
-      result.error = `read returned ${res.status} (${result.read.contentType ?? 'no content-type'})`;
+      result.error = `read returned ${res.status} (${result.read.contentType ?? 'no content-type'}), ${
+        bytes.length
+      } bytes${isPng ? '' : ' — not a PNG'}`;
     }
   } catch (err) {
     result.error = err instanceof Error ? err.message : String(err);
