@@ -36,7 +36,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   return {
     title,
     description:
-      'Five kinds of personalised gifts from independent creators. Find a memory card game, photo puzzle, quiz, collage, or animated letter for the people you love.',
+      'Six kinds of personalised gifts from independent creators. Find a memory card game, photo puzzle, quiz, collage, animated letter, or a little piece of code for the people you love.',
   };
 }
 
