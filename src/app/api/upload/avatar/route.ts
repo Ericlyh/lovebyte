@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { uploadMediaObject, removeMediaObject } from '@/lib/supabase/storage';
 import { BRAND } from '@/lib/brand';
 
 /**
@@ -12,9 +13,10 @@ import { BRAND } from '@/lib/brand';
  *   2. Validates mime (PNG/JPEG/WEBP/GIF) + size (≤ 2 MB).
  *   3. Streams the bytes to the brand media bucket
  *      (`BRAND.STORAGE_BUCKET` in `src/lib/brand.ts`) under
- *      `avatars/<user-id>/avatar-<uuid>.<ext>`. The owner-CRL policy
- *      (`media_owner_all`) gates this — the SSR client passes the user's
- *      JWT, so `auth.uid()` resolves correctly inside the RLS check.
+ *      `avatars/<user-id>/avatar-<uuid>.<ext>`. The write goes through
+ *      the service-role client — see `src/lib/supabase/storage.ts` for
+ *      why (the `storage.objects` RLS policies have never been applied
+ *      to the live project, so owner-scoped writes fail outright).
  *   4. Inserts a `gift_media` row so the avatar is discoverable via the
  *      existing `profiles.avatar_media_id` FK + `profiles_public` join.
  *   5. Returns `{ mediaId, publicUrl }`. The client stashes `mediaId`
@@ -111,20 +113,17 @@ export async function POST(request: Request) {
   const ext = EXT_BY_MIME[mime];
 
   // Stable per-upload key so retry-on-failure produces a new path (the
-  // bucket's filename uniqueness tolerates this). Owner-scoped prefix so
-  // the RLS policy `media_owner_all` lets the user write here.
+  // bucket's filename uniqueness tolerates this). Owner-scoped prefix, so
+  // the path is derived from the session user's id and nobody can write
+  // into another user's prefix.
   const path = `avatars/${user.id}/avatar-${randomUUID()}.${ext}`;
 
   // Bytes → ArrayBuffer for the Supabase storage SDK.
   const bytes = await file.arrayBuffer();
 
-  const { error: uploadErr } = await supabase.storage
-    .from(BRAND.STORAGE_BUCKET)
-    .upload(path, bytes, {
-      contentType: mime,
-      cacheControl: '3600',
-      upsert: false,
-    });
+  const { error: uploadErr } = await uploadMediaObject(path, bytes, {
+    contentType: mime,
+  });
 
   if (uploadErr) {
     console.error('[upload/avatar] storage upload failed', uploadErr.message);
@@ -150,7 +149,7 @@ export async function POST(request: Request) {
 
   if (insertErr || !inserted) {
     // Best-effort cleanup so the bucket doesn't leak orphan files.
-    await supabase.storage.from(BRAND.STORAGE_BUCKET).remove([path]);
+    await removeMediaObject(path);
     console.error('[upload/avatar] gift_media insert failed', insertErr?.message);
     return NextResponse.json(
       { ok: false, error: `Could not save avatar record: ${insertErr?.message ?? 'unknown error'}` },
@@ -158,8 +157,9 @@ export async function POST(request: Request) {
     );
   }
 
-  // The avatars/ prefix is publicly readable (see media_avatars_public_select
-  // in 0004_avatar_storage.sql), so getPublicUrl is the right shape here.
+  // The media bucket is a public bucket, so the public URL serves the
+  // avatar to the profile page without a signed-URL roundtrip. The path
+  // embeds a uuid, so the URL is unguessable (see migration 0010).
   const { data: publicUrlData } = supabase.storage
     .from(BRAND.STORAGE_BUCKET)
     .getPublicUrl(path);

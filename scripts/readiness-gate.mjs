@@ -283,6 +283,56 @@ try {
   fail('env', `/api/readiness unreachable — ${err.message}`, 'readiness-probe-unreachable');
 }
 
+// --------------------------------------------------------------- Media probe
+//
+// A gift is photos. For the whole life of the project NO photo, video,
+// audio or avatar had ever been uploaded — and the gate reported the site
+// as healthy the whole time, because a broken upload path is invisible to
+// a page load and to an HTTP status code.
+//
+// Two independent defects were hiding behind that green gate (both fixed
+// 2026-10-28, OOP-5816):
+//
+//   1. the upload routes wrote with the user-scoped client while the
+//      `storage.objects` RLS policies had never been applied to the live
+//      project → every upload died with "new row violates row-level
+//      security policy";
+//   2. the app hands out `getPublicUrl()` URLs, and Storage's public
+//      endpoint only serves an object from a PUBLIC bucket — the bucket
+//      was private, so even a stored object rendered as a broken image.
+//
+// `/api/readiness/media` performs the roundtrip the product depends on:
+// write through the app's own storage helper, fetch it back with no auth
+// header (what the recipient's browser does), delete it again.
+try {
+  const res = await fetch(`${BASE}/api/readiness/media`, { redirect: 'manual' });
+  const body = await res.json().catch(() => null);
+
+  if (res.status === 200 && body?.ok) {
+    pass('media', `media roundtrip ok (${body?.read?.bytes ?? '?'} bytes read back)`);
+  } else if (body?.write && body?.write !== 'ok') {
+    fail(
+      'media',
+      `the media bucket rejected a write — ${body.error ?? 'unknown error'}. Uploads are broken: no gift can carry a photo`,
+      'media-upload-broken',
+    );
+  } else if (body?.read && body.read.status !== 200) {
+    fail(
+      'media',
+      `media was written but the public read returned ${body.read.status} — recipients would see broken images`,
+      'media-read-broken',
+    );
+  } else {
+    fail(
+      'media',
+      `/api/readiness/media returned ${res.status}${body?.error ? ` — ${body.error}` : ''}`,
+      'media-path-broken',
+    );
+  }
+} catch (err) {
+  fail('media', `/api/readiness/media unreachable — ${err.message}`, 'media-probe-unreachable');
+}
+
 // ------------------------------------------------------------ Lighthouse probe
 //
 // Lighthouse is a noisy instrument, and the gate's verdict is a threshold

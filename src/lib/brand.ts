@@ -41,8 +41,14 @@
  *       2. The `storage.objects` RLS policies cannot be created over
  *          the Storage REST API (there is no policy endpoint) — they
  *          live in `supabase/migrations/0010_storage_bucket_rename.sql`
- *          and need SQL. Until that file is applied, uploads are denied
- *          by RLS rather than by a missing bucket.
+ *          and need SQL. They have never been applied to the live
+ *          project, so the upload routes write with the service-role
+ *          client instead (`src/lib/supabase/storage.ts`) and the
+ *          bucket was flipped to PUBLIC over the Storage REST API on
+ *          2026-10-28 (OOP-5816) — the app hands out `getPublicUrl()`
+ *          URLs, and Storage's public endpoint only serves an object
+ *          from a public bucket. Applying migration 0010 later is still
+ *          worth doing: it adds the policies back as defence-in-depth.
  *
  *   - `DOMAIN` → `lovorithm.app`. The previous value, `lovebyte.app`,
  *     is a parked domain-for-sale lander, not this product — it was

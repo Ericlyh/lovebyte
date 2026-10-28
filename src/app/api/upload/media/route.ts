@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { uploadMediaObject, removeMediaObject } from '@/lib/supabase/storage';
 import { BRAND } from '@/lib/brand';
 
 /**
@@ -185,13 +186,9 @@ export async function POST(request: Request) {
 
   const bytes = await file.arrayBuffer();
 
-  const { error: uploadErr } = await supabase.storage
-    .from(BRAND.STORAGE_BUCKET)
-    .upload(path, bytes, {
-      contentType: mime,
-      cacheControl: '3600',
-      upsert: false,
-    });
+  const { error: uploadErr } = await uploadMediaObject(path, bytes, {
+    contentType: mime,
+  });
 
   if (uploadErr) {
     console.error('[upload/media] storage upload failed', uploadErr.message);
@@ -215,7 +212,7 @@ export async function POST(request: Request) {
     .single();
 
   if (insertErr || !inserted) {
-    await supabase.storage.from(BRAND.STORAGE_BUCKET).remove([path]);
+    await removeMediaObject(path);
     console.error('[upload/media] gift_media insert failed', insertErr?.message);
     return NextResponse.json(
       { ok: false, error: `Could not save media record: ${insertErr?.message ?? 'unknown error'}` },
@@ -223,8 +220,10 @@ export async function POST(request: Request) {
     );
   }
 
-  // gifts/<kind>/<user-id>/... is publicly readable (brand media
-  // bucket policy; see 0001_initial_schema + 0004_avatar_storage).
+  // The media bucket is a public bucket, so the public URL serves the
+  // object to the recipient's browser without a signed-URL roundtrip.
+  // The path embeds a uuid, so the URL is unguessable — the access
+  // control model the app has always assumed (see migration 0010).
   const { data: publicUrlData } = supabase.storage
     .from(BRAND.STORAGE_BUCKET)
     .getPublicUrl(path);

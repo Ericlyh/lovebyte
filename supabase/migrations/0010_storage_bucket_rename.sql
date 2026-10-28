@@ -39,17 +39,46 @@
 --
 -- Idempotent: safe to run more than once.
 -- ============================================================================
+--
+-- 2026-10-28 correction (OOP-5816)
+-- --------------------------------
+-- This file originally created the bucket as `public = false` and relied on
+-- the `storage.objects` SELECT policies below to make the media readable.
+-- That combination does not work with the app:
+--
+--   - every media URL the app hands out is built with `getPublicUrl()`,
+--     i.e. `/storage/v1/object/public/<bucket>/<path>`, and the recipient's
+--     browser fetches it with no auth header. Storage's public endpoint
+--     serves an object ONLY when the bucket itself is public — for a
+--     private bucket it answers `400 Bucket not found` regardless of what
+--     the RLS policies say;
+--   - the SELECT policies in §2 have never been applied to the live
+--     project (no SQL path from the agent host: the Management API PAT is
+--     dead and there is no db password), so they were not covering the gap
+--     either.
+--
+-- Net effect on 2026-10-28: every photo / video / audio / avatar upload
+-- failed ("new row violates row-level security policy") and even a
+-- successful write would have produced a 400 image URL. The bucket is now
+-- created PUBLIC, which is what `getPublicUrl()` requires. The bucket was
+-- flipped live over the Storage REST API on 2026-10-28.
+--
+-- Privacy model (unchanged in intent): the object path embeds a uuid
+-- (`gifts/<kind>/<user-id>/photo-<uuid>.<ext>`), so the URL is
+-- unguessable, and the gift itself is gated by its share token. The
+-- policies in §2 stay as defence-in-depth for owner-scoped writes.
+-- ============================================================================
 
 
 -- ---- 1. The renamed bucket -------------------------------------------------
--- `id` MUST equal `name` — see the trap above. `on conflict (name)` makes a
--- repeat run a no-op (the bucket may already have been created over the
--- Storage REST API).
+-- `id` MUST equal `name` — see the trap above. `on conflict (name) do
+-- update` (not `do nothing`) so that applying this file to a project
+-- where the bucket already exists flips `public` to true as well.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'lovorithm-media',
   'lovorithm-media',
-  false,
+  true,
   52428800,                        -- 50 MB — the app's own cap (video uploads)
   array[
     'image/png','image/jpeg','image/webp','image/gif',
@@ -57,7 +86,7 @@ values (
     'audio/mpeg','audio/mp4','audio/wav','audio/ogg','audio/x-m4a'
   ]
 )
-on conflict (name) do nothing;
+on conflict (name) do update set public = excluded.public;
 
 -- The app's three upload layouts, for reference:
 --   avatars/<uid>/avatar-<uuid>.<ext>                   .../upload/avatar
@@ -86,12 +115,12 @@ create policy "media_avatars_public_select"
 --
 --     The gift payload stores a *public* URL for each photo / video /
 --     audio (see src/lib/actions/{dragdropPuzzle,memoryCards,
---     multimediaCollage}.ts — "the bucket is private but
---     gifts/<owner>/.../<file> is publicly readable ... without a signed
---     URL"), and the recipient's browser fetches it directly. No policy
---     has ever granted that read, so every gift with media renders broken.
---     It is created here because the new bucket needs a complete policy
---     set, and the intent is already documented in the app.
+--     multimediaCollage}.ts), and the recipient's browser fetches it
+--     directly. Since 2026-10-28 the bucket is a public bucket, so that
+--     read already goes through Storage's public endpoint and this policy
+--     is defence-in-depth: it also covers the authenticated read path
+--     (`/storage/v1/object/<bucket>/<path>`) for anyone hitting the
+--     bucket with a JWT.
 --
 --     Privacy note: the gift media path embeds a uuid and the gift
 --     itself is gated by its share token, so an unguessable URL is the
