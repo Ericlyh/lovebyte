@@ -25,6 +25,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
   quiz: '❓',
   multimedia_collage: '🖼️',
   animated_letter: '✉️',
+  code: '💻',
 };
 
 export async function GiftCard({ gift }: Props) {

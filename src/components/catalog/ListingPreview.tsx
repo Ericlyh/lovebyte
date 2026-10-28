@@ -25,6 +25,7 @@ const CATEGORY_LABEL: Record<GiftCategory, string> = {
   quiz: 'Quiz',
   multimedia_collage: 'Collage',
   animated_letter: 'Animated letter',
+  code: 'Code',
 };
 
 export async function ListingPreview({ title, description, category }: Props) {

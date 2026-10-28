@@ -407,7 +407,7 @@
   "Catalog": {
     "browse": {
       "heading": "Find a gift someone will remember",
-      "lede": "Five kinds of personalised gifts from independent creators — sorted by what's new.",
+      "lede": "Six kinds of personalised gifts from independent creators — sorted by what's new.",
       "empty": "No gifts match those filters yet.",
       "emptyCta": "Be the first to publish one →",
       "loadMore": "Load more"
@@ -423,7 +423,8 @@
         "dragdrop_puzzle": "Photo puzzle",
         "quiz": "Quiz",
         "multimedia_collage": "Collage",
-        "animated_letter": "Animated letter"
+        "animated_letter": "Animated letter",
+        "code": "Code"
       },
       "priceTier": {
         "free": "Free",
@@ -455,7 +456,8 @@
         "quiz": "Quiz",
         "multimedia_collage": "Multimedia collage",
         "animated_letter": "Animated letter",
-        "unknown": "Gift"
+        "unknown": "Gift",
+        "code": "Code"
       },
       "sendThisGift": "Send this gift →"
     },

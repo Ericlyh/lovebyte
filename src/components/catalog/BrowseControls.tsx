@@ -29,6 +29,7 @@ const CATEGORIES = [
   'quiz',
   'multimedia_collage',
   'animated_letter',
+  'code',
 ] as const;
 
 const PRICE_TIERS = ['free', 'under_5', 'under_20', 'over_20'] as const;

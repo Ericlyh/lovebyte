@@ -407,7 +407,7 @@
   "Catalog": {
     "browse": {
       "heading": "搵一份令人記得嘅禮物",
-      "lede": "五種由獨立創作人整嘅個人化禮物——按最新上架排序。",
+      "lede": "六種來自獨立創作者的客製禮物 —— 依你想看的排序。",
       "empty": "仲未有禮物符合呢啲條件。",
       "emptyCta": "做第一個上架嘅人 →",
       "loadMore": "睇更多"
@@ -423,7 +423,8 @@
         "dragdrop_puzzle": "相片拼圖",
         "quiz": "小測驗",
         "multimedia_collage": "拼貼",
-        "animated_letter": "會動嘅信"
+        "animated_letter": "會動嘅信",
+        "code": "程式碼"
       },
       "priceTier": {
         "free": "免費",
@@ -455,7 +456,8 @@
         "quiz": "小測驗",
         "multimedia_collage": "多媒體拼貼",
         "animated_letter": "會動嘅信",
-        "unknown": "禮物"
+        "unknown": "禮物",
+        "code": "程式碼"
       },
       "sendThisGift": "送出呢份禮物 →"
     },

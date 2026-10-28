@@ -31,7 +31,8 @@ export type GiftCategory =
   | 'dragdrop_puzzle'
   | 'quiz'
   | 'multimedia_collage'
-  | 'animated_letter';
+  | 'animated_letter'
+  | 'code';
 
 export type PriceTier = 'free' | 'under_5' | 'under_20' | 'over_20';
 
@@ -102,6 +103,7 @@ const giftCategoryEnum = z.enum([
   'quiz',
   'multimedia_collage',
   'animated_letter',
+  'code',
 ]);
 
 const priceTierEnum = z.enum(['free', 'under_5', 'under_20', 'over_20']);
