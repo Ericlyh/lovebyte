@@ -33,6 +33,12 @@ const OG_IMAGE = {
 };
 
 export const metadata: Metadata = {
+  // Every relative URL in metadata (the /api/og/<token> social card, the
+  // sitemap pointer) resolves against this base. Without it Next resolves
+  // them against the incoming request host, which on an aliased or
+  // preview deployment is not the canonical domain — a shared gift link
+  // would unfurl with a preview-host image URL.
+  metadataBase: new URL(BRAND.PRODUCTION_URL),
   title: `${BRAND.NAME} — ${BRAND.TAGLINE}`,
   description: DESCRIPTION,
   // OOP-5816 — social share previews. The launch checklist expects

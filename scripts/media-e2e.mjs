@@ -13,9 +13,8 @@ import { readFileSync } from 'node:fs';
  * upload from inside the page so the cookies ride along.
  *
  * It creates a throwaway user over the GoTrue admin API and deletes it
- * again in the `finally` block. It leaves one 1x1 PNG in the media bucket
- * (the upload the route performed) — the bucket path embeds a uuid and
- * the object is inert, but it is a real object.
+ * again in the `finally` block, and deletes the uploaded object, so a
+ * run leaves nothing behind.
  *
  * Usage:
  *   node scripts/media-e2e.mjs
@@ -95,6 +94,19 @@ try {
     const buf = Buffer.from(await rd.arrayBuffer());
     console.log('\nanon read:', rd.status, rd.headers.get('content-type'), buf.length, 'bytes');
     if (rd.status !== 200) console.log('  body:', buf.toString('utf8').slice(0, 200));
+
+    // Remove the object this probe uploaded, so a run leaves no orphans.
+    const marker = '/object/public/lovorithm-media/';
+    const path = publicUrl.includes(marker)
+      ? decodeURIComponent(publicUrl.slice(publicUrl.indexOf(marker) + marker.length))
+      : null;
+    if (path) {
+      const del = await fetch(`${SUPA}/storage/v1/object/lovorithm-media/${path}`, {
+        method: 'DELETE',
+        headers: { apikey: SK, Authorization: `Bearer ${SK}` },
+      });
+      console.log('cleanup object:', del.status);
+    }
   }
 } finally {
   await browser.close();
