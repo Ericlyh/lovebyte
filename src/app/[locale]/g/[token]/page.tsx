@@ -116,15 +116,38 @@ export default async function RecipientEnvelopePage({ params }: Props) {
           <a href={`/g/${encodeURIComponent(token)}/open`} className="lb-cta-primary">
             {t('openCta')} 🎁
           </a>
-          <a href="#" className="lb-recipient__saveforlater">
-            {t('saveForLater')}
-          </a>
+          {/*
+            OOP-6718 — the second CTA used to be "Save for later" with a
+            dead `href="#"`. There is no save-for-later feature to point
+            it at (it would need a persistence table, and the DDL path
+            from this host is closed), so a link that promises a feature
+            and does nothing is worse than no link. It is replaced by
+            the one action that actually works from here: "Make one
+            too", which walks the recipient into the creator funnel.
+          */}
+          <Link href="/create" className="lb-makeone">
+            {t('makeOneToo')}
+          </Link>
         </div>
 
         <footer className="lb-recipient__foot">
           <Link href="/">{BRAND.NAME}</Link>
           {' · 為香港而設 · '}
-          <a href="#">{t('reportLabel') ?? 'Report'}</a>
+          {/*
+            OOP-6718 — "Report" was the other dead `href="#"` on this
+            page. A recipient who receives something abusive has to be
+            able to reach someone, so the link is kept — it just points
+            somewhere real. `mailto:` is the convention the support page
+            already uses (no contact form, no captcha), and the gift
+            link goes in the subject so the report is actionable.
+          */}
+          <a
+            href={`mailto:bugs@lovorithm.app?subject=${encodeURIComponent(
+              `Report gift: ${BRAND.PRODUCTION_URL}/g/${encodeURIComponent(token)}`,
+            )}`}
+          >
+            {t('reportLabel') ?? 'Report'}
+          </a>
         </footer>
       </article>
     </main>

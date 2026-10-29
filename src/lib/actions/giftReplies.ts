@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { trackEvent } from '@/lib/analytics/track';
+import { isUuidLike } from '@/lib/uuid';
+import { notifyGiftCreatorOfReply } from '@/lib/gifts/notify-creator';
 
 /**
  * Gift-reply server actions (M-G, OOP-4890).
@@ -17,6 +19,8 @@ import { trackEvent } from '@/lib/analytics/track';
  *       Auth-gated insert. RLS `gift_replies_insert_own` enforces
  *       `auth.uid() = user_id`; we set it explicitly so PostgREST can
  *       resolve the `user:profiles_public!…` join on the return.
+ *       A successful insert also notifies the gift's creator (OOP-6718)
+ *       — see `notifyGiftCreatorOfReply`.
  *
  *   - `deleteGiftReplyAction({ replyId })`
  *       Hard delete. RLS `gift_replies_delete_own_or_creator` covers
@@ -31,7 +35,13 @@ import { trackEvent } from '@/lib/analytics/track';
  */
 
 const createSchema = z.object({
-  giftId: z.string().uuid('giftId must be a UUID.'),
+  // NOT `z.string().uuid()`: that validator enforces RFC-4122, which
+  // requires the version nibble to be 1–5. LoveByte's seeded catalogue
+  // uses `aaaa1111-…` / `a000c000-…` ids, whose version nibble is 0 —
+  // so `.uuid()` rejected 8 of the 9 seeded listings, and a reply to any
+  // of them died at validation before it ever reached the database.
+  // `isUuidLike` is the repo's shape-only check (see `src/lib/uuid.ts`).
+  giftId: z.string().refine(isUuidLike, 'giftId must be a UUID.'),
   body: z
     .string()
     .trim()
@@ -136,6 +146,21 @@ export async function createGiftReplyAction(
     parent_reply_id: string | null;
     user: { id: string; handle: string; display_name: string | null } | null;
   };
+
+  // OOP-6718 — close the loop. Until now the reply landed here and
+  // stopped: the creator never learned the question was asked, so a
+  // buyer's question before paying was invisible to the person it was
+  // aimed at. Exactly one notification fires per reply; the helper
+  // itself declines to notify the creator about their own reply.
+  //
+  // It runs after the insert is committed and swallows its own errors,
+  // so an unconfigured ESP (OOP-6168) can never undo the reply.
+  await notifyGiftCreatorOfReply({
+    giftId,
+    replyerId: user.id,
+    replyerName: row.user?.display_name ?? row.user?.handle ?? 'Someone',
+    replyBody: row.body,
+  });
 
   return {
     ok: true,

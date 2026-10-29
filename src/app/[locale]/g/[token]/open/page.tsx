@@ -6,6 +6,8 @@ import { getEnvelopeByToken } from '@/lib/gifts/fetch';
 import { recordShareOpen } from '@/lib/gifts/record-open';
 import { isPrefetchRequest, trackEvent } from '@/lib/analytics/track';
 import { BRAND } from '@/lib/brand';
+import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
+import type { RecipientEnvelope } from '@/lib/gifts/schemas';
 import {
   AnimatedLetterPayloadSchema,
   CodeGiftPayloadSchema,
@@ -72,6 +74,11 @@ export default async function GiftOpenPage({ params }: Props) {
   const envelope = await getEnvelopeByToken(token);
   if (!envelope) notFound();
 
+  // Where a visitor returns to after signing in from the write-back
+  // composer. They came here to open a gift — they must land back on
+  // the gift, not on a listing they never visited.
+  const nextPath = `/g/${encodeURIComponent(token)}/open`;
+
   // OOP-6716 — count the open.
   //
   // `shares.view_count`, `shares.last_opened_at` and
@@ -98,9 +105,44 @@ export default async function GiftOpenPage({ params }: Props) {
     if (!parsed.success) {
       return <GiftNotYetShipped envelope={envelope} reason="schema-mismatch" />;
     }
-    return <MemoryCardsGame payload={parsed.data} senderName={envelope.senderName} />;
+    // The memory-cards win state owns its own write-back UI: "Now write
+    // back" is said there, so the composer belongs there (OOP-6718).
+    return (
+      <MemoryCardsGame
+        payload={parsed.data}
+        senderName={envelope.senderName}
+        giftId={envelope.giftId ?? null}
+        nextPath={nextPath}
+      />
+    );
   }
 
+  // Every other gift type gets the same write-back section underneath
+  // the gift itself — the recipient has just seen the gift, which is the
+  // moment a reply makes sense.
+  const view = renderGiftView(envelope);
+
+  return (
+    <>
+      {view}
+      <RecipientWriteBack
+        giftId={envelope.giftId ?? null}
+        senderName={envelope.senderName}
+        nextPath={nextPath}
+      />
+    </>
+  );
+}
+
+/**
+ * Dispatch a gift type to its recipient view (architecture §6: validate
+ * at the type-narrow boundary).
+ *
+ * Extracted from the page body so the page has ONE return point for the
+ * non-memory-cards types — the write-back section is appended to all of
+ * them at once instead of being repeated at six return sites.
+ */
+function renderGiftView(envelope: RecipientEnvelope): React.ReactNode {
   if (envelope.giftType === 'dragdrop_puzzle') {
     const parsed = DragdropPuzzlePayloadSchema.safeParse(envelope.payload);
     if (!parsed.success) {

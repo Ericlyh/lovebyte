@@ -612,9 +612,52 @@ a:hover { color: var(--lb-primary); }
   color: #fff;
 }
 
-.lb-recipient__saveforlater {
-  font-size: 13px;
-  color: var(--lb-ink-soft);
+/* OOP-6718 — "Make one too →" is the link out of the recipient surface
+ * and into the creator funnel (`/create`). It replaces the dead
+ * "Save for later" anchor, which pointed at `href="#"`. */
+.lb-makeone {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--lb-primary-deep);
+  text-decoration: none;
+  border-bottom: 1.5px solid currentColor;
+  padding-bottom: 2px;
+}
+.lb-makeone:hover {
+  opacity: 0.85;
+}
+
+/* OOP-6718 — the write-back section: the reply that closes the loop
+ * back to the gift's creator. */
+.lb-writeback {
+  margin: 32px auto 0;
+  max-width: 560px;
+  padding: 20px;
+  background: var(--lb-surface-raised);
+  border: 1px solid #f3e6e3;
+  border-radius: var(--lb-radius-md);
+  text-align: left;
+}
+.lb-writeback__heading {
+  font-family: var(--lb-font-display);
+  font-size: 20px;
+  color: var(--lb-ink);
+  margin: 0 0 12px;
+}
+.lb-writeback .lb-reply-form {
+  margin: 0;
+}
+.lb-writeback .lb-makeone {
+  margin-top: 16px;
+}
+/* Inside the memory-cards win state the section sits on a blush panel
+ * and needs less air above it. */
+.lb-memory-page__win .lb-writeback {
+  margin-top: 16px;
+  background: var(--lb-surface, #fffaf7);
 }
 
 .lb-recipient__foot {

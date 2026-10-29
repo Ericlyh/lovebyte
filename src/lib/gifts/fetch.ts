@@ -62,7 +62,7 @@ async function fetchFromSupabase(
   const { data, error } = await supabase
     .from('shares')
     .select(
-      'token, created_at, profiles:created_by (display_name), gifts:gift_id (type, payload)',
+      'token, created_at, profiles:created_by (display_name), gifts:gift_id (id, type, payload)',
     )
     .eq('token', token)
     .maybeSingle();
@@ -73,7 +73,7 @@ async function fetchFromSupabase(
     token: string;
     created_at: string;
     profiles: { display_name: string } | null;
-    gifts: { type: string; payload: unknown } | null;
+    gifts: { id: string; type: string; payload: unknown } | null;
   };
   if (!row.gifts) return null;
 
@@ -94,6 +94,7 @@ async function fetchFromSupabase(
 
   return {
     shareToken: row.token,
+    giftId: row.gifts.id,
     giftType: row.gifts.type as RecipientEnvelope['giftType'],
     senderName: row.profiles?.display_name ?? 'Someone',
     sentAtIso: row.created_at,

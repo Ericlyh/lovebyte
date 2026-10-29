@@ -11,7 +11,7 @@ import { BRAND } from './brand';
  * abstraction; if we ever need Postmark or SES we add a second function
  * alongside this one rather than wrapping providers in a class.
  *
- * Two public senders, one delivery path:
+ * Three public senders, one delivery path:
  *
  *   - `sendShareEmail()` — share-link delivery. The webhook
  *     (`/api/stripe/webhook`) calls this for the
@@ -20,10 +20,15 @@ import { BRAND } from './brand';
  *     the buyer sees the link at `/purchases`.
  *   - `sendWaitlistEmail()` — waitlist confirmation. Called by
  *     `joinWaitlistAction` after the row is inserted (OOP-6156).
+ *   - `sendCreatorReplyEmail()` — "someone wrote back". Called by
+ *     `createGiftReplyAction` when a buyer or a gift recipient posts a
+ *     reply to the gift's creator (OOP-6718). Before this sender existed
+ *     the question was invisible to the creator: it landed in
+ *     `gift_replies` and nothing else ever happened.
  *
- * Both build their own subject/body — the copy is genuinely different
- * between them — and hand the result to `deliverEmail()`, which owns
- * the Resend call, the stub fallback, and the error shape.
+ * All three build their own subject/body — the copy is genuinely
+ * different between them — and hand the result to `deliverEmail()`, which
+ * owns the Resend call, the stub fallback, and the error shape.
  *
  * URL shape is owned by this module so callers can't drift between dev
  * and prod: `shareToken` is opaque to the caller; we prepend
@@ -59,12 +64,29 @@ type SendWaitlistEmailArgs = {
   locale?: 'en' | 'zh-Hant';
 };
 
+type SendCreatorReplyEmailArgs = {
+  /** The gift creator's email address. */
+  to: string;
+  /** Display name of the creator — the greeting in the body. */
+  creatorName: string | null;
+  /** Title of the gift the reply is on. May be empty. */
+  giftTitle: string | null;
+  /** Path of the listing where the creator reads the thread (`/l/<giftId>`). */
+  listingPath: string;
+  /** Display name of whoever wrote the reply. */
+  replyerName: string;
+  /** The reply body — free-form text the reader typed. */
+  replyBody: string;
+  /** Locale for subject + body copy. Defaults to 'en'. */
+  locale?: 'en' | 'zh-Hant';
+};
+
 export type SendEmailResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
 /** Which template is being delivered — used for the dev/stub log line. */
-type EmailKind = 'share' | 'waitlist';
+type EmailKind = 'share' | 'waitlist' | 'creator_reply';
 
 type DeliverEmailArgs = {
   to: string;
@@ -140,6 +162,65 @@ function buildWaitlistBody(locale: 'en' | 'zh-Hant'): string {
     "We've saved your spot. Here's what to expect:",
     `- An invite email when ${BRAND.NAME} opens for early access.`,
     '- Nothing else — no newsletter, no drip sequence.',
+    '',
+    `— The ${BRAND.NAME} team`,
+  ].join('\n');
+}
+
+function buildListingUrl(listingPath: string): string {
+  const base = siteUrl().replace(/\/$/, '');
+  return `${base}${listingPath.startsWith('/') ? listingPath : `/${listingPath}`}`;
+}
+
+function buildCreatorReplySubject(
+  locale: 'en' | 'zh-Hant',
+  giftTitle: string | null,
+): string {
+  if (locale === 'zh-Hant') {
+    return giftTitle ? `有人回覆咗「${giftTitle}」` : '有人回覆咗你嘅禮物';
+  }
+  return giftTitle ? `New reply about "${giftTitle}"` : 'New reply about your gift';
+}
+
+function buildCreatorReplyBody(
+  locale: 'en' | 'zh-Hant',
+  args: {
+    creatorName: string | null;
+    giftTitle: string | null;
+    listingUrl: string;
+    replyerName: string;
+    replyBody: string;
+  },
+): string {
+  const { creatorName, giftTitle, listingUrl, replyerName, replyBody } = args;
+  const body = replyBody.trim();
+
+  if (locale === 'zh-Hant') {
+    return [
+      `${creatorName ?? '你好'}：`,
+      '',
+      giftTitle ? `${replyerName} 回覆咗你嘅禮物「${giftTitle}」：` : `${replyerName} 回覆咗你嘅禮物：`,
+      '',
+      `「${body}」`,
+      '',
+      '你可以喺呢度睇同回覆：',
+      listingUrl,
+      '',
+      `— ${BRAND.NAME} 團隊`,
+    ].join('\n');
+  }
+
+  return [
+    `${creatorName ? `Hi ${creatorName}` : 'Hi there'},`,
+    '',
+    giftTitle
+      ? `${replyerName} replied about your gift "${giftTitle}":`
+      : `${replyerName} replied about your gift:`,
+    '',
+    `"${body}"`,
+    '',
+    'Read it and reply here:',
+    listingUrl,
     '',
     `— The ${BRAND.NAME} team`,
   ].join('\n');
@@ -267,5 +348,39 @@ export async function sendWaitlistEmail(
     text: body,
     kind: 'waitlist',
     meta: { locale },
+  });
+}
+
+/**
+ * Tell the gift creator that someone wrote back to them (OOP-6718).
+ *
+ * The reply body IS quoted in the email — unlike the waitlist's `intent`,
+ * which is deliberately dropped, the whole point of this email is that the
+ * creator learns what was asked. The body is bounded by the
+ * `gift_replies_body_check` (1–1000 chars) before it ever reaches here.
+ *
+ * `listingPath` is the public path of the thread (`/l/<giftId>`); the
+ * absolute URL is built here so dev and prod cannot drift.
+ */
+export async function sendCreatorReplyEmail(
+  args: SendCreatorReplyEmailArgs,
+): Promise<SendEmailResult> {
+  const locale = args.locale ?? 'en';
+  const listingUrl = buildListingUrl(args.listingPath);
+  const subject = buildCreatorReplySubject(locale, args.giftTitle);
+  const body = buildCreatorReplyBody(locale, {
+    creatorName: args.creatorName,
+    giftTitle: args.giftTitle,
+    listingUrl,
+    replyerName: args.replyerName,
+    replyBody: args.replyBody,
+  });
+
+  return deliverEmail({
+    to: args.to,
+    subject,
+    text: body,
+    kind: 'creator_reply',
+    meta: { listingUrl, replyerName: args.replyerName },
   });
 }

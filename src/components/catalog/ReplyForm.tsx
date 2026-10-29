@@ -42,6 +42,18 @@ type Props = {
   placeholder?: string;
   submitLabel?: string;
   submittingLabel?: string;
+  /**
+   * Where the sign-in link sends the visitor once they are back.
+   * Defaults to the listing the thread lives on. The recipient surface
+   * (OOP-6718) passes the gift link instead — a recipient who signs in
+   * from `/g/[token]/open` must land back on the gift, not on a listing
+   * they never visited.
+   */
+  nextPath?: string;
+  /** Overrides the anon-mode hint. Defaults to the listing copy. */
+  signInPrompt?: string;
+  /** Overrides the anon-mode sign-in button label. */
+  signInCta?: string;
   onCreated?: (reply: CreatedGiftReply) => void;
   onCancel?: () => void;
 };
@@ -53,6 +65,9 @@ export function ReplyForm({
   placeholder,
   submitLabel,
   submittingLabel,
+  nextPath,
+  signInPrompt,
+  signInCta,
   onCreated,
   onCancel,
 }: Props) {
@@ -126,12 +141,12 @@ export function ReplyForm({
   if (mode === 'anon') {
     return (
       <div className="lb-reply-form lb-reply-form--anon">
-        <p className="lb-reply-form__hint">{t('signInPrompt')}</p>
+        <p className="lb-reply-form__hint">{signInPrompt ?? t('signInPrompt')}</p>
         <Link
           className="lb-btn lb-btn--sm lb-btn--primary"
-          href={`/login?next=${encodeURIComponent(`/l/${giftId}`)}`}
+          href={`/login?next=${encodeURIComponent(nextPath ?? `/l/${giftId}`)}`}
         >
-          {t('signInCta')}
+          {signInCta ?? t('signInCta')}
         </Link>
       </div>
     );

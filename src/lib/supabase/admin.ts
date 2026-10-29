@@ -26,6 +26,10 @@ export type EmailLookup =
   | { state: 'pending'; userId: string; createdAt: string }
   | { state: 'not_found' };
 
+export type UserEmailLookup =
+  | { state: 'found'; userId: string; email: string }
+  | { state: 'not_found' };
+
 type GoTrueUser = {
   id: string;
   email: string;
@@ -105,6 +109,77 @@ export async function lookupEmail(
   }
   return {
     data: { state: 'pending', userId: user.id, createdAt: user.created_at },
+    error: null,
+  };
+}
+
+/**
+ * Look a user's email address up by their id.
+ *
+ * The companion to `lookupEmail`, which searches BY email. This one is
+ * for the direction we need when notifying somebody: we know the id
+ * (the gift creator's `owner_id`) and we need the address to write to.
+ *
+ * The email address lives in `auth.users`, not in `public.profiles` —
+ * `profiles` deliberately has no email column, so PostgREST cannot
+ * serve it. GoTrue's admin endpoint is the only server-side path to it.
+ */
+export async function lookupUserEmailById(
+  rawUserId: string,
+): Promise<{ data: UserEmailLookup; error: PostgrestError | null }> {
+  const userId = rawUserId.trim();
+  if (!userId) {
+    return { data: { state: 'not_found' }, error: null };
+  }
+
+  const url = new URL(
+    `${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(userId)}`,
+  );
+
+  let res: Response;
+  try {
+    res = await supabaseFetch(url.toString(), {
+      headers: {
+        apikey: SECRET_KEY!,
+        Authorization: `Bearer ${SECRET_KEY}`,
+      },
+      cache: 'no-store',
+    });
+  } catch (e) {
+    return {
+      data: { state: 'not_found' },
+      error: { message: `admin lookup network error: ${(e as Error).message}` },
+    };
+  }
+
+  if (!res.ok) {
+    // 404 is the honest answer for "no such user" — it is not an error
+    // worth retrying, so it maps to `not_found` with no error detail.
+    if (res.status === 404) {
+      return { data: { state: 'not_found' }, error: null };
+    }
+    let detail: unknown = null;
+    try {
+      detail = await res.json();
+    } catch {
+      detail = await res.text();
+    }
+    return {
+      data: { state: 'not_found' },
+      error: {
+        message: `admin lookup → HTTP ${res.status}`,
+        code: String(res.status),
+        details: JSON.stringify(detail),
+      },
+    };
+  }
+
+  const body = (await res.json()) as GoTrueUser;
+  if (!body?.email) {
+    return { data: { state: 'not_found' }, error: null };
+  }
+  return {
+    data: { state: 'found', userId: body.id, email: body.email },
     error: null,
   };
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isUuidLike } from '@/lib/uuid';
 
 /**
  * Zod schemas for gifts.payload — one per gift type.
@@ -215,6 +216,14 @@ export type CodeGiftPayload = z.infer<typeof CodeGiftPayloadSchema>;
 // ─── shared envelope (returned by the fetcher for any gift type) ──────────
 export const RecipientEnvelopeSchema = z.object({
   shareToken: z.string().min(1),
+  // The gift this share points at. Present for a live share; absent for
+  // the seeded mock envelopes (they have no database row), which is why
+  // it is optional. The recipient write-back needs it — `gift_replies`
+  // is keyed by gift, not by share token.
+  giftId: z
+    .string()
+    .refine(isUuidLike, 'giftId must be a UUID.')
+    .optional(),
   giftType: GiftTypeSchema,
   senderName: z.string(),
   sentAtIso: z.string(),                 // ISO; page formats relative time

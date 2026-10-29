@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MemoryCardsPayload } from '@/features/memory-cards/schemas';
+import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
 
 /**
  * MemoryCardsGame — the flip-and-match recipient view (Phase 4, OOP-4219).
@@ -44,9 +45,15 @@ type FlippedState = 'face-down' | 'face-up' | 'matched';
 export function MemoryCardsGame({
   payload,
   senderName,
+  giftId,
+  nextPath,
 }: {
   payload: MemoryCardsPayload;
   senderName: string;
+  /** The gift to write back about. Null when the share has no row (mock). */
+  giftId: string | null;
+  /** Where a visitor returns to after signing in from the composer. */
+  nextPath: string;
 }) {
   const t = useTranslations('Open.memoryCards');
 
@@ -224,6 +231,19 @@ export function MemoryCardsGame({
         <section className="lb-memory-page__win" role="status">
           <h2>{t('winHeading')}</h2>
           <p>{t('winBody', { moves })}</p>
+          {/*
+            OOP-6718 — `winBody` says "Now write back — they'd love
+            that", and until this the prompt led nowhere: there was no
+            reply UI on the recipient surface at all. The write-back
+            composer lives HERE, in the win state, because that is where
+            the prompt is — and it carries the "Make one too →" link out
+            of the recipient surface into the creator funnel.
+          */}
+          <RecipientWriteBack
+            giftId={giftId}
+            senderName={senderName}
+            nextPath={nextPath}
+          />
         </section>
       )}
 

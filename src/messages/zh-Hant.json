@@ -116,7 +116,16 @@
   "Recipient": {
     "heading": "{name} 送咗嘢畀你。",
     "openCta": "打開你嘅禮物",
-    "saveForLater": "遲啲先睇",
+    "makeOneToo": "整返一份 →",
+    "writeBack": {
+      "heading": "寫番句畀 {name}",
+      "composerLabel": "寫番句",
+      "placeholder": "講返兩句…",
+      "submit": "傳送",
+      "submitting": "傳送緊…",
+      "signInPrompt": "登入就可以寫番畀 {name}。",
+      "signInCta": "登入"
+    },
     "reportLabel": "檢舉",
     "loading": "載緊你嘅禮物…",
     "notFoundTitle": "呢份禮物已經唔喺度",

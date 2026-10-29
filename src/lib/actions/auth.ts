@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { postgrest } from '@/lib/supabase/anon';
 import { lookupEmail } from '@/lib/supabase/admin';
+import { sanitizeNextPath } from '@/lib/forms/next-path';
 import {
   validateHandle,
   handleReasonText,
@@ -389,7 +390,15 @@ export async function signInAction(formData: FormData): Promise<AuthActionResult
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+
+  // OOP-6718 — the `?next=` return path. `ReplyForm` links to
+  // `/login?next=…` so a visitor comes back to where they were (the
+  // gift they were writing back to). The value is attacker-controlled
+  // and this action is the trust boundary, so it is validated HERE
+  // rather than trusting what the page rendered. An unsafe value falls
+  // back to the home page.
+  const nextPath = sanitizeNextPath(formData.get('next') as string | null);
+  redirect(nextPath ?? '/');
 }
 
 // ---- signOut -----------------------------------------------------------------

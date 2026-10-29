@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { sendShareEmail, sendWaitlistEmail } from './email';
+import {
+  sendCreatorReplyEmail,
+  sendShareEmail,
+  sendWaitlistEmail,
+} from './email';
 
 /**
  * Tests for the transactional email helpers (OOP-6156).
@@ -184,5 +188,114 @@ describe('sendShareEmail', () => {
 
     expect(result.ok).toBe(true);
     expect(result.ok && result.id).toMatch(/^stub-/);
+  });
+});
+
+describe('sendCreatorReplyEmail', () => {
+  it('sends the reply body and the thread link to the creator', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_test');
+    vi.stubEnv('RESEND_FROM', 'hello@lovorithm.app');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://lovorithm.app');
+    const fetchMock = stubFetch({});
+
+    const result = await sendCreatorReplyEmail({
+      to: 'creator@example.com',
+      creatorName: 'Mei Chen',
+      giftTitle: 'Match the Goa sunsets',
+      listingPath: '/l/aaaa1111-0000-0000-0000-000000000001',
+      replyerName: 'Jamie',
+      replyBody: 'Does it ship to Bangkok?',
+    });
+
+    expect(result).toEqual({ ok: true, id: 'resend-123' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const payload = JSON.parse(init.body as string);
+    expect(payload.to).toEqual(['creator@example.com']);
+    expect(payload.subject).toBe('New reply about "Match the Goa sunsets"');
+    expect(payload.text).toContain('Hi Mei Chen');
+    expect(payload.text).toContain('Jamie replied about your gift');
+    // The whole point of the email: the creator learns what was asked.
+    expect(payload.text).toContain('Does it ship to Bangkok?');
+    expect(payload.text).toContain(
+      'https://lovorithm.app/l/aaaa1111-0000-0000-0000-000000000001',
+    );
+  });
+
+  it('falls back to a generic subject when the gift has no title', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_test');
+    vi.stubEnv('RESEND_FROM', 'hello@lovorithm.app');
+    const fetchMock = stubFetch({});
+
+    await sendCreatorReplyEmail({
+      to: 'creator@example.com',
+      creatorName: null,
+      giftTitle: null,
+      listingPath: '/l/gift-id',
+      replyerName: 'Jamie',
+      replyBody: 'Thank you!',
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const payload = JSON.parse(init.body as string);
+    expect(payload.subject).toBe('New reply about your gift');
+    expect(payload.text).toContain('Hi there');
+  });
+
+  it('writes the zh-Hant notification in Traditional Chinese', async () => {
+    vi.stubEnv('RESEND_API_KEY', 're_test');
+    vi.stubEnv('RESEND_FROM', 'hello@lovorithm.app');
+    const fetchMock = stubFetch({});
+
+    await sendCreatorReplyEmail({
+      to: 'creator@example.com',
+      creatorName: '陳美',
+      giftTitle: ' Goa sunsets',
+      listingPath: '/l/gift-id',
+      replyerName: 'Jamie',
+      replyBody: '會送去曼谷㗎嗎？',
+      locale: 'zh-Hant',
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const payload = JSON.parse(init.body as string);
+    expect(payload.subject).toContain('有人回覆咗');
+    expect(payload.text).toContain('陳美');
+    expect(payload.text).toContain('會送去曼谷㗎嗎？');
+  });
+
+  it('still stubs when RESEND_API_KEY is unset', async () => {
+    vi.stubEnv('RESEND_API_KEY', '');
+
+    const result = await sendCreatorReplyEmail({
+      to: 'creator@example.com',
+      creatorName: 'Mei Chen',
+      giftTitle: 'A red envelope',
+      listingPath: '/l/gift-id',
+      replyerName: 'Jamie',
+      replyBody: 'Love it',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.id).toMatch(/^stub-/);
+  });
+
+  it('refuses to report an unsent notification as sent in production', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('RESEND_API_KEY', '');
+    vi.stubEnv('RESEND_FROM', '');
+
+    const result = await sendCreatorReplyEmail({
+      to: 'creator@example.com',
+      creatorName: 'Mei Chen',
+      giftTitle: 'A red envelope',
+      listingPath: '/l/gift-id',
+      replyerName: 'Jamie',
+      replyBody: 'Love it',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toMatch(/RESEND_API_KEY/);
   });
 });
