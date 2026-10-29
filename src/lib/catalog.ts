@@ -173,7 +173,19 @@ export const FeedQuerySchema = z.object({
   priceTier: priceTierEnum.optional(),
   creator: z.string().trim().min(1).max(40).optional(),
   sort: feedSortEnum.default('published_desc'),
-  cursor: z.string().trim().min(1).max(80).optional(),
+  /**
+   * The opaque cursor. Its length is NOT free-form — it is base64url of
+   * `published_at|id`, and Postgres returns `published_at` as
+   * `YYYY-MM-DDTHH:MM:SS.ffffff+00:00` (32 characters). With a 36-char
+   * UUID that is 69 bytes, i.e. 92 base64url characters.
+   *
+   * The old cap was 80, so EVERY cursor the feed handed out was rejected
+   * by the schema that has to read it back: page 2 of the feed came back
+   * empty, and /browse's "load more" silently stopped at the 20th
+   * listing (OOP-6730). 128 leaves room for the format without opening
+   * the query string up.
+   */
+  cursor: z.string().trim().min(1).max(128).optional(),
 });
 
 export const SearchQuerySchema = z.object({
@@ -184,6 +196,18 @@ export const SearchQuerySchema = z.object({
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20;
+
+/**
+ * The biggest page one feed read may ask for.
+ *
+ * The public feed keeps its 20-row screenful. The sitemap is the one
+ * caller that needs MORE: it has to list every listing, and at 20 a row
+ * its page count grows with the catalogue — 9 listings is one round trip
+ * today, 2,000 listings would be 100 of them, and each one is a
+ * PostgREST round trip from the edge (iad1) to Supabase (hkg) costing
+ * about half a second. 200 listings a page turns those 100 into 10.
+ */
+const MAX_PAGE_SIZE = 200;
 
 /**
  * Encode a `(published_at, id)` cursor as opaque base64. The published_at
@@ -285,18 +309,31 @@ function aggregateLikeCount(embed: unknown): number {
 }
 
 /**
- * Run the feed query. Pagination is via range: we fetch `PAGE_SIZE + 1`
- * rows; if we got more than `PAGE_SIZE`, the extra row becomes the
+ * Run the feed query. Pagination is via range: we fetch `pageSize + 1`
+ * rows; if we got more than `pageSize`, the extra row becomes the
  * next-cursor anchor.
  *
  * Filters translate to plain PostgREST filters, which are AND'd together.
  * `creator=<handle>` is resolved server-side: we look up the profile id via
  * profiles_public first, then add `owner_id=eq.<uuid>` to the filter chain.
+ *
+ * `options.pageSize` is an INTERNAL knob, not part of the query contract:
+ * the public feed keeps its 20-row screenful, and only a bulk read (the
+ * sitemap) asks for a bigger page so it does not need one round trip per
+ * 20 listings. It is clamped to `MAX_PAGE_SIZE` because it is a knob.
  */
-export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedResult> {
+export async function getCatalogFeed(
+  rawParams: unknown,
+  options?: { pageSize?: number },
+): Promise<CatalogFeedResult> {
   const parsed = FeedQuerySchema.safeParse(rawParams);
   if (!parsed.success) return { gifts: [], nextCursor: null };
   const params = parsed.data;
+
+  const pageSize = Math.min(
+    Math.max(Math.trunc(options?.pageSize ?? PAGE_SIZE), 1),
+    MAX_PAGE_SIZE,
+  );
 
   // Cookie-free: this is public catalog data (see the module note above).
   const supabase = createPublicClient();
@@ -322,7 +359,7 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
     .eq('is_listed', true)
     .is('deleted_at', null)
     .not('published_at', 'is', null)
-    .limit(PAGE_SIZE + 1);
+    .limit(pageSize + 1);
 
   if (params.category) query = query.eq('category', params.category);
   if (params.priceTier) {
@@ -386,10 +423,22 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
   // Cursor is only meaningful for `published_desc`. For other sorts the
   // UI should not pass a cursor; if it does, we just return the first page.
   let nextCursor: string | null = null;
-  if (params.sort === 'published_desc' && gifts.length > PAGE_SIZE) {
-    const overflow = gifts[PAGE_SIZE];
-    gifts = gifts.slice(0, PAGE_SIZE);
-    if (overflow) nextCursor = encodeCursor(overflow.published_at, overflow.id);
+  if (params.sort === 'published_desc' && gifts.length > pageSize) {
+    /**
+     * The cursor anchors the NEXT page, so it has to be the LAST row
+     * this page showed — not the overflow row.
+     *
+     * The next page's filter is `published_at < X OR (published_at = X
+     * AND id < Y)`, i.e. "everything strictly after (X, Y)" in the
+     * (published_at desc, id desc) order. Anchoring on the overflow row
+     * skipped that row: it had been sliced off this page AND the strict
+     * `<` filter excluded it from the next one, so every page boundary
+     * silently dropped one listing (OOP-6730). Anchoring on the last
+     * row shown makes the overflow row the first row of the next page.
+     */
+    const last = gifts[pageSize - 1];
+    gifts = gifts.slice(0, pageSize);
+    if (last) nextCursor = encodeCursor(last.published_at, last.id);
   }
 
   return { gifts, nextCursor };

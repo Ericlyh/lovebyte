@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCatalogFeed, getListingDetail } from './catalog';
 
 /**
@@ -110,7 +110,19 @@ function applyOp(value: unknown, op: string, raw: string): boolean {
     if (raw === 'null') return !isNull(value);
     return compare(value, raw) !== 0;
   }
-  const c = compare(value, op === 'lt' || op === 'lte' || op === 'gt' || op === 'gte' ? Number(raw) : raw);
+  /**
+   * The ordering operators compare against a NUMBER only when the
+   * literal is one. The cursor filter compares a timestamp column
+   * against a timestamp literal (`published_at.lt.2026-08-06T07:41:…`),
+   * and `Number('2026-08-06T…')` is NaN — every row would then compare
+   * "less than NaN" and the feed would hand back the same page for
+   * ever. PostgREST compares a timestamptz against a timestamptz, and
+   * ISO-8601 in one format sorts the same lexicographically as it does
+   * chronologically, so a text comparison is exact here.
+   */
+  const numeric = op === 'lt' || op === 'lte' || op === 'gt' || op === 'gte';
+  const operand = numeric && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
+  const c = compare(value, operand);
   if (c === null) return false;
   if (op === 'lt') return c < 0;
   if (op === 'lte') return c <= 0;
@@ -308,12 +320,21 @@ const state = vi.hoisted(() => ({
   orCalls: [] as string[],
   /** Every RPC the code called — OOP-6722 asserts the feed calls none. */
   rpcCalls: [] as string[],
+  /**
+   * The catalogue the fake PostgREST serves. `null` means the default
+   * fixture; a test that needs a catalogue bigger than one feed page
+   * swaps it (OOP-6730).
+   */
+  rows: null as Row[] | null,
 }));
 
 function createFakeClient() {
   return {
     from(table: string) {
-      return new FakeQueryBuilder(table === 'profiles_public' ? PROFILES : ROWS, state.orCalls);
+      return new FakeQueryBuilder(
+        table === 'profiles_public' ? PROFILES : (state.rows ?? ROWS),
+        state.orCalls,
+      );
     },
     /**
      * The `gift_like_count` SQL function — `security definer`, so it
@@ -607,5 +628,101 @@ describe('like counts (OOP-6722)', () => {
         ROWS.splice(ROWS.length - 1, 1);
       }
     });
+  });
+});
+
+// ─── Feed pagination (OOP-6730) ────────────────────────────────────────────
+
+/**
+ * A catalogue bigger than one feed page — 25 listings, newest first.
+ *
+ * The published_at values use the format Postgres actually returns
+ * (`2026-08-25T07:41:25.954751+00:00`), because the cursor is built
+ * from them: that timestamp is 32 characters, and with the UUID the
+ * cursor is base64url of 69 bytes — 92 characters. The schema that has
+ * to read the cursor back used to cap it at 80, so EVERY cursor the
+ * feed handed out was rejected and page 2 came back empty.
+ */
+function pagedCatalogue(): Row[] {
+  return Array.from({ length: 25 }, (_, i) =>
+    toRow({
+      id: `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`,
+      title: `Listing ${i}`,
+      published_at: `2026-08-${String(25 - i).padStart(2, '0')}T07:41:25.954751+00:00`,
+      owner: {
+        id: 'p1',
+        handle: i % 2 === 0 ? 'ada' : 'mei',
+        display_name: 'Ada',
+      },
+    }),
+  );
+}
+
+/**
+ * Walk the feed with its own cursor, the way the sitemap does.
+ */
+async function walkFeed(): Promise<Row[]> {
+  const seen: Row[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const { gifts, nextCursor } = await getCatalogFeed(
+      { sort: 'published_desc', cursor },
+      { pageSize: 20 },
+    );
+    seen.push(...gifts);
+    if (!nextCursor) return seen;
+    cursor = nextCursor;
+  }
+}
+
+describe('feed pagination (OOP-6730)', () => {
+  beforeEach(() => {
+    state.rows = pagedCatalogue();
+  });
+
+  afterEach(() => {
+    state.rows = null;
+  });
+
+  it('hands out a cursor the feed accepts back', async () => {
+    const first = await getCatalogFeed({ sort: 'published_desc' });
+
+    expect(first.gifts).toHaveLength(20);
+    expect(first.nextCursor).toBeTruthy();
+
+    // The cursor is 92 characters — longer than the 80 the schema used
+    // to allow, which is why page 2 used to be empty.
+    expect(first.nextCursor!.length).toBeGreaterThan(80);
+
+    const second = await getCatalogFeed({
+      sort: 'published_desc',
+      cursor: first.nextCursor,
+    });
+
+    expect(second.gifts.length).toBeGreaterThan(0);
+  });
+
+  it('walks the whole catalogue without dropping a listing', async () => {
+    const gifts = await walkFeed();
+
+    // Every listing, exactly once — the page boundary used to swallow
+    // one row: the cursor anchored on the OVERFLOW row, which had been
+    // sliced off the page and was then excluded by the next page's
+    // strict `<` filter.
+    const ids = gifts.map((g) => g.id);
+    expect(ids).toHaveLength(25);
+    expect(new Set(ids).size).toBe(25);
+    expect(ids).toEqual(pagedCatalogue().map((r) => r.id));
+  });
+
+  it('the oldest listing is on the last page', async () => {
+    const gifts = await walkFeed();
+
+    expect(gifts[gifts.length - 1].id).toBe(
+      '00000000-0000-0000-0000-000000000024',
+    );
+    expect(gifts[gifts.length - 1].published_at).toBe(
+      '2026-08-01T07:41:25.954751+00:00',
+    );
   });
 });
