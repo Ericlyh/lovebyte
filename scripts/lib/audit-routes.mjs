@@ -52,9 +52,9 @@ export const AUDIT_ROUTES = [
   { path: '/terms', label: 'terms' },
   { path: '/checkout/cancel', label: 'checkout-cancel' },
   { path: '/checkout/success', label: 'checkout-success' },
-  // A URL that matches no route. Next serves its own fallback document
-  // for it, which is not the app's page — see the html-has-lang entry in
-  // KNOWN_EXCEPTIONS (scripts/a11y-audit.mjs).
+  // A URL that matches no route. It is served by the app-wide 404
+  // document — src/app/global-not-found.tsx (OOP-6762), which owns its
+  // own <html lang> — so it is audited like any other page.
   { path: '/random-404', label: 'not-found', notFound: true },
 
   // --- signed-in only (they redirect an anonymous visitor to /login) --

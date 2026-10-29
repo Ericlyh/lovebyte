@@ -85,15 +85,13 @@ const AXE_OPTIONS = {
  * that the gate still MEASURES the route — every other rule on it still
  * fails the run — and that the exception cannot hide a second, new
  * violation of the same rule.
+ *
+ * Empty. The one entry that was here — `html-has-lang` on the 404
+ * route (OOP-6762) — is fixed: `src/app/global-not-found.tsx` owns the
+ * app-wide 404 document, so it carries `<html lang>` like every other
+ * page.
  */
-const KNOWN_EXCEPTIONS = [
-  {
-    rule: 'html-has-lang',
-    routes: ['not-found'],
-    issue: 'OOP-6762',
-    why: 'Next serves its own fallback document for a URL that matches no route, and that document carries no lang. The app root layout lives in the [locale] segment (OOP-6710), so a 404 never reaches a layout that owns <html lang>.',
-  },
-];
+const KNOWN_EXCEPTIONS = [];
 
 /** Is this rule on this route a documented exception? */
 function isExcepted(rule, label) {

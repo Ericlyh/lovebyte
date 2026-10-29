@@ -29,6 +29,27 @@ const withBundleAnalyzerEnabled = withBundleAnalyzer({
 
 const nextConfig: NextConfig = {
   /**
+   * OOP-6762 — the app-wide 404 document.
+   *
+   * The root layout of this app lives at `src/app/[locale]/layout.tsx`
+   * (OOP-6710 — that is what lets every page be prerendered once per
+   * locale instead of per request). A root layout in a top-level dynamic
+   * segment cannot own the `<html>` element for a URL that matches no
+   * route: Next renders that URL's document from the ROOT layer, which
+   * has no layout at all, so the document came out with Next's own
+   * fallback shell — `<html id="__next_error__">`, no `lang`, and a
+   * `html-has-lang` violation (WCAG 3.1.1, Level A) on every 404.
+   *
+   * `globalNotFound` is the flag Next provides for exactly this shape:
+   * with it, `src/app/global-not-found.tsx` owns the 404 document's
+   * `<html lang>` and `<body>`. The per-locale prerendering is untouched
+   * — this adds a route, it does not move the layout.
+   */
+  experimental: {
+    globalNotFound: true,
+  },
+
+  /**
    * OOP-6725 — `x-powered-by: Next.js` was on every response.
    *
    * It advertises the framework to anyone who asks, which is free

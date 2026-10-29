@@ -25,6 +25,15 @@ type Props = {
   ariaLive?: 'polite' | 'assertive';
   ariaRole?: 'status' | 'alert';
   srLabel?: string;
+  /**
+   * The heading element the title is rendered as.
+   *
+   * `h2` by default: the card usually sits UNDER a page's own h1. A
+   * card that IS the whole page — the app-wide 404 document, which has
+   * no other heading — needs `h1`, because the a11y gate measures every
+   * route for exactly one h1 and a clean outline (OOP-6738).
+   */
+  titleLevel?: 'h1' | 'h2';
 };
 
 export async function PageState({
@@ -37,6 +46,7 @@ export async function PageState({
   ariaLive,
   ariaRole = 'status',
   srLabel,
+  titleLevel = 'h2',
 }: Props) {
   const className =
     variant === 'inline'
@@ -55,7 +65,11 @@ export async function PageState({
           {icon}
         </div>
       )}
-      <h2 className="lb-empty-card__title">{title}</h2>
+      {titleLevel === 'h1' ? (
+        <h1 className="lb-empty-card__title">{title}</h1>
+      ) : (
+        <h2 className="lb-empty-card__title">{title}</h2>
+      )}
       {body && <p className="lb-empty-card__body">{body}</p>}
       {ctaHref && ctaLabel && (
         <div className="lb-empty-card__actions">
@@ -73,8 +87,15 @@ export async function PageState({
  * Convenience: build a not-found card from the `Common` namespace.
  * Each route's `not-found.tsx` calls this with no props and gets
  * a locale-aware typed 404 with a "Back home" CTA.
+ *
+ * `titleLevel` is for the callers where the card IS the page — see
+ * `src/app/global-not-found.tsx` (OOP-6762), which owns the document.
  */
-export async function CommonNotFound() {
+export async function CommonNotFound({
+  titleLevel,
+}: {
+  titleLevel?: 'h1' | 'h2';
+} = {}) {
   const t = await getTranslations('Common.notFound');
   return (
     <PageState
@@ -84,6 +105,7 @@ export async function CommonNotFound() {
       ctaHref="/"
       ctaLabel={t('cta')}
       ariaRole="alert"
+      titleLevel={titleLevel}
     />
   );
 }
