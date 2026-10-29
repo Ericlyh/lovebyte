@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { BRAND } from '@/lib/brand';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
 
 /**
  * /privacy — Phase 10 (OOP-4226).
@@ -13,10 +14,12 @@ import { BRAND } from '@/lib/brand';
  * so the marketing / legal owner can bump it without a deploy.
  */
 
-export const metadata: Metadata = {
-  title: `Privacy — ${BRAND.NAME}`,
+export const metadata: Metadata = buildMetadata({
+  path: '/privacy',
+  title: 'Privacy',
   description: `${BRAND.NAME} privacy policy: what we collect, how we use it, and your choices.`,
-};
+  imageUrl: BRAND_OG_IMAGE,
+});
 
 export default async function PrivacyPage({ params }: PageProps<'/[locale]/privacy'>) {
   const { locale } = await params;

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { BRAND } from '@/lib/brand';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
 import { postgrest } from '@/lib/supabase/anon';
 
 /**
@@ -27,10 +28,12 @@ import { postgrest } from '@/lib/supabase/anon';
  * no-op. A newly logged incident shows up on the next request.
  */
 
-export const metadata: Metadata = {
-  title: `Status — ${BRAND.NAME}`,
+export const metadata: Metadata = buildMetadata({
+  path: '/status',
+  title: 'Status',
   description: `${BRAND.NAME} system status and incident history.`,
-};
+  imageUrl: BRAND_OG_IMAGE,
+});
 
 export const dynamic = 'force-dynamic';
 

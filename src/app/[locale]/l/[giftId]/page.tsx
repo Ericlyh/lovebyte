@@ -15,6 +15,7 @@ import { getListingDetail, getListingComments, getListingReplies } from '@/lib/c
 import { BRAND } from '@/lib/brand';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { listingUrl, productJsonLd } from '@/lib/seo/jsonld';
+import { listingOgImage } from '@/lib/seo/metadata';
 
 /**
  * /l/[giftId] — listing detail (M-C, OOP-4275).
@@ -46,22 +47,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // structured data and the sitemap use, so the three agree on which
   // URL a gift lives at.
   const canonical = listingUrl(giftId);
+  // OOP-6727 — the social card is the listing's OWN card, generated at
+  // /api/og/listing/<id>: a 1200x630 image carrying the title, the
+  // creator, the format and the price. The cover PHOTO stays in the
+  // list as the second image — the structured data points at it, and
+  // platforms that render more than one image still get to see the
+  // product itself — but the card goes first, because a raw photo in
+  // the primary slot is cropped to an unpredictable shape by every feed
+  // that renders it.
+  const card = listingOgImage(listing.id);
   return {
     title,
     description,
     alternates: { canonical },
-    // The listing had no social card at all, so a shared link unfurled
-    // with the site-wide card (or none). The listing's own cover is
-    // the image that represents it.
     openGraph: {
       type: 'website',
       siteName: BRAND.NAME,
       title,
       description,
       url: canonical,
-      images: listing.cover_url
-        ? [{ url: listing.cover_url, alt: listing.title }]
-        : undefined,
+      images: [
+        { url: card, width: 1200, height: 630, alt: listing.title },
+        ...(listing.cover_url
+          ? [{ url: listing.cover_url, alt: listing.title }]
+          : []),
+      ],
+    },
+    // Next REPLACES a parent's `twitter` wholesale when a child defines
+    // one, and the root layout's Twitter card is the site-wide brand
+    // card. Left alone, a listing unfurled on X / Twitter with the
+    // generic card under the listing's title.
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [card],
     },
   };
 }

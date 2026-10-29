@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { BRAND } from '@/lib/brand';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
 
 /**
  * /support — Phase 10 (OOP-4226).
@@ -18,10 +19,12 @@ import { BRAND } from '@/lib/brand';
  * graduate to Formspree / Tally if volume warrants it.
  */
 
-export const metadata: Metadata = {
-  title: `Support — ${BRAND.NAME}`,
+export const metadata: Metadata = buildMetadata({
+  path: '/support',
+  title: 'Support',
   description: `Get help with ${BRAND.NAME} — contact our small team by email.`,
-};
+  imageUrl: BRAND_OG_IMAGE,
+});
 
 export default async function SupportPage({ params }: PageProps<'/[locale]/support'>) {
   const { locale } = await params;

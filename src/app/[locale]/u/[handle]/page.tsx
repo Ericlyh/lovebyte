@@ -20,6 +20,7 @@ import { getOwnedGifts } from '@/lib/profiles/ownedGifts';
 import { getCreatorSales } from '@/lib/profiles/sales';
 import { createClient } from '@/lib/supabase/server';
 import { BRAND } from '@/lib/brand';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
 import { JsonLd } from '@/components/seo/JsonLd';
 import {
   breadcrumbJsonLd,
@@ -75,10 +76,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
   const profile = await getProfileByHandle(handle);
   const name = profile?.display_name ?? `@${handle}`;
-  return {
-    title: `${name} — ${BRAND.NAME}`,
+  // OOP-6727 — a creator profile is indexable, so it needs a canonical
+  // URL of its own: the handle it answers to, not whatever the visitor
+  // typed. `profiles_public` does not carry the avatar, so the social
+  // card is the site card.
+  return buildMetadata({
+    path: `/u/${handle}`,
+    title: name,
     description: profile?.bio ?? `Creator profile @${handle} on ${BRAND.NAME}.`,
-  };
+    imageUrl: BRAND_OG_IMAGE,
+  });
 }
 
 export default async function CreatorProfilePage({ params }: Props) {

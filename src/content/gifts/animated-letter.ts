@@ -34,9 +34,19 @@ export const animatedLetter: GiftPage = {
         zhHant: '當作一封信去寫',
       },
       body: {
-        en: 'Plain text, paragraphs, the punctuation you actually use. It is a letter, not a form. If you find yourself typing "Dear…" you are on the right track; if you find yourself typing "Hi," you are writing a text and should send a text.',
-        zhHant: '純文字、段落、你自己真正會用的標點。這是一封信，不是一份表格。當你打出「親愛的」，方向就對了；如果你打出的是「Hi,」，那你寫的是短訊，就該用短訊送。',
+        en: 'Plain text, paragraphs, the punctuation you actually use. It is a letter, not a form. If you find yourself typing "Dear…" you are on the right track; if you find yourself typing "Hi," you are writing a text and should send a text. The letter does not need a subject line, because you two already know what it is about.',
+        zhHant: '純文字、段落、你自己真正會用的標點。這是一封信，不是一份表格。當你打出「親愛的」，方向就對了；如果你打出的是「Hi,」，那你寫的是短訊，就該用短訊送。信不需要標題，因為你們兩個都知道它是關於甚麼的。',
       },
+      points: [
+        {
+          en: 'No subject line, no signature block — it is a letter, not an email',
+          zhHant: '沒有主旨，也沒有署名欄——這是一封信，不是一封電郵',
+        },
+        {
+          en: 'It opens in any browser; there is no app and no account',
+          zhHant: '任何瀏覽器都能打開，不用 App，也不用帳戶',
+        },
+      ],
     },
     {
       heading: {
@@ -68,8 +78,8 @@ export const animatedLetter: GiftPage = {
         zhHant: '那個信封',
       },
       body: {
-        en: 'Before the letter scrolls, there is an envelope: a colour, and a wax seal that breaks when they click it. It is a small piece of theatre, and it is the difference between a document and a gift.',
-        zhHant: '在信件捲開之前，先有一個信封：一種顏色，和一個點一下就會裂開的蠟封。這是一小段戲劇性演出，也是「一份文件」和「一件禮物」之間的差別。',
+        en: 'Before the letter scrolls, there is an envelope: a colour, and a wax seal that breaks when they click it. It is a small piece of theatre, and it is the difference between a document and a gift. Pick the envelope colour before you write, not after — it decides the mood of the whole thing, and cream with kraft and blush with sky do not say the same thing.',
+        zhHant: '在信件捲開之前，先有一個信封：一種顏色，和一個點一下就會裂開的蠟封。這是一小段戲劇性演出，也是「一份文件」和「一件禮物」之間的差別。信封顏色請在動筆之前選，不要寫完才改——它決定了整封信的氣氛，而米白配牛紙、腮紅配天空藍，說的並不是同一件事。',
       },
     },
   ],

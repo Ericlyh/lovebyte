@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getListingDetail } from '@/lib/catalog';
 import { formatSettlementAmount } from '@/lib/money';
-import { OgCard } from '@/lib/og/card';
+import { OgCard, type OgCardProps } from '@/lib/og/card';
 
 /**
  * /api/og/listing/[giftId] — the social card for one marketplace listing.
@@ -43,7 +43,7 @@ export async function GET(
 ) {
   const { giftId } = await context.params;
 
-  let card = {
+  let card: OgCardProps = {
     eyebrow: 'Digital gift',
     title: 'A one-of-a-kind gift, made by someone for someone',
     subtitle: 'Open it on Lovorithm.',

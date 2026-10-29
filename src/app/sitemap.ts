@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next';
 import { BRAND } from '@/lib/brand';
 import { getCatalogFeed } from '@/lib/catalog';
+import { GIFT_PAGES } from '@/content/gifts';
+import { PUBLIC_ROUTES } from '@/lib/seo/metadata';
 
 /**
  * GET /sitemap.xml — the pages a crawler should index.
@@ -14,27 +16,29 @@ import { getCatalogFeed } from '@/lib/catalog';
  * BUILD time, and the catalog is empty at build time — the sitemap would
  * ship with zero listings and never grow. The feed is one indexed query
  * (the same one /browse uses), so this stays cheap.
+ *
+ * OOP-6727: the sitemap now names every public route — including
+ * `/status`, which is linked from the footer of every legal page but was
+ * never listed here, and `/gifts`, which is the hub the guides hang
+ * from. The route list lives in `src/lib/seo/metadata.ts` next to the
+ * canonical-URL builder, so a page's canonical URL and its sitemap entry
+ * are the same string by construction.
  */
 
-/** Public, evergreen pages. Auth + private surfaces are in robots.txt. */
-const STATIC_ROUTES: {
-  path: string;
-  priority: number;
-  changeFrequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-}[] = [
-  { path: '/', priority: 1, changeFrequency: 'weekly' },
-  { path: '/browse', priority: 0.9, changeFrequency: 'daily' },
-  { path: '/support', priority: 0.3, changeFrequency: 'monthly' },
-  { path: '/privacy', priority: 0.2, changeFrequency: 'yearly' },
-  { path: '/terms', priority: 0.2, changeFrequency: 'yearly' },
-];
+/** The gift guides. Their copy changes when the product changes, not daily. */
+const GIFT_ROUTES: MetadataRoute.Sitemap = GIFT_PAGES.map((page) => ({
+  url: `${BRAND.PRODUCTION_URL}/gifts/${page.slug}`,
+  lastModified: new Date(),
+  changeFrequency: 'monthly',
+  priority: 0.7,
+}));
 
 export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
+  const staticEntries: MetadataRoute.Sitemap = PUBLIC_ROUTES.map((r) => ({
     url: `${BRAND.PRODUCTION_URL}${r.path}`,
     lastModified: now,
     changeFrequency: r.changeFrequency,
@@ -72,5 +76,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // that 500s is not. Never fail the whole route on a catalog read.
   }
 
-  return [...staticEntries, ...listingEntries, ...profileEntries];
+  return [...staticEntries, ...GIFT_ROUTES, ...listingEntries, ...profileEntries];
 }

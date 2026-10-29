@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { BrowseControls } from '@/components/catalog/BrowseControls';
@@ -6,6 +7,24 @@ import { TrackView } from '@/components/analytics/TrackView';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { BRAND } from '@/lib/brand';
 import { breadcrumbJsonLd, browseUrl, homeUrl } from '@/lib/seo/jsonld';
+import { buildMetadata, pageOgImage } from '@/lib/seo/metadata';
+
+/**
+ * OOP-6727 — the catalogue's own title, description, canonical URL and
+ * social card.
+ *
+ * Before this, /browse inherited the root layout's metadata, so a
+ * shared catalogue link unfurled as "Lovorithm — Send a feeling, not
+ * just a gift" with the site-wide card: indistinguishable from the
+ * homepage in a chat, and identical to every other page of the site.
+ */
+export const metadata: Metadata = buildMetadata({
+  path: '/browse',
+  title: 'Browse personalised digital gifts',
+  description:
+    'Browse digital gifts made by people — memory card games, personalised quizzes, animated letters, photo collages and more. Every one is sent as a link.',
+  imageUrl: pageOgImage('browse'),
+});
 
 /**
  * /browse — public catalog (M-C, OOP-4275).

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
@@ -7,6 +8,26 @@ import { TrackView } from '@/components/analytics/TrackView';
 import { TrackedLink } from '@/components/analytics/TrackedLink';
 import { getCatalogFeed } from '@/lib/catalog';
 import { turnstileEnabled } from '@/lib/turnstile';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
+
+/**
+ * OOP-6727 — the homepage's own title and description.
+ *
+ * It used to inherit the root layout's "Lovorithm — Send a feeling, not
+ * just a gift", which is a brand line, not a description of anything.
+ * It named no query, so the one page every visitor lands on was the one
+ * page that could not be found by searching for what the site does.
+ *
+ * The format names in the title are the three that have a builder
+ * behind them; the other three live on /gifts.
+ */
+export const metadata: Metadata = buildMetadata({
+  path: '/',
+  title: 'Personalised digital gifts: memory cards, quizzes and letters',
+  description:
+    'Turn your photos, voice notes and inside jokes into a one-of-a-kind digital gift — a memory card game, a personalised quiz, an animated letter. Made in Hong Kong.',
+  imageUrl: BRAND_OG_IMAGE,
+});
 
 /**
  * OOP-6712 — how many live listings the landing page previews.

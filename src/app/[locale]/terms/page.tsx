@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { LanguageToggle } from '@/components/LanguageToggle';
 import { BRAND } from '@/lib/brand';
+import { BRAND_OG_IMAGE, buildMetadata } from '@/lib/seo/metadata';
 
 /**
  * /terms — Phase 10 (OOP-4226).
@@ -15,10 +16,12 @@ import { BRAND } from '@/lib/brand';
  * ("observability minimum viable") — ship, gather feedback, revise.
  */
 
-export const metadata: Metadata = {
-  title: `Terms — ${BRAND.NAME}`,
+export const metadata: Metadata = buildMetadata({
+  path: '/terms',
+  title: 'Terms',
   description: `${BRAND.NAME} terms of service.`,
-};
+  imageUrl: BRAND_OG_IMAGE,
+});
 
 export default async function TermsPage({ params }: PageProps<'/[locale]/terms'>) {
   const { locale } = await params;
