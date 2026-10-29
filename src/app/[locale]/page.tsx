@@ -62,11 +62,18 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
 
   const t = await getTranslations('Landing');
 
-  // Live catalogue listings. The feed swallows its own errors and returns
-  // an empty list, so a data-layer hiccup degrades this section to a link
-  // to /browse rather than taking the landing page down.
-  const { gifts } = await getCatalogFeed({ sort: 'published_desc' });
-  const previewGifts = gifts.slice(0, CATALOGUE_PREVIEW_COUNT);
+  // Live catalogue listings. The feed swallows its own query errors and
+  // returns an empty list; this catch covers the rest (a missing Supabase
+  // key, a client that cannot be constructed). Either way the section
+  // degrades to a link to /browse rather than taking the landing page —
+  // the top of the funnel — down with it.
+  let previewGifts: Awaited<ReturnType<typeof getCatalogFeed>>['gifts'] = [];
+  try {
+    const { gifts } = await getCatalogFeed({ sort: 'published_desc' });
+    previewGifts = gifts.slice(0, CATALOGUE_PREVIEW_COUNT);
+  } catch (err) {
+    console.error('[landing/catalogue-preview]', err);
+  }
 
   const features = [
     { id: 'cards', emoji: '🎴' },
