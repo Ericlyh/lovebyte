@@ -969,6 +969,7 @@
   },
   "Terms": {
     "title": "服務條款",
+    "effective": "生效日期：{date}",
     "intro": "呢啲條款規範你使用 Lovorithm。每一節頂部都有白話總結，下面係實際生效嘅規則。",
     "sections": {
       "theService": {

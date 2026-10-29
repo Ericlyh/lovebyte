@@ -969,6 +969,7 @@
   },
   "Terms": {
     "title": "Terms of service",
+    "effective": "Effective {date}",
     "intro": "These terms govern your use of Lovorithm. Plain-language summary at the top of each section, the enforceable rule underneath.",
     "sections": {
       "theService": {
