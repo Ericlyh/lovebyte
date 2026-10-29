@@ -3,15 +3,7 @@
 import { useActionState } from 'react';
 import { useTranslations } from 'next-intl';
 import { createDraftGiftAction, type CreateDraftGiftResult } from '@/lib/actions/draft';
-
-const GIFT_TYPES = [
-  { value: 'animated_letter', label: 'Animated letter' },
-  { value: 'memory_cards', label: 'Memory cards' },
-  { value: 'dragdrop_puzzle', label: 'Drag-and-drop puzzle' },
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'multimedia_collage', label: 'Multimedia collage' },
-  { value: 'code', label: 'Code' },
-] as const;
+import { DEFAULT_GIFT_TYPE, GIFT_TYPES } from '@/lib/gifts/types';
 
 /**
  * Minimal /create form (MVP, OOP-4893).
@@ -55,7 +47,7 @@ export function CreateDraftForm() {
 
       <div className="lb-field">
         <label htmlFor="create-type">{t('typeLabel')}</label>
-        <select id="create-type" name="type" defaultValue="animated_letter">
+        <select id="create-type" name="type" defaultValue={DEFAULT_GIFT_TYPE}>
           {GIFT_TYPES.map((g) => (
             <option key={g.value} value={g.value}>
               {g.label}

@@ -35,14 +35,19 @@ export default async function CreateFinishPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; giftId: string }>;
-  searchParams: Promise<{ share?: string }>;
+  searchParams: Promise<{ share?: string; stripe?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations('Create.finish');
   const { giftId } = await params;
-  const { share: shareToken } = await searchParams;
+  const { share: shareToken, stripe } = await searchParams;
+
+  // Stripe sends the creator back here after onboarding with
+  // `?stripe=return` (OOP-6720). The publish card re-runs the publish
+  // when it sees it — that is the step that completes the listing.
+  const stripeReturn = stripe === 'return';
 
   const supabase = await createClient();
   const {
@@ -55,9 +60,16 @@ export default async function CreateFinishPage({
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 
+  // The listing fields are read as well as the id: when the creator is
+  // sent to Stripe, their title, description, cover and price are
+  // persisted on the gift row, so this page can put them back into the
+  // form. Without that, the round-trip through Stripe lost everything
+  // (OOP-6720).
   const { data: gift, error: giftErr } = await supabase
     .from('gifts')
-    .select('id, title, is_listed, owner_id')
+    .select(
+      'id, title, description, cover_media_id, price_cents, currency, platform_fee_bps, is_listed, owner_id',
+    )
     .eq('id', giftId)
     .eq('owner_id', user.id)
     .maybeSingle();
@@ -109,6 +121,17 @@ export default async function CreateFinishPage({
         <PublishToMarketplaceCard
           giftId={gift.id}
           defaultTitle={gift.title ?? ''}
+          defaultDescription={(gift.description as string | null) ?? null}
+          defaultPriceCents={
+            typeof gift.price_cents === 'number' ? gift.price_cents : null
+          }
+          defaultCoverMediaId={(gift.cover_media_id as string | null) ?? null}
+          platformFeeBps={
+            typeof gift.platform_fee_bps === 'number'
+              ? gift.platform_fee_bps
+              : undefined
+          }
+          stripeReturn={stripeReturn}
           mediaItems={mediaItems}
         />
 

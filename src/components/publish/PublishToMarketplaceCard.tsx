@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useCallback } from 'react';
+import { useState, useTransition, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { publishToMarketplaceAction } from '@/lib/actions/publish';
 import { BRAND } from '@/lib/brand';
@@ -21,10 +21,27 @@ type Props = {
   giftId: string;
   /** Default title pre-filled from the draft. */
   defaultTitle: string;
+  /**
+   * Default description, read from the gift row. Set when the creator
+   * came back from Stripe — their listing intent was persisted before
+   * they left, and this puts it back in the form (OOP-6720).
+   */
+  defaultDescription?: string | null;
+  /** Default price in cents, read from the gift row (OOP-6720). */
+  defaultPriceCents?: number | null;
+  /** Default cover media id, read from the gift row (OOP-6720). */
+  defaultCoverMediaId?: string | null;
   /** Existing gift_media rows for this gift (for cover picker). */
   mediaItems: GiftMediaItem[];
   /** Platform fee in basis points (default 1000 = 10%). */
   platformFeeBps?: number;
+  /**
+   * True when the creator came back from Stripe onboarding
+   * (`?stripe=return`). The card then re-runs the publish on mount with
+   * `publishAfterStripe: true` — that is the step that completes the
+   * paid listing (OOP-6720).
+   */
+  stripeReturn?: boolean;
   /** Called when the user clicks "Save as draft" (existing builder behaviour). */
   onSaveDraft?: () => void;
 };
@@ -46,26 +63,51 @@ type Props = {
  * rest — a per-listing currency is what let the catalogue end up with
  * three of them behind dollar-denominated filters.
  *
- * Stripe gating: if price > 0 and the creator has no stripe_charges_enabled,
- * the server returns needsStripe=true and we redirect to the onboarding URL.
- * After onboarding completes, the caller should re-call with publishAfterStripe.
+ * The paid round trip (OOP-6720):
+ *
+ *   publish(price > 0)  → server saves the listing intent on the gift row
+ *                         and answers needsStripe; we leave for Stripe.
+ *   Stripe returns us to /create/<id>/finish?stripe=return — the server
+ *   persisted our title/price/currency, so this page reads them back off
+ *   the row and hands them to this card.
+ *   `stripeReturn` → the card re-runs the publish with
+ *   publishAfterStripe: true, and the listing goes live.
+ *
+ * Before this, nothing read `?stripe=return` and the return URL pointed
+ * at a page that could not complete the publish, so every paid creator
+ * ended up with a lost listing.
  */
 export function PublishToMarketplaceCard({
   giftId,
   defaultTitle,
+  defaultDescription,
+  defaultPriceCents,
+  defaultCoverMediaId,
   mediaItems,
   platformFeeBps = PLATFORM_FEE_BPS_DEFAULT,
+  stripeReturn = false,
   onSaveDraft,
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Form state
+  // Form state. The defaults come from the gift row so a creator
+  // returning from Stripe sees exactly what they typed before they left.
   const [title, setTitle] = useState(defaultTitle);
-  const [description, setDescription] = useState('');
-  const [coverMediaId, setCoverMediaId] = useState<string | null>(null);
-  const [isFree, setIsFree] = useState(true);
-  const [priceCents, setPriceCents] = useState('');
+  const [description, setDescription] = useState(defaultDescription ?? '');
+  const [coverMediaId, setCoverMediaId] = useState<string | null>(
+    defaultCoverMediaId ?? null,
+  );
+  // A persisted price of 0 means "free", so it must not select the Paid
+  // toggle — that would leave the form in a state it cannot publish from.
+  const [isFree, setIsFree] = useState(
+    defaultPriceCents == null || defaultPriceCents <= 0,
+  );
+  const [priceCents, setPriceCents] = useState(
+    defaultPriceCents != null && defaultPriceCents > 0
+      ? (defaultPriceCents / 100).toFixed(2)
+      : '',
+  );
   const [error, setError] = useState<string | null>(null);
 
   // Derived
@@ -74,9 +116,8 @@ export function PublishToMarketplaceCard({
   const feePercent = (platformFeeBps / 100).toFixed(1);
   const effectivePriceCents = isFree ? null : Math.round(parseFloat(priceCents || '0') * 100);
 
-  const handlePublish = useCallback(() => {
-    setError(null);
-    startTransition(async () => {
+  const publish = useCallback(
+    async (opts: { afterStripe: boolean }) => {
       const result = await publishToMarketplaceAction({
         giftId,
         title,
@@ -84,19 +125,58 @@ export function PublishToMarketplaceCard({
         coverMediaId,
         priceCents: isFree ? null : effectivePriceCents,
         platformFeeBps,
+        publishAfterStripe: opts.afterStripe,
       });
 
       if (result.ok) {
         router.push(`/l/${result.giftId}`);
-      } else if (result.needsStripe) {
-        // Redirect to Stripe onboarding. On return, the parent should
-        // detect the stripe=return query param and re-call publish.
-        window.location.href = result.onboardingUrl;
-      } else {
-        setError(result.error);
+        return;
       }
+      if (result.needsStripe) {
+        // Leave for Stripe onboarding. The server has already saved the
+        // listing intent on the gift row and pointed Stripe's return URL
+        // back at this page with `?stripe=return`, so the publish
+        // completes on the way back (OOP-6720).
+        window.location.href = result.onboardingUrl;
+        return;
+      }
+      setError(result.error);
+    },
+    [
+      giftId,
+      title,
+      description,
+      coverMediaId,
+      isFree,
+      effectivePriceCents,
+      platformFeeBps,
+      router,
+    ],
+  );
+
+  const handlePublish = useCallback(() => {
+    setError(null);
+    startTransition(async () => {
+      // `stripeReturn` means the creator has already been through
+      // onboarding, so every attempt from here on must NOT send them
+      // through it again — that was the loop (OOP-6720).
+      await publish({ afterStripe: stripeReturn });
     });
-  }, [giftId, title, description, coverMediaId, isFree, effectivePriceCents, platformFeeBps, router]);
+  }, [publish, stripeReturn]);
+
+  // Complete the paid round trip. The creator comes back from Stripe
+  // with `?stripe=return`; re-running the publish here is what actually
+  // puts the listing up. The ref guard keeps it to one call per mount
+  // (React re-runs effects in StrictMode).
+  const autoPublishStarted = useRef(false);
+  useEffect(() => {
+    if (!stripeReturn || autoPublishStarted.current) return;
+    autoPublishStarted.current = true;
+    setError(null);
+    startTransition(async () => {
+      await publish({ afterStripe: true });
+    });
+  }, [stripeReturn, publish]);
 
   const canPublish =
     title.trim().length > 0 &&
@@ -109,6 +189,17 @@ export function PublishToMarketplaceCard({
       <p className="lb-publish-card__lede">
         Set your listing details and go live on {BRAND.NAME}.
       </p>
+
+      {/* The creator is back from Stripe. The publish re-runs itself; this
+          line explains why the form is busy before they touch anything
+          (OOP-6720). */}
+      {stripeReturn && (
+        <p className="lb-field-hint" role="status">
+          {isPending
+            ? 'Finishing your publish…'
+            : 'Your Stripe setup is done. Your listing details were saved — publish again if you need to.'}
+        </p>
+      )}
 
       {/* Title */}
       <div className="lb-field">

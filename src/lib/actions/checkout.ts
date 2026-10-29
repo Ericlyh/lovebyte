@@ -429,13 +429,46 @@ export type StartConnectOnboardingResult =
   | { ok: true; url: string }
   | { ok: false; error: string };
 
+export type StartConnectOnboardingOptions = {
+  /**
+   * Where Stripe sends the creator once onboarding is complete. Defaults
+   * to the creator profile page (`/onboarding?stripe=return`).
+   *
+   * The publish flow overrides this (OOP-6720): a creator who set a price
+   * must land back on a page that COMPLETES the publish, not on the
+   * profile page — the return URL used to point at `/onboarding`, where
+   * nothing read the query string and the listing was lost.
+   */
+  returnPath?: string;
+  /**
+   * Where Stripe sends the creator if the onboarding link expires and
+   * they need a fresh one. Defaults to `/onboarding?stripe=refresh`,
+   * which is the page that can re-issue a link.
+   */
+  refreshPath?: string;
+};
+
 const ONBOARDING_REFRESH_URL_ENV = 'NEXT_PUBLIC_SITE_URL';
 
 function onboardingBaseUrl(): string {
   return process.env[ONBOARDING_REFRESH_URL_ENV] ?? 'http://localhost:3000';
 }
 
-export async function startConnectOnboardingAction(): Promise<StartConnectOnboardingResult> {
+/**
+ * Join the site origin and a site-relative path into an absolute URL.
+ * A path that is already absolute (or protocol-relative) is passed
+ * through untouched — but that is a footgun, so anything that does not
+ * start with a single "/" is treated as site-relative.
+ */
+function absoluteOnboardingUrl(base: string, path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
+  const suffix = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${suffix}`;
+}
+
+export async function startConnectOnboardingAction(
+  options: StartConnectOnboardingOptions = {},
+): Promise<StartConnectOnboardingResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -485,10 +518,12 @@ export async function startConnectOnboardingAction(): Promise<StartConnectOnboar
     }
 
     const base = onboardingBaseUrl().replace(/\/$/, '');
+    const returnPath = options.returnPath ?? '/onboarding?stripe=return';
+    const refreshPath = options.refreshPath ?? '/onboarding?stripe=refresh';
     const link = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: `${base}/onboarding?stripe=refresh`,
-      return_url: `${base}/onboarding?stripe=return`,
+      refresh_url: absoluteOnboardingUrl(base, refreshPath),
+      return_url: absoluteOnboardingUrl(base, returnPath),
       type: 'account_onboarding',
     });
 

@@ -6,6 +6,7 @@ import { Nav } from '@/components/Nav';
 import { OnboardingForm } from '@/components/auth/OnboardingForm';
 import { ConnectPayoutsButton } from '@/components/onboarding/ConnectPayoutsButton';
 import { createClient } from '@/lib/supabase/server';
+import { isUuidLike } from '@/lib/uuid';
 import { BRAND } from '@/lib/brand';
 
 export const metadata: Metadata = {
@@ -39,6 +40,8 @@ export default async function OnboardingPage({ params,
     error?: string;
     error_code?: string;
     error_description?: string;
+    gift?: string;
+    stripe?: string;
   }>;
 }) {
   const { locale } = await params;
@@ -46,6 +49,15 @@ export default async function OnboardingPage({ params,
 
   const t = await getTranslations('Onboarding');
   const sp = await searchParams;
+
+  // OOP-6720 — a creator who arrives here mid-publish (their onboarding
+  // link expired, so Stripe sent them to the refresh URL) must land back
+  // on the publish page when they reconnect, or the listing they were
+  // publishing is lost. The gift id travels in the query string; it is
+  // validated against the UUID shape before it goes anywhere near a URL.
+  const publishReturnPath = isUuidLike(sp.gift)
+    ? `/create/${sp.gift}/finish?stripe=return`
+    : undefined;
 
   const supabase = await createClient();
   const { data: userData, error: userErr } = await supabase.auth.getUser();
@@ -161,7 +173,7 @@ export default async function OnboardingPage({ params,
       <section className="lb-onboarding-card lb-onboarding-card--connect">
         <h2>{t(`connect.${connectStatus}Title`)}</h2>
         <p className="lede">{t(`connect.${connectStatus}Lede`)}</p>
-        <ConnectPayoutsButton />
+        <ConnectPayoutsButton returnPath={publishReturnPath} />
       </section>
     </main>
   );

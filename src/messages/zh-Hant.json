@@ -924,6 +924,35 @@
       "jsxPlaceholder": "function App() {\n  return <h1>Hi {name}</h1>;\n}",
       "jsxHint": "元件請命名為 App。在 HTML 裡放一個 <div id=\"root\"></div> 作為頁面出現的位置 —— 沒有我們會自動加上。",
       "jsxError": "這段 JSX 編譯不過：{error}"
+    },
+    "letter": {
+      "backToPicker": "← 返去禮物類型選擇",
+      "heading": "會動嘅信",
+      "lede": "寫你想講嘅嘢。收件人打開封信嗰陣，內容會逐段浮現。紙嘅質地同信封顏色都由你揀。",
+      "privacyNote": "你嘅信會儲喺私人 Lovorithm 收藏庫，淨係有 share link 嘅人睇得到。",
+      "titleLabel": "禮物標題",
+      "titlePlaceholder": "例: 普普通通嘅星期二，送畀你",
+      "letterLabel": "你想講嘅嘢",
+      "letterPlaceholder": "Dear 你：\n\n喺呢度開始寫。段落之間空一行封信就會逐段揭開。",
+      "letterHint": "{count} / {max} 字。",
+      "paperLabel": "紙",
+      "paper": {
+        "cream": "米白",
+        "kraft": "牛皮",
+        "lined": "橫線"
+      },
+      "envelopeLabel": "信封",
+      "envelope": {
+        "honey": "蜜糖色",
+        "blush": "粉紅色",
+        "sky": "天空藍"
+      },
+      "submitting": "儲存緊…",
+      "submit": "儲存並攞 share link",
+      "errors": {
+        "titleRequired": "請填寫禮物標題。",
+        "letterRequired": "請先寫低你想講嘅嘢。"
+      }
     }
   },
   "Status": {

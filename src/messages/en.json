@@ -924,6 +924,35 @@
       "jsxPlaceholder": "function App() {\n  return <h1>Hi {name}</h1>;\n}",
       "jsxHint": "Name your component App. Put <div id=\"root\"></div> in the HTML where the page should appear — we add one if it is missing.",
       "jsxError": "That JSX did not compile: {error}"
+    },
+    "letter": {
+      "backToPicker": "← Back to the create picker",
+      "heading": "Animated letter",
+      "lede": "Write the letter. It opens like a real envelope and reveals itself as they read — you pick the paper and the envelope colour.",
+      "privacyNote": "Your letter is stored in your private Lovorithm library. Only people with the share link can read it.",
+      "titleLabel": "Gift title",
+      "titlePlaceholder": "e.g. For you, on an ordinary Tuesday",
+      "letterLabel": "Your letter",
+      "letterPlaceholder": "Dear you,\n\nStart writing here. Leave a blank line between paragraphs and the letter opens one paragraph at a time.",
+      "letterHint": "{count} / {max} characters.",
+      "paperLabel": "Paper",
+      "paper": {
+        "cream": "Cream",
+        "kraft": "Kraft",
+        "lined": "Lined"
+      },
+      "envelopeLabel": "Envelope",
+      "envelope": {
+        "honey": "Honey",
+        "blush": "Blush",
+        "sky": "Sky"
+      },
+      "submitting": "Saving your gift…",
+      "submit": "Save & get share link",
+      "errors": {
+        "titleRequired": "Add a title for your gift.",
+        "letterRequired": "Write your letter before saving."
+      }
     }
   },
   "Status": {

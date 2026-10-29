@@ -15,9 +15,15 @@ import { startConnectOnboardingAction } from '@/lib/actions/checkout';
  * `profiles.stripe_charges_enabled` once the creator finishes identity
  * verification. The /onboarding page re-reads that flag on next visit
  * so the button text reflects the new state.
+ *
+ * `returnPath` (OOP-6720): where Stripe sends the creator once they are
+ * done. It defaults to this page. But a creator who arrived here because
+ * their onboarding link EXPIRED — they were mid-publish — must land back
+ * on the publish page, or the listing they were publishing is lost. The
+ * /onboarding page passes the gift id through for that case.
  */
 
-export function ConnectPayoutsButton() {
+export function ConnectPayoutsButton({ returnPath }: { returnPath?: string }) {
   const t = useTranslations('Onboarding.connect');
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +31,7 @@ export function ConnectPayoutsButton() {
   function onClick() {
     setError(null);
     startTransition(async () => {
-      const r = await startConnectOnboardingAction();
+      const r = await startConnectOnboardingAction({ returnPath });
       if (!r.ok) {
         setError(r.error);
         return;

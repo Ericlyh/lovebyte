@@ -3635,6 +3635,15 @@ a:hover { color: var(--lb-primary); }
 .lb-quiz-builder__opt-correct input { cursor: pointer; }
 .lb-quiz-builder__opt .lb-input { flex: 1; }
 
+/* Animated letter builder (OOP-6720). A single stack of fields — title,
+ * the letter body, the paper and the envelope pickers — so it only needs
+ * the column layout the other builders use. */
+.lb-letter-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 /* Buttons that destroy work-in-progress (delete question, delete option).
  * Uses the primary-deep red so it's clearly destructive on hover / focus. */
 .lb-btn--danger {
