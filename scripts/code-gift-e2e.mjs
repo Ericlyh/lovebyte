@@ -18,10 +18,12 @@ import { join } from 'node:path';
  *   5. the live safety scan blocks a gift that reads host state and
  *      clears a clean one;
  *   6. the preview renders the sender's code inside the sandbox;
- *   7. the AI review comes back with a summary (this is what proves the
- *      LOVEBYTE_AI_* env vars reached the deployment);
- *   8. an uploaded file lands in the matching editor (drag-and-drop and
+ *   7. an uploaded file lands in the matching editor (drag-and-drop and
  *      the file picker), and an unsupported file is refused by name;
+ *   8. the AI review comes back with a summary for the gift as it now
+ *      stands — uploaded files and all (this is what proves the
+ *      LOVEBYTE_AI_* env vars reached the deployment, and that a gift
+ *      big enough to fill the output cap still gets a review);
  *   9. saving either lands on the share page, or fails with the
  *      "not switched on yet" message that says the only thing missing
  *      is the migration that adds the `code` gift type.
@@ -235,46 +237,57 @@ try {
   await page.fill('#code-js', 'document.getElementById("go").onclick = () => {};');
   await page.waitForTimeout(1200);
 
-  // 6. the AI review (proves the deployment has the model configured).
-  //
-  //    This runs on the gift as typed, before any files are uploaded:
-  //    the review has an 8000-token output cap and the model writes a
-  //    longer review for a bigger gift, so uploading first would turn
-  //    this check into a test of the model's verbosity rather than of
-  //    the deployment's model configuration.
-  await page.click('button:has-text("Ask the AI")');
-  const reviewSummary = page.locator('.lb-code-review__summary');
-  const gotReview = await reviewSummary
-    .waitFor({ timeout: 90000 })
-    .then(() => true)
-    .catch(() => false);
-  check('AI review returns a summary', gotReview, gotReview ? (await reviewSummary.innerText()).slice(0, 160) : 'no summary');
-  if (gotReview) {
-    const suggestionCount = await page.locator('.lb-code-suggestion').count();
-    check('AI review proposes suggestions', suggestionCount >= 0, `${suggestionCount} suggestions`);
-  } else {
-    const aiError = await page.locator('.lb-code-builder__ai .lb-form-error').count();
-    const aiErrText = aiError ? await page.locator('.lb-code-builder__ai .lb-form-error').first().innerText() : '';
-    console.log('  ai error:', aiErrText);
-  }
-
-  // 7. file upload. The sender drops the page they already have on
-  //     disk and each file lands in the matching editor.
+  // 6. file upload. The sender drops the page they already have on
+  //    disk and each file lands in the matching editor.
   const uploadDir = mkdtempSync(join(tmpdir(), 'code-gift-upload-'));
+  // The uploaded files are deliberately as big as the builder allows:
+  // HTML 100KB, CSS 50KB, JS 50KB. The review is capped at 8000 output
+  // tokens and the provider spends most of that reasoning about the gift
+  // before it writes the review, so a gift this size came back
+  // truncated — no review at all — and the sender got an error instead
+  // (OOP-6740). The review below runs on exactly this gift.
+  const fillTo = (first, make, bytes) => {
+    const parts = [first];
+    let size = first.length;
+    for (let i = 0; size < bytes; i++) {
+      const line = make(i);
+      parts.push(line);
+      size += line.length + 1;
+    }
+    return parts.join('\n');
+  };
+  const bigHtml = fillTo(
+    '<h2 id="uploaded">From a file</h2>',
+    (i) => `<p class="row row-${i}">Line ${i} of the page they uploaded.</p>`,
+    99000,
+  );
+  const bigCss = fillTo(
+    '#uploaded { color: #3d6c0e; }',
+    (i) =>
+      `.row-${i} { color: #${((i * 7919) % 0xffffff).toString(16).padStart(6, '0')}; margin: ${i % 9}px; }`,
+    49000,
+  );
+  const bigJs = fillTo(
+    'document.getElementById("uploaded").dataset.ready = "1";',
+    (i) =>
+      `document.getElementById("row-${i}")?.addEventListener("click", () => console.log(${i}));`,
+    49000,
+  );
+
   const uploadFiles = [
     {
       name: 'index.html',
-      content: '<h2 id="uploaded">From a file</h2>',
+      content: bigHtml,
       type: 'text/html',
     },
     {
       name: 'style.css',
-      content: '#uploaded { color: #3d6c0e; }',
+      content: bigCss,
       type: 'text/css',
     },
     {
       name: 'app.js',
-      content: 'document.getElementById("uploaded").dataset.ready = "1";',
+      content: bigJs,
       type: 'text/javascript',
     },
   ];
@@ -295,7 +308,9 @@ try {
   await page.dispatchEvent('.lb-code-drop', 'drop', {
     dataTransfer: await dropFiles(uploadFiles),
   });
-  await page.waitForTimeout(600);
+  // The files are big, so give the live scan and the preview a moment
+  // to catch up with the editors.
+  await page.waitForTimeout(1500);
 
   const uploadedHtml = await page.inputValue('#code-html');
   const uploadedCss = await page.inputValue('#code-css');
@@ -320,6 +335,40 @@ try {
     (await page.locator('.lb-code-builder__upload [role="status"]').count()) === 1,
   );
 
+  // 7. the AI review, on the gift as it now stands — the uploaded
+  //    files and all (OOP-6740).
+  //
+  //    This used to run before the upload, on the gift as typed, with a
+  //    comment saying that a bigger gift would break it. That was the
+  //    bug: the review is capped at 8000 output tokens and the provider
+  //    spends most of that reasoning about the gift, so a gift this big
+  //    came back truncated and the sender got an error instead of a
+  //    review. It now runs on the uploaded gift, which is the case that
+  //    failed, and it has to come back with a review.
+  await page.click('button:has-text("Ask the AI")');
+  const reviewSummary = page.locator('.lb-code-review__summary');
+  const gotReview = await reviewSummary
+    .waitFor({ timeout: 120000 })
+    .then(() => true)
+    .catch(() => false);
+  check(
+    'AI review returns a summary for the uploaded gift',
+    gotReview,
+    gotReview ? (await reviewSummary.innerText()).slice(0, 160) : 'no summary',
+  );
+  if (gotReview) {
+    const suggestionCount = await page.locator('.lb-code-suggestion').count();
+    check(
+      'AI review proposes suggestions',
+      suggestionCount >= 1,
+      `${suggestionCount} suggestions`,
+    );
+  } else {
+    const aiError = await page.locator('.lb-code-builder__ai .lb-form-error').count();
+    const aiErrText = aiError ? await page.locator('.lb-code-builder__ai .lb-form-error').first().innerText() : '';
+    console.log('  ai error:', aiErrText);
+  }
+
   // An unsupported file is refused by name, and the good files that
   // came with it are still imported.
   await page.dispatchEvent('.lb-code-drop', 'drop', {
@@ -343,16 +392,20 @@ try {
     (await page.inputValue('#code-js')).includes('console.log("extra")'),
   );
 
-  // The file picker does the same thing.
+  // The file picker does the same thing. It picks one small file
+  // rather than the big ones again, so the gift keeps the size it had
+  // when it was reviewed.
+  const pickedFile = {
+    name: 'picked.html',
+    content: '<p id="picked">Picked with the file picker</p>',
+  };
+  writeFileSync(join(uploadDir, pickedFile.name), pickedFile.content);
   try {
-    await page.setInputFiles(
-      '#code-files',
-      uploadFiles.map((file) => join(uploadDir, file.name)),
-    );
+    await page.setInputFiles('#code-files', join(uploadDir, pickedFile.name));
     await page.waitForTimeout(600);
     check(
       'the file picker imports files too',
-      (await page.inputValue('#code-html')).includes('From a file'),
+      (await page.inputValue('#code-html')).includes('Picked with the file picker'),
     );
   } catch (err) {
     check('the file picker imports files too', false, String(err).slice(0, 160));
