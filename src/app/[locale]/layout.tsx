@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { Norican, Overlock } from 'next/font/google';
-import { NextIntlClientProvider } from 'next-intl';
 import { hasLocale } from 'next-intl';
-import { getMessages, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { BRAND } from '@/lib/brand';
+import { ScopedMessages } from '@/lib/i18n/ScopedMessages';
+import { ROOT_SCOPES } from '@/lib/i18n/scopes';
 import { routing } from '@/lib/i18n/routing';
 import '../globals.css';
 
@@ -108,15 +109,21 @@ export default async function LocaleLayout({
   // independently — every page calls it too.
   setRequestLocale(locale);
 
-  const messages = await getMessages();
-
   return (
     <html
       lang={locale}
       className={`${norican.variable} ${overlock.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        {/*
+          OOP-6726 — this layout is an *ancestor* of every route, so
+          whatever it provides is serialised into every page's payload.
+          It therefore carries only the `Common` namespace its own chrome
+          needs (the offline banner, the root-level error and not-found
+          boundaries). Each route below provides its own, narrower
+          provider — see `src/lib/i18n/scopes.ts`.
+        */}
+        <ScopedMessages locale={locale} scopes={ROOT_SCOPES}>
           {/*
             Phase 9 (OOP-4225) — typed offline indicator. Renders
             nothing when navigator.onLine is true; appears at the
@@ -125,7 +132,7 @@ export default async function LocaleLayout({
           */}
           <OfflineBanner />
           {children}
-        </NextIntlClientProvider>
+        </ScopedMessages>
       </body>
     </html>
   );
