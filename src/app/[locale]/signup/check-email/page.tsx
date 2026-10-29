@@ -1,0 +1,63 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { LanguageToggle } from '@/components/LanguageToggle';
+import { ResendConfirmationForm } from '@/components/auth/ResendConfirmationForm';
+import { BRAND } from '@/lib/brand';
+
+export const metadata: Metadata = {
+  title: `Check your inbox — ${BRAND.NAME}`,
+};
+
+/**
+ * /signup/check-email — landing page after a signup that requires email
+ * confirmation (the default Supabase config). Renders the email address
+ * the user just signed up with so they can sanity-check their inbox.
+ *
+ * As of OOP-4274 (comment 9fc72202) this page also exposes an explicit
+ * "Send another confirmation email" button (`ResendConfirmationForm`).
+ * Previously the resend happened as a hidden side effect of the
+ * /signup email-field probe; that's now a pure read and the resend
+ * lives here, where the user can opt into it.
+ *
+ * Reads `?email=` from the query string. Missing → generic message;
+ * the resend button is still rendered (with an empty hidden input) but
+ * the server action rejects malformed email server-side.
+ */
+export default async function CheckEmailPage({ params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ email?: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const sp = await searchParams;
+  const email = typeof sp.email === 'string' ? sp.email : '';
+  const t = await getTranslations('Auth.checkEmail');
+
+  return (
+    <main className="min-h-screen flex flex-col">
+      <nav className="lb-nav">
+        <Link href="/" className="lb-nav__brand">{BRAND.NAME}</Link>
+        <div className="lb-nav__links">
+          <LanguageToggle />
+        </div>
+      </nav>
+
+      <section className="lb-auth-card">
+        <h1>{t('heading')}</h1>
+        <p className="lede">
+          {t('body', { email: email || 'your inbox' })}
+        </p>
+
+        <ResendConfirmationForm email={email} />
+
+        <p className="lb-auth-foot">
+          <Link href="/login">Sign in</Link>
+        </p>
+      </section>
+    </main>
+  );
+}

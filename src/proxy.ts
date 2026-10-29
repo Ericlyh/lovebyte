@@ -11,13 +11,17 @@ import { routing, type Locale } from '@/lib/i18n/routing';
  *
  * Two responsibilities:
  *
- *   1. Resolve the UI locale (cookie → Accept-Language → default) and
- *      forward it as `X-NEXT-INTL-LOCALE` so `getRequestConfig` reads it
+ *   1. Resolve the UI locale (cookie → Accept-Language → default), rewrite
+ *      the request to the internal `/{locale}/…` path, and forward the
+ *      locale as `X-NEXT-INTL-LOCALE` so `getRequestConfig` reads it
  *      (see node_modules/next-intl/dist/esm/development/server/react-server/
  *      RequestLocale.js). We deliberately do NOT use `createMiddleware`
- *      from next-intl — with `localePrefix: 'never'` it still rewrites
- *      to `/[locale]/...`, but Lovorithm has no `/[locale]/...` routes
- *      (architecture §5: recipient links must work without a prefix).
+ *      from next-intl — we need the Supabase refresh below in the same
+ *      edge function, and next-intl's middleware would own the rewrite.
+ *      The rewrite is internal only: the public URL keeps the locale-less
+ *      form (architecture §5 — recipient links must work without a
+ *      prefix), while the app tree underneath is `src/app/[locale]/…` so
+ *      that every page can be prerendered once per locale (OOP-6710).
  *
  *   2. Refresh Supabase auth cookies. @supabase/ssr's `createServerClient`
  *      requires a Server Action or middleware boundary to actually
@@ -47,7 +51,37 @@ export async function proxy(request: NextRequest) {
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set('X-NEXT-INTL-LOCALE', locale);
 
-  const response = NextResponse.next({
+  // OOP-6710 — rewrite the public URL to the internal `/{locale}/…` form.
+  //
+  // The app tree lives under `src/app/[locale]/`, so every page is
+  // prerendered once per locale at build time. The browser still asks for
+  // `/` (localePrefix: 'never' — recipient gift links must never carry a
+  // locale prefix); this rewrite is internal, so the address bar and every
+  // link on the site keep the locale-less form. What the rewrite buys us is
+  // that the edge picks the prerendered variant from the `lb-locale`
+  // cookie, which is the only place the locale lives.
+  //
+  // The alternative — serving one page and letting the client swap the
+  // language — would mean shipping every locale's copy to every visitor
+  // and rendering the wrong one first. This way each visitor downloads
+  // exactly one locale's HTML.
+  const url = request.nextUrl.clone();
+  const pathname = url.pathname;
+
+  // A locale-prefixed URL is not part of the public URL space. Redirect it
+  // back to the locale-less form so there is exactly one canonical URL per
+  // page (and so `/en` doesn't render a second copy of the landing page).
+  const firstSegment = pathname.split('/')[1] ?? '';
+  if (isSupportedLocale(firstSegment)) {
+    const stripped = pathname.slice(firstSegment.length + 1) || '/';
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = stripped;
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  url.pathname = `/${locale}${pathname === '/' ? '' : pathname}`;
+
+  const response = NextResponse.rewrite(url, {
     request: { headers: forwardedHeaders },
   });
 

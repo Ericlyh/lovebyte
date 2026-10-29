@@ -1,0 +1,287 @@
+import type { Metadata } from 'next';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { notFound, redirect } from 'next/navigation';
+import { Nav } from '@/components/Nav';
+import { FollowButton } from '@/components/profile/FollowButton';
+import { EmptyCollectionState } from '@/components/profile/EmptyCollectionState';
+import { EmptyMyGifts } from '@/components/profile/EmptyMyGifts';
+import { GiftCard } from '@/components/catalog/GiftCard';
+import {
+  getProfileByHandle,
+  getRedirectForOldHandle,
+} from '@/lib/profiles/query';
+import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
+import { getFollowerCount } from '@/lib/profiles/followers';
+import { getCatalogFeed } from '@/lib/catalog';
+import { getOwnedGifts } from '@/lib/profiles/ownedGifts';
+import { createClient } from '@/lib/supabase/server';
+import { BRAND } from '@/lib/brand';
+
+/**
+ * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
+ * with follower count + Followers tab; OOP-5685 splits the single
+ * "Collection" into two: "For Sale" (public) + "My Gifts" (owner only)).
+ *
+ * Edge-runtime safe: data fetch goes through `profiles_public`
+ * (anon-readable view from M-A). The authed follow action is wired
+ * via the FollowButton client component (OOP-4285) and updates the
+ * follower's local state; the page revalidates with `router.refresh()`
+ * so the SSR-rendered follower count stays in sync after a toggle.
+ *
+ * **Two-collection layout (OOP-5685):**
+ *   • `#for-sale` — gifts the creator has listed on the marketplace.
+ *     Public via `gifts_select_public_listed` RLS. Always rendered.
+ *   • `#mine`    — gifts the creator owns, including drafts + unlisted.
+ *     Owner-only via `gifts_select_own` RLS; non-owners get an empty
+ *     array (we gate the section on `viewerIsOwner` so non-owners never
+ *     see the header either).
+ *
+ * The "About" and "Followers" tabs are static placeholders today — same
+ * as before this issue. They're listed in the tab row so the IA stays
+ * consistent for the "Followers (N)" badge copy.
+ *
+ * **Handle-change redirect (OOP-4284 Part C):** if the requested
+ * handle doesn't exist in `profiles_public`, we look up
+ * `handle_history.old_handle` and 301-redirect to the new handle so
+ * stale links keep working after a rename.
+ *
+ * The handle param is validated here as a 404 guard before we touch
+ * the DB. The DB-side CHECK constraint is the source of truth; this
+ * guard just keeps us from echoing malformed handles back to the URL.
+ */
+type Props = {
+  params: Promise<{ locale: string; handle: string }>;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { handle } = await params;
+  const profile = await getProfileByHandle(handle);
+  const name = profile?.display_name ?? `@${handle}`;
+  return {
+    title: `${name} — ${BRAND.NAME}`,
+    description: profile?.bio ?? `Creator profile @${handle} on ${BRAND.NAME}.`,
+  };
+}
+
+export default async function CreatorProfilePage({ params }: Props) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  const { handle } = await params;
+
+  // Reject malformed handles with a 404 rather than 500. Mirrors the
+  // DB CHECK constraint — if the handle passes this regex it would
+  // round-trip the profiles_public view safely.
+  if (
+    !handle ||
+    handle.length < 3 ||
+    handle.length > HANDLE_MAX_LENGTH ||
+    !HANDLE_REGEX.test(handle)
+  ) {
+    notFound();
+  }
+
+  const profile = await getProfileByHandle(handle);
+  if (!profile) {
+    // Handle changed at some point. Look up the history and 301 to
+    // the new handle. If no history row exists, it's a real 404.
+    const redirectTarget = await getRedirectForOldHandle(handle);
+    if (redirectTarget) {
+      redirect(`/u/${redirectTarget.newHandle}`);
+    }
+    notFound();
+  }
+
+  const t = await getTranslations('Profile');
+  const displayName = profile.display_name ?? `@${profile.handle}`;
+  const links = Array.isArray(profile.links)
+    ? (profile.links as unknown[]).filter(
+        (l): l is string => typeof l === 'string' && /^https?:\/\//.test(l),
+      )
+    : [];
+
+  // Follower count (M-D). Cheap query against `creator_follows` with
+  // `head: true` + `count: 'exact'`; the RLS policy
+  // `creator_follows_select_public` lets anon read it.
+  const followerCount = await getFollowerCount(profile.id);
+
+  // Viewer auth (OOP-4225 Phase 9 polish). Owner-only copy on the
+  // empty-state card hinges on this — anon visitors shouldn't see
+  // "List a gift" as a CTA. Anon-readable via the JWT-less server
+  // client; `auth.getUser()` returns null without error.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerIsOwner = !!user && user.id === profile.id;
+
+  // Creator's listed gifts (OOP-4225 Phase 9 polish). Reuses the same
+  // RLS-permitted feed query as /browse so the visual language of the
+  // cards stays consistent across the app. Capped at PAGE_SIZE (20)
+  // for the first paint — full pagination can land when the design
+  // actually needs it (most creators won't list 20+ in the MVP).
+  const { gifts: creatorListings } = await getCatalogFeed({
+    creator: profile.handle,
+    sort: 'published_desc',
+  });
+
+  // Owner's full gift library (OOP-5685). Drafts + unlisted + listed.
+  // Returns [] for non-owners (RLS `gifts_select_own`); we only render
+  // the section when `viewerIsOwner` so the empty-array branch is
+  // purely defensive — keeping the call here means the server does the
+  // single RLS check whether or not the visitor is authed.
+  const ownedGifts = viewerIsOwner
+    ? await getOwnedGifts(profile.handle)
+    : [];
+
+  return (
+    <main className="min-h-screen flex flex-col">
+      <Nav />
+
+      <section className="lb-profile-hero">
+        <h1>{displayName}</h1>
+        <p className="lb-profile-handle">@{profile.handle}</p>
+        {profile.bio ? <p className="lb-profile-bio">{profile.bio}</p> : null}
+        {links.length > 0 ? (
+          <ul className="lb-profile-links">
+            {links.map((url) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        <div className="lb-profile-hero__actions">
+          <FollowButton
+            creatorId={profile.id}
+            handle={profile.handle}
+            initialFollowerCount={followerCount}
+          />
+          <span
+            className="lb-profile-followers-badge"
+            aria-label={t('followersCount', {
+              count: followerCount,
+            })}
+          >
+            {t('followersLabel', { count: followerCount })}
+          </span>
+        </div>
+      </section>
+
+      <section className="lb-profile-tabs" aria-label={t('tabsAria')}>
+        <a href="#for-sale" className="lb-tab lb-tab--active">
+          {t('forSale')}
+        </a>
+        {viewerIsOwner ? (
+          <a href="#mine" className="lb-tab">
+            {t('myGifts')}
+          </a>
+        ) : null}
+        <a href="#about" className="lb-tab">
+          {t('about')}
+        </a>
+        <a href="#followers" className="lb-tab">
+          {t('followersTab', { count: followerCount })}
+        </a>
+      </section>
+
+      <section
+        id="for-sale"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-for-sale-title"
+      >
+        <h2 id="lb-profile-for-sale-title" className="lb-profile-section__title">
+          {t('forSale')}
+        </h2>
+        {creatorListings.length > 0 ? (
+          <div className="lb-profile-collection-grid">
+            {creatorListings.map((gift) => (
+              <GiftCard key={gift.id} gift={gift} />
+            ))}
+          </div>
+        ) : (
+          <EmptyCollectionState
+            viewerIsOwner={viewerIsOwner}
+            handle={profile.handle}
+          />
+        )}
+      </section>
+
+      {viewerIsOwner ? (
+        <section
+          id="mine"
+          className="lb-profile-collection lb-profile-section lb-profile-section--private"
+          aria-labelledby="lb-profile-mine-title"
+        >
+          <div className="lb-profile-section__head">
+            <h2
+              id="lb-profile-mine-title"
+              className="lb-profile-section__title"
+            >
+              {t('myGifts')}
+            </h2>
+            <span className="lb-profile-section__private-badge">
+              <span aria-hidden="true">🔒</span>
+              <span>{t('privateNote')}</span>
+            </span>
+          </div>
+          {ownedGifts.length > 0 ? (
+            <div className="lb-profile-collection-grid">
+              {ownedGifts.map((gift) => (
+                <GiftCard key={gift.id} gift={gift} />
+              ))}
+            </div>
+          ) : (
+            <EmptyMyGifts />
+          )}
+        </section>
+      ) : null}
+
+      <section
+        id="about"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-about-title"
+      >
+        <h2 id="lb-profile-about-title" className="lb-profile-section__title">
+          {t('about')}
+        </h2>
+        {profile.bio ? (
+          <p className="lb-profile-section__about-body">{profile.bio}</p>
+        ) : (
+          <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
+            {t('emptyAbout', { handle: profile.handle })}
+          </p>
+        )}
+        {links.length > 0 ? (
+          <ul className="lb-profile-section__about-links">
+            {links.map((url) => (
+              <li key={url}>
+                <a href={url} target="_blank" rel="noopener noreferrer">
+                  {url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </section>
+
+      <section
+        id="followers"
+        className="lb-profile-collection lb-profile-section"
+        aria-labelledby="lb-profile-followers-title"
+      >
+        <h2
+          id="lb-profile-followers-title"
+          className="lb-profile-section__title"
+        >
+          {t('followersTab', { count: followerCount })}
+        </h2>
+        <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
+          {t('followersEmpty')}
+        </p>
+      </section>
+    </main>
+  );
+}
