@@ -74,8 +74,19 @@ const TYPE_LABEL: Record<OwnedGift['type'], string> = {
 
 const OWNED_PAGE_SIZE = 20;
 
+/**
+ * The columns the owner's gift list reads.
+ *
+ * `like_count` is NOT here on purpose: there is no `gifts.like_count`
+ * column — it is a SQL aggregate exposed by the `gift_like_count()`
+ * RPC, and the mapper below calls that RPC for each row. Listing the
+ * column in the select made PostgREST reject the WHOLE query with
+ * `42703 column gifts.like_count does not exist`, so `getOwnedGifts`
+ * returned `[]` and the owner's "My Gifts" section always rendered its
+ * empty state — the owner's own library was invisible (OOP-6719).
+ */
 const ownedGiftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, like_count, is_listed, deleted_at, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, is_listed, deleted_at, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
 
 /**
  * Fetch the creator's own gifts by handle. Returns `[]` if the handle
