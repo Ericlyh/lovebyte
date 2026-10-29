@@ -67,6 +67,9 @@ export function NavAuthLinks({ items }: { items: NavMenuItem[] | null }) {
         ? [
             { kind: 'link', href: '/create', label: t('create') },
             { kind: 'link', href: '/u/me', label: t('viewProfile') },
+            // OOP-6719 — purchases AND sales. Mirrors the server-rendered
+            // nav so the two can never drift.
+            { kind: 'link', href: '/purchases', label: t('purchases') },
             { kind: 'signout', label: t('signOut') },
           ]
         : [

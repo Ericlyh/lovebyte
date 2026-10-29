@@ -2130,6 +2130,140 @@ a:hover { color: var(--lb-primary); }
   margin-top: 8px;
 }
 
+/* === Creator sales, listing controls and followers (OOP-6719) ==========
+ * The creator-facing surfaces: the sales figures on the profile, the
+ * unpublish button on each of the creator's own listings, and the real
+ * follower list (the tab used to say "No followers yet." whatever the
+ * count was). */
+
+.lb-sales-card {
+  background: var(--lb-surface-raised);
+  border: 1px solid var(--lb-border);
+  border-radius: var(--lb-radius-lg);
+  padding: var(--lb-space-5);
+  margin-bottom: var(--lb-space-4);
+}
+
+.lb-sales-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--lb-space-4);
+  margin: 0 0 var(--lb-space-4);
+}
+
+.lb-sales-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lb-sales-stat__label {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lb-ink-soft);
+}
+
+.lb-sales-stat__value {
+  font-family: var(--lb-font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--lb-primary-deep);
+  margin: 0;
+}
+
+/* The number that decides whether creating another gift is worth it. */
+.lb-sales-stat__value--net {
+  color: var(--lb-sage);
+}
+
+.lb-sales-note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--lb-ink-soft);
+  margin: 0 0 var(--lb-space-4);
+  max-width: 560px;
+}
+
+.lb-sales-actions {
+  display: flex;
+  gap: var(--lb-space-2);
+  flex-wrap: wrap;
+}
+
+/* The owner's own gift tile: the catalogue card plus its unpublish
+   button. The button sits OUTSIDE the card's link — a button nested
+   inside an anchor is invalid HTML, and browsers disagree about what
+   clicking it does. */
+.lb-owned-gift {
+  display: flex;
+  flex-direction: column;
+  gap: var(--lb-space-2);
+}
+
+.lb-owned-gift .lb-gift-card {
+  flex: 1;
+}
+
+.lb-owned-gift__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--lb-space-2);
+  flex-wrap: wrap;
+}
+
+.lb-owned-gift__error {
+  font-size: 12px;
+  color: var(--lb-danger);
+}
+
+.lb-followers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+}
+
+.lb-followers-list__item {
+  margin: 0;
+}
+
+.lb-followers-list__link {
+  display: inline-block;
+  font-size: 14px;
+  color: var(--lb-primary-deep);
+  text-decoration: none;
+  border: 1px solid var(--lb-border);
+  border-radius: var(--lb-radius-pill);
+  padding: 6px 14px;
+  background: var(--lb-surface-raised);
+  transition: border-color var(--lb-dur-fast);
+}
+
+.lb-followers-list__link:hover {
+  border-color: var(--lb-primary);
+}
+
+.lb-purchases-section__title {
+  font-family: var(--lb-font-display);
+  font-size: 20px;
+  color: var(--lb-primary-deep);
+  margin: var(--lb-space-5) 0 0;
+  font-weight: 700;
+}
+
+.lb-purchases-sales,
+.lb-purchases-bought {
+  margin-bottom: var(--lb-space-5);
+}
+
+@media (max-width: 540px) {
+  .lb-sales-stats { grid-template-columns: repeat(2, 1fr); }
+  .lb-sales-stat__value { font-size: 22px; }
+}
+
 /* === Purchases dashboard (M-E) ======================================== */
 
 .lb-purchases-list {

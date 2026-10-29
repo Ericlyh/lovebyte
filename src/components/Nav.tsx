@@ -63,6 +63,10 @@ export async function Nav({ deferAuth = false }: { deferAuth?: boolean } = {}) {
           ...(handle
             ? [{ kind: 'link' as const, href: `/u/${handle}`, label: t('viewProfile') }]
             : [{ kind: 'link' as const, href: '/onboarding', label: t('finishProfile') }]),
+          // OOP-6719 — the page that shows what you bought AND what you
+          // sold. A creator who cannot see their takings has no reason
+          // to keep a storefront.
+          { kind: 'link', href: '/purchases', label: t('purchases') },
           { kind: 'signout', label: t('signOut') },
         ]
       : [

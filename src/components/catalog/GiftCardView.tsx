@@ -28,6 +28,13 @@ type Props = {
   likesLabel: string;
   /** Resolved "Free" label for the price badge. */
   freeLabel: string;
+  /**
+   * Where the card links to. Defaults to the listing's detail page.
+   * Pass `null` for a listing with no public page — an unpublished
+   * listing renders as a plain tile rather than a link to a 404
+   * (OOP-6719).
+   */
+  href?: string | null;
 };
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -39,11 +46,13 @@ const CATEGORY_EMOJI: Record<string, string> = {
   code: '💻',
 };
 
-export function GiftCardView({ gift, byText, likesLabel, freeLabel }: Props) {
+export function GiftCardView({ gift, byText, likesLabel, freeLabel, href }: Props) {
   const emoji = gift.category ? CATEGORY_EMOJI[gift.category] ?? '🎁' : '🎁';
 
-  return (
-    <Link href={`/l/${gift.id}`} className="lb-gift-card">
+  const target = href === undefined ? `/l/${gift.id}` : href;
+
+  const body = (
+    <>
       <div className="lb-gift-card__cover" data-category={gift.category ?? 'unknown'}>
         {gift.cover_url ? (
           // Decorative: the title sits right below it, so the image
@@ -70,6 +79,18 @@ export function GiftCardView({ gift, byText, likesLabel, freeLabel }: Props) {
           </span>
         </div>
       </div>
+    </>
+  );
+
+  // An unpublished listing has no public detail page, so the card
+  // renders as a plain tile rather than a link to a 404 (OOP-6719).
+  if (!target) {
+    return <div className="lb-gift-card">{body}</div>;
+  }
+
+  return (
+    <Link href={target} className="lb-gift-card">
+      {body}
     </Link>
   );
 }

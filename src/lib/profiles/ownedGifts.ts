@@ -47,6 +47,12 @@ export type OwnedGift = {
   published_at: string;
   like_count: number;
   is_listed: boolean;
+  /**
+   * True when the creator has taken this listing off the marketplace
+   * (OOP-6719). The row is soft-deleted — `gifts.deleted_at` is set — so
+   * it is off the catalogue but still here, ready to be published again.
+   */
+  is_unpublished: boolean;
   cover_media_id: string | null;
   /** Absolute URL of the cover photo, or null when there is none (OOP-6717). */
   cover_url: string | null;
@@ -69,13 +75,19 @@ const TYPE_LABEL: Record<OwnedGift['type'], string> = {
 const OWNED_PAGE_SIZE = 20;
 
 const ownedGiftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, like_count, is_listed, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, like_count, is_listed, deleted_at, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
 
 /**
  * Fetch the creator's own gifts by handle. Returns `[]` if the handle
  * doesn't resolve to a profile (the caller already 404s on that path)
  * or if the visitor isn't the owner (RLS denies the SELECT and PostgREST
  * returns zero rows).
+ *
+ * Unpublished gifts are INCLUDED (OOP-6719). Unpublishing soft-deletes the
+ * row (`gifts.deleted_at`), and if the creator's own list hid those rows
+ * they would have no way back to the listing they just took down — the
+ * unpublish would be a one-way door. The row is still readable by its
+ * owner through `gifts_select_own`, which ignores `deleted_at`.
  */
 export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
   if (!handle) return [];
@@ -92,7 +104,6 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
     .from('gifts')
     .select(ownedGiftSelect)
     .eq('owner_id', profile.id)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(OWNED_PAGE_SIZE);
 
@@ -135,6 +146,7 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
         published_at: r.published_at ?? r.created_at,
         like_count: likeCount,
         is_listed: r.is_listed,
+        is_unpublished: r.deleted_at != null,
         cover_media_id: r.cover_media_id,
         // The card renders the cover photo when there is one, and the
         // category tile when there is not — same resolution as the

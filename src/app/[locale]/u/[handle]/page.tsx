@@ -1,19 +1,23 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound, redirect } from 'next/navigation';
 import { Nav } from '@/components/Nav';
 import { FollowButton } from '@/components/profile/FollowButton';
 import { EmptyCollectionState } from '@/components/profile/EmptyCollectionState';
 import { EmptyMyGifts } from '@/components/profile/EmptyMyGifts';
+import { CreatorSalesCard } from '@/components/profile/CreatorSalesCard';
+import { OwnedGiftActions } from '@/components/profile/OwnedGiftActions';
 import { GiftCard } from '@/components/catalog/GiftCard';
 import {
   getProfileByHandle,
   getRedirectForOldHandle,
 } from '@/lib/profiles/query';
 import { HANDLE_REGEX, HANDLE_MAX_LENGTH } from '@/lib/profiles/handle';
-import { getFollowerCount } from '@/lib/profiles/followers';
+import { getFollowerCount, getFollowers } from '@/lib/profiles/followers';
 import { getCatalogFeed } from '@/lib/catalog';
 import { getOwnedGifts } from '@/lib/profiles/ownedGifts';
+import { getCreatorSales } from '@/lib/profiles/sales';
 import { createClient } from '@/lib/supabase/server';
 import { BRAND } from '@/lib/brand';
 
@@ -36,9 +40,16 @@ import { BRAND } from '@/lib/brand';
  *     array (we gate the section on `viewerIsOwner` so non-owners never
  *     see the header either).
  *
- * The "About" and "Followers" tabs are static placeholders today — same
- * as before this issue. They're listed in the tab row so the IA stays
- * consistent for the "Followers (N)" badge copy.
+ * The "About" tab is a static placeholder; the "Followers" tab shows
+ * the real follower list from `creator_follows` (OOP-6719 — it used to
+ * render a fixed "No followers yet." whatever the count was).
+ *
+ * **Owner-only sections (OOP-6719):**
+ *   • `#mine`  — the creator's whole gift library, plus the unpublish
+ *     button on every listed gift.
+ *   • `#sales` — gross sales, net earnings and units sold, read through
+ *     the `purchases_select_buyer_or_seller` RLS policy that already
+ *     existed but that nothing in the app read.
  *
  * **Handle-change redirect (OOP-4284 Part C):** if the requested
  * handle doesn't exist in `profiles_public`, we look up
@@ -134,6 +145,20 @@ export default async function CreatorProfilePage({ params }: Props) {
     ? await getOwnedGifts(profile.handle)
     : [];
 
+  // The creator's sales figures (OOP-6719). The RLS on `purchases`
+  // (`purchases_select_buyer_or_seller`) already lets a seller read
+  // their own sales rows; this is the first thing in the app that does.
+  // Owner-only, and only fetched for the owner — the section is not part
+  // of a visitor's page at all.
+  const sales = viewerIsOwner ? await getCreatorSales(profile.id) : null;
+
+  // Who actually follows this creator (OOP-6719). The Followers tab
+  // used to render a fixed "No followers yet." whatever the count was.
+  // `creator_follows` is public-readable, so this is safe for anyone.
+  // Skipped entirely when the count is zero — the common case, and the
+  // list would be empty anyway.
+  const followers = followerCount > 0 ? await getFollowers(profile.id) : [];
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -177,6 +202,11 @@ export default async function CreatorProfilePage({ params }: Props) {
         {viewerIsOwner ? (
           <a href="#mine" className="lb-tab">
             {t('myGifts')}
+          </a>
+        ) : null}
+        {viewerIsOwner ? (
+          <a href="#sales" className="lb-tab">
+            {t('salesTab')}
           </a>
         ) : null}
         <a href="#about" className="lb-tab">
@@ -230,12 +260,49 @@ export default async function CreatorProfilePage({ params }: Props) {
           {ownedGifts.length > 0 ? (
             <div className="lb-profile-collection-grid">
               {ownedGifts.map((gift) => (
-                <GiftCard key={gift.id} gift={gift} />
+                <div key={gift.id} className="lb-owned-gift">
+                  {/* A draft or an unpublished listing has no public
+                      detail page, so the card is a plain tile rather
+                      than a link to a 404. */}
+                  <GiftCard
+                    gift={gift}
+                    href={gift.is_listed && !gift.is_unpublished ? `/l/${gift.id}` : null}
+                  />
+                  <OwnedGiftActions
+                    giftId={gift.id}
+                    mode={
+                      gift.is_unpublished
+                        ? 'republish'
+                        : gift.is_listed
+                          ? 'unpublish'
+                          : null
+                    }
+                  />
+                </div>
               ))}
             </div>
           ) : (
             <EmptyMyGifts />
           )}
+        </section>
+      ) : null}
+
+      {viewerIsOwner && sales ? (
+        <section
+          id="sales"
+          className="lb-profile-collection lb-profile-section lb-profile-section--private"
+          aria-labelledby="lb-profile-sales-title"
+        >
+          <div className="lb-profile-section__head">
+            <h2 id="lb-profile-sales-title" className="lb-profile-section__title">
+              {t('sales.title')}
+            </h2>
+            <span className="lb-profile-section__private-badge">
+              <span aria-hidden="true">🔒</span>
+              <span>{t('privateNote')}</span>
+            </span>
+          </div>
+          <CreatorSalesCard summary={sales.summary} />
         </section>
       ) : null}
 
@@ -278,9 +345,29 @@ export default async function CreatorProfilePage({ params }: Props) {
         >
           {t('followersTab', { count: followerCount })}
         </h2>
-        <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
-          {t('followersEmpty')}
-        </p>
+        {followers.length > 0 ? (
+          <>
+            <p className="lb-profile-section__about-body">
+              {t('followersSummary', { count: followerCount })}
+            </p>
+            <ul className="lb-followers-list">
+              {followers.map((follower) => (
+                <li key={follower.id} className="lb-followers-list__item">
+                  <Link
+                    href={`/u/${follower.handle}`}
+                    className="lb-followers-list__link"
+                  >
+                    {follower.displayName ?? `@${follower.handle}`}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p className="lb-profile-section__about-body lb-profile-section__about-body--muted">
+            {t('followersEmpty')}
+          </p>
+        )}
       </section>
     </main>
   );

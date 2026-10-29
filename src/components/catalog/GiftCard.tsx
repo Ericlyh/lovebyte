@@ -13,9 +13,14 @@ import { GiftCardView } from './GiftCardView';
  */
 type Props = {
   gift: CatalogGift;
+  /**
+   * Where the card links to. Defaults to the listing's detail page;
+   * pass `null` for a listing that has no public page (OOP-6719).
+   */
+  href?: string | null;
 };
 
-export async function GiftCard({ gift }: Props) {
+export async function GiftCard({ gift, href }: Props) {
   const t = await getTranslations('Catalog.card');
   const tp = await getTranslations('Catalog.price');
   const creatorLabel = gift.owner.display_name ?? `@${gift.owner.handle}`;
@@ -26,6 +31,7 @@ export async function GiftCard({ gift }: Props) {
       byText={t('by', { creator: creatorLabel })}
       likesLabel={t('likesLabel', { count: gift.like_count })}
       freeLabel={tp('free')}
+      href={href}
     />
   );
 }

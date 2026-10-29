@@ -8,6 +8,7 @@
     "create": "整禮物",
     "viewProfile": "睇主頁",
     "finishProfile": "完成設定",
+    "purchases": "訂單",
     "signOut": "登出"
   },
   "Scaffold": {
@@ -314,7 +315,25 @@
     "collection": "作品",
     "forSale": "出售中",
     "myGifts": "我的禮物",
+    "salesTab": "銷售",
     "privateNote": "私人——只有你睇得到",
+    "sales": {
+      "title": "銷售",
+      "grossSales": "總售價",
+      "netEarnings": "淨收入",
+      "unitsSold": "售出份數",
+      "unitsCount": "{count, plural, =1 {1 份} other {# 份}}",
+      "note": "總售價係客人付嘅錢；淨收入係扣咗平台分成之後你收到嘅錢。",
+      "viewPurchases": "睇所有訂單"
+    },
+    "listing": {
+      "unpublish": "下架",
+      "republish": "重新上架",
+      "working": "…",
+      "error": "更新唔到，重新試多次。",
+      "confirmUnpublish": "確定要下架呢個listing？佢會即刻喺市集消失，你之後可以再上架。",
+      "confirmRepublish": "重新上架呢個listing？佢會重新出現喺市集。"
+    },
     "about": "關於",
     "emptyAbout": "@{handle} 仲未有填自介。",
     "emptyCollection": "仲未有上架嘅禮物。",
@@ -385,7 +404,8 @@
     "followersCount": "{count, plural, =0 {仲未有粉絲} =1 {1 位粉絲} other {# 位粉絲}}",
     "followersLabel": "{count, plural, =0 {未有粉絲} =1 {1 位粉絲} other {# 位粉絲}}",
     "followersTab": "{count, plural, =0 {粉絲} =1 {粉絲（1）} other {粉絲（#）}}",
-    "followersEmpty": "仲未有粉絲。"
+    "followersEmpty": "仲未有粉絲。",
+    "followersSummary": "{count, plural, =0 {仲未有人追蹤呢個創作人。} =1 {有一個人追蹤咗呢個創作人。} other {有 # 個人追蹤咗呢個創作人。}}"
   },
   "Settings": {
     "heading": "設定",
@@ -588,9 +608,13 @@
     }
   },
   "Purchases": {
-    "title": "你嘅禮物",
-    "empty": "你仲未送過任何禮物。",
-    "emptyTitle": "未有任何禮物",
+    "title": "訂單",
+    "boughtTitle": "你收到嘅禮物",
+    "salesTitle": "你賣出嘅禮物",
+    "saleGross": "售價 {amount}",
+    "saleNet": "你賺 {amount}",
+    "empty": "你仲未買過任何禮物。",
+    "emptyTitle": "仲未買過禮物",
     "loadError": "而家載唔到你嘅禮物，重新整理試多次。",
     "browseMore": "睇多啲禮物",
     "unknownGift": "（禮物已刪除）",
