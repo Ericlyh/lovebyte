@@ -7,11 +7,29 @@
 //
 // Phase 9 (OOP-4225) — acceptance criterion: keyboard nav + ARIA on
 // builders, ARIA on card-flip / drag-puzzle / quiz / collage-canvas.
+//
+// OOP-6733 — the colour-contrast rule runs with axe's documented
+// `ignorePseudo` check option. axe's default is to treat ANY
+// pseudo-element overlapping the text as an unknown background and
+// report the element "incomplete" — the silent failure that hid a
+// 2.5:1 hero headline behind "0 violations". The hero gradients are
+// decorative ::before washes; the element underneath them carries a
+// solid background colour (the gradient's darkest stop), which is the
+// conservative thing to measure against. Nothing on this site draws a
+// text background on a pseudo-element, so nothing is masked.
 
 import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 
 const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
+
+const AXE_OPTIONS = {
+  rules: {
+    'color-contrast': {
+      checks: { 'color-contrast': { options: { ignorePseudo: true } } },
+    },
+  },
+};
 
 const ROUTES = [
   { path: '/', label: 'landing' },
@@ -47,6 +65,7 @@ for (const { path, label } of ROUTES) {
     await page.waitForTimeout(800); // let streaming settle
 
     const audit = await new AxeBuilder({ page })
+      .options(AXE_OPTIONS)
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
 

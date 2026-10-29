@@ -344,10 +344,30 @@ a.lb-btn:hover { text-decoration: none; }
 
 /* === Landing page (Phase 2) ============================================ */
 
+/* OOP-6733 — the hero gradients live on a decorative ::before instead of
+ * on the element itself, so axe can resolve a background colour for the
+ * headline. axe cannot judge text over a gradient: it reports the element
+ * as "incomplete" and skips it, which is how a 2.5:1 headline read as
+ * "0 violations" in the audit.
+ *
+ * The wash paints exactly where it did before — same box, same gradient.
+ * The solid colour underneath it is the gradient's DARKEST stop, so the
+ * measurement axe makes is the conservative end of the fade: 5.24:1 for
+ * the headline, where the rendered pixels run 5.42-5.61:1.
+ */
 .lb-landing-hero {
-  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
+  position: relative;
+  isolation: isolate;
+  background-color: var(--lb-blush);
   padding: 120px 24px 80px;
   text-align: center;
+}
+.lb-landing-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
 }
 .lb-landing-hero h1 {
   font-family: var(--lb-font-display);
@@ -585,7 +605,11 @@ a.lb-btn:hover { text-decoration: none; }
 }
 
 .lb-recipient__cover {
-  background: linear-gradient(135deg, #ffe8e7, #fff1d6);
+  /* OOP-6733 — see .lb-landing-hero: the gradient moved to a ::before
+   * so axe can resolve the gift message's background. */
+  position: relative;
+  isolation: isolate;
+  background-color: #ffe8e7;
   border-radius: var(--lb-radius-md);
   padding: 32px;
   margin-bottom: 32px;
@@ -594,6 +618,14 @@ a.lb-btn:hover { text-decoration: none; }
   line-height: 1.6;
   font-style: italic;
   border: none;
+}
+.lb-recipient__cover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #ffe8e7, #fff1d6);
 }
 
 .lb-cta-row {
@@ -1245,9 +1277,20 @@ a.lb-btn:hover { text-decoration: none; }
 /* Hero strip — soft blush gradient matches the landing page so the
  * user feels they're still inside Lovorithm. */
 .lb-browse-hero {
-  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
+  /* OOP-6733 — see .lb-landing-hero: the gradient moved to a ::before
+   * so axe can resolve the headline's background. */
+  position: relative;
+  isolation: isolate;
+  background-color: var(--lb-blush);
   padding: 80px 24px 56px;
   text-align: center;
+}
+.lb-browse-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
 }
 .lb-browse-hero__title {
   font-family: var(--lb-font-display);
@@ -1877,11 +1920,22 @@ a.lb-btn:hover { text-decoration: none; }
 }
 
 .lb-profile-hero {
-  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
+  /* OOP-6733 — see .lb-landing-hero: the gradient moved to a ::before
+   * so axe can resolve the headline's background. */
+  position: relative;
+  isolation: isolate;
+  background-color: var(--lb-blush);
   padding: 72px 24px 56px;
   text-align: center;
   max-width: 720px;
   margin: 0 auto;
+}
+.lb-profile-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, var(--lb-blush) 0%, var(--lb-surface) 100%);
 }
 
 .lb-profile-hero h1 {

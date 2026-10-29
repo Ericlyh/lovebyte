@@ -173,6 +173,13 @@ const GUARDS = [
     why: 'clamp(36px,6vw,56px) — large text',
   },
   {
+    name: 'recipient cover message',
+    selector: '.lb-recipient__cover',
+    background: ['.lb-recipient__cover', 'body'],
+    min: 4.5,
+    why: '15px gift message on a gradient card',
+  },
+  {
     name: 'link (resting)',
     selector: 'a',
     background: ['body'],
@@ -226,38 +233,48 @@ const rules = parseRules(sharedCss);
 const failures = [];
 const rows = [];
 
+/**
+ * Every colour that can be behind the text: the element's own
+ * background, and the background of a decorative ::before wash on it
+ * (the hero gradients live there — see OOP-6733). A gradient counts as
+ * ALL of its stops, so the text is measured against the darkest one.
+ */
+function backgroundCandidates(rules, selectors, tokens) {
+  const out = [];
+  const add = (value) => {
+    if (!value) return;
+    if (value.includes('gradient')) {
+      out.push(...gradientStops(value, tokens));
+      return;
+    }
+    const c = resolveColour(value, tokens);
+    if (c) out.push(c);
+  };
+  for (const sel of selectors) {
+    const decls = effectiveDecls(rules, sel);
+    add(decls.background);
+    add(decls['background-color']);
+    const before = effectiveDecls(rules, `${sel}::before`);
+    add(before.background);
+    add(before['background-color']);
+  }
+  return out.length ? out : null;
+}
+
 for (const guard of GUARDS) {
   const decls = effectiveDecls(rules, guard.selector);
   const fg = resolveColour(decls.color, tokens);
 
-  let bgs = null;
-  for (const sel of guard.background) {
-    const b = effectiveDecls(rules, sel);
-    const value = b.background || b['background-color'];
-    if (!value) continue;
-    if (value.includes('gradient')) {
-      const stops = gradientStops(value, tokens);
-      if (stops.length) {
-        bgs = stops;
-        break;
-      }
-      continue;
-    }
-    const c = resolveColour(value, tokens);
-    if (c) {
-      bgs = [c];
-      break;
-    }
-  }
+  const bgs = backgroundCandidates(rules, guard.background, tokens);
 
   if (!fg) {
     failures.push(`${guard.name}: no resolvable colour on \`${guard.selector}\``);
-    rows.push({ guard: guard.name, fg: '?', ratio: '?', min: guard.min, ok: false });
+    rows.push({ guard: guard.name, fg: '?', bg: '?', ratio: '?', min: guard.min, ok: false });
     continue;
   }
   if (!bgs) {
     failures.push(`${guard.name}: no resolvable background behind \`${guard.selector}\``);
-    rows.push({ guard: guard.name, fg, ratio: '?', min: guard.min, ok: false });
+    rows.push({ guard: guard.name, fg, bg: '?', ratio: '?', min: guard.min, ok: false });
     continue;
   }
 
@@ -279,7 +296,7 @@ for (const guard of GUARDS) {
   rows.push({
     guard: guard.name,
     fg,
-    bg: bgs.length > 1 ? `${bgs[0]} → ${bgs[bgs.length - 1]}` : bgs[0],
+    bg: bgs.length > 1 ? `${worstBg} (worst of ${bgs.length})` : bgs[0],
     ratio: worst.toFixed(2),
     min: guard.min,
     ok,
