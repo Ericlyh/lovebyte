@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import type { MemoryCardsPayload } from '@/features/memory-cards/schemas';
 import { buildMemoryDeck, type MemoryCard } from '@/features/memory-cards/deck';
 import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 /**
  * MemoryCardsGame — the flip-and-match recipient view (Phase 4, OOP-4219).
@@ -36,6 +38,17 @@ import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
 type Card = MemoryCard;
 
 type FlippedState = 'face-down' | 'face-up' | 'matched';
+
+/**
+ * How wide one card is, for the optimizer's srcset (OOP-6723).
+ *
+ * The grid is 3–4 columns inside a 480–640px container, so a card is
+ * never more than ~160px wide on desktop and about a quarter of the
+ * viewport on a phone. Without this the browser would assume `100vw`
+ * and fetch a 1920px candidate for a 160px card — the whole point of
+ * the exercise was to stop shipping full-resolution bytes.
+ */
+const CARD_SIZES = '(max-width: 640px) 25vw, 160px';
 
 export function MemoryCardsGame({
   payload,
@@ -171,20 +184,28 @@ export function MemoryCardsGame({
               >
                 <span className="lb-memory-card__face lb-memory-card__face--back" aria-hidden="true">
                   {payload.card_back ? (
-                    <span
-                      className="lb-memory-card__back-image"
-                      style={{ backgroundImage: `url(${payload.card_back})` }}
-                    />
+                    <span className="lb-memory-card__back-image">
+                      <Image
+                        src={payload.card_back}
+                        alt=""
+                        className="lb-memory-card__back-photo"
+                        fill
+                        sizes={CARD_SIZES}
+                        unoptimized={!isOptimizableMediaUrl(payload.card_back)}
+                      />
+                    </span>
                   ) : (
                     <span className="lb-memory-card__back-fallback">♥</span>
                   )}
                 </span>
                 <span className="lb-memory-card__face lb-memory-card__face--front" aria-hidden={!showFront}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={card.photoUrl}
                     alt=""
                     className="lb-memory-card__photo"
+                    fill
+                    sizes={CARD_SIZES}
+                    unoptimized={!isOptimizableMediaUrl(card.photoUrl)}
                   />
                   {cardState === 'matched' && (
                     <span className="lb-memory-card__caption">{card.caption}</span>

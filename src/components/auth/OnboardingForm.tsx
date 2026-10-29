@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
@@ -15,6 +16,7 @@ import {
   useHandleAvailability,
   type HandleState,
 } from '@/lib/hooks/useHandleAvailability';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_AVATAR = 'image/png,image/jpeg,image/webp,image/gif';
@@ -235,10 +237,13 @@ export function OnboardingForm({
         <span>{t('avatar.label')}</span>
         <div className="lb-avatar-row">
           {previewSrc ? (
-            <img
+            <Image
               className="lb-avatar-preview"
               src={previewSrc}
               alt={tAvatar('previewAlt')}
+              width={72}
+              height={72}
+              unoptimized={!isOptimizableMediaUrl(previewSrc)}
             />
           ) : (
             <div className="lb-avatar-preview lb-avatar-preview--empty" aria-hidden="true">

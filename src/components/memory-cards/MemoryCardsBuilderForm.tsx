@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
   saveMemoryCardsDraftAction,
   type SaveMemoryCardsResult,
 } from '@/lib/actions/memoryCards';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 /**
  * MemoryCardsBuilderForm — sender-side form (Phase 4, OOP-4219).
@@ -284,11 +286,13 @@ function PairRow({
 
       <div className="lb-memory-pair__upload">
         {pair.publicUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={pair.publicUrl}
             alt={pair.caption || t('pairPreviewAlt')}
             className="lb-memory-pair__thumb"
+            width={96}
+            height={96}
+            unoptimized={!isOptimizableMediaUrl(pair.publicUrl)}
           />
         ) : (
           <div className="lb-memory-pair__placeholder" aria-hidden="true">

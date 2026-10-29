@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import type {
   MultimediaCollagePayload,
   MultimediaMediaItem,
 } from '@/lib/gifts/schemas';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 /**
  * MultimediaCollageView — recipient view (Phase 7, OOP-4223).
@@ -31,6 +33,17 @@ import type {
  *     anchored to the items' positions, so even if a future template id
  *     sneaks in, the recipient sees the items instead of a blank page.
  */
+
+/**
+ * How wide one canvas item is, for the optimizer's srcset (OOP-6723).
+ *
+ * The canvas is full-width with a 5:3 ratio and the items are placed
+ * on it as percentages, so an item is typically a third of the canvas
+ * wide on a phone and a bit less on a desktop. Saying so keeps the
+ * browser from pulling a desktop-sized candidate for a phone-sized
+ * tile — which is the download this whole change is about.
+ */
+const ITEM_SIZES = '(max-width: 640px) 50vw, 33vw';
 
 export function MultimediaCollageView({
   payload,
@@ -149,11 +162,13 @@ function CanvasMediaItem({
       style={{ left, top, width, height }}
     >
       {item.type === 'photo' && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={item.url}
           alt={item.caption ?? `Media item ${index + 1}`}
           className="lb-multimedia__media"
+          fill
+          sizes={ITEM_SIZES}
+          unoptimized={!isOptimizableMediaUrl(item.url)}
         />
       )}
       {item.type === 'video' && (

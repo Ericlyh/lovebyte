@@ -10,10 +10,12 @@ import {
 } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   saveMultimediaCollageDraftAction,
   type SaveMultimediaCollageResult,
 } from '@/lib/actions/multimediaCollage';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 /**
  * MultimediaCollageBuilderForm — sender-side form (Phase 7, OOP-4223).
@@ -593,8 +595,16 @@ export function MultimediaCollageBuilderForm() {
 
 function Preview({ type, url }: { type: ItemType; url: string }) {
   if (type === 'photo') {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={url} alt="" className="lb-multimedia-collage__media" />;
+    return (
+      <Image
+        src={url}
+        alt=""
+        className="lb-multimedia-collage__media"
+        fill
+        sizes="(max-width: 640px) 50vw, 25vw"
+        unoptimized={!isOptimizableMediaUrl(url)}
+      />
+    );
   }
   if (type === 'video') {
     return (

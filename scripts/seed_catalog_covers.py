@@ -38,10 +38,18 @@ USAGE
 Idempotent: storage objects are upserted, `gift_media` rows are matched on
 `storage_path` and updated rather than duplicated, and the gifts are
 re-pointed at the same media every run.
+
+The object path carries a hash of the bytes, so a cover's URL is
+immutable by construction (OOP-6723): the same artwork always lands on
+the same path, and different artwork lands on a new path instead of
+behind a URL a browser has already cached. The artwork is reproducible
+— the grain is drawn from a seeded generator — which is what keeps a
+re-run a no-op rather than a fresh set of objects every time.
 """
 
 import io
 import json
+import hashlib
 import math
 import os
 import random
@@ -57,6 +65,11 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 ROOT = Path(__file__).resolve().parent.parent
 SIZE = 900
 BUCKET = 'lovorithm-media'
+
+# The cache policy the seeded objects are stored with — the same one the
+# app's own upload path writes (OOP-6723). The path carries a content
+# hash, so the URL of an object never changes while its bytes do.
+CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 
 # ---------------------------------------------------------------------------
@@ -255,8 +268,25 @@ def add_vignette(img, strength=0.5):
     return Image.composite(img, Image.blend(img, dark, strength), mask)
 
 
-def add_grain(img, sigma=6):
-    noise = Image.effect_noise(img.size, sigma).convert('L')
+def add_grain(img, sigma=6, seed=0):
+    """Grain, drawn from a SEEDED generator.
+
+    PIL's `Image.effect_noise` draws from an unseeded generator, so two
+    runs of this script produced different bytes for the same cover.
+    That was harmless while the object path was a fixed slug, but it
+    meant a re-seed silently replaced the image behind a URL that
+    browsers and CDNs had already cached — the exact hazard the
+    content-hashed path below removes. With a seeded generator the
+    artwork is reproducible, so the content hash — and therefore the
+    URL — is stable across runs and a re-run is a no-op.
+    """
+    rnd = random.Random(seed)
+    lut = bytes(
+        max(0, min(255, 128 + round((i - 127.5) * sigma / 64)))
+        for i in range(256)
+    )
+    width, height = img.size
+    noise = Image.frombytes('L', (width, height), rnd.randbytes(width * height)).point(lut)
     return ImageChops.add(img, Image.merge('RGB', (noise, noise, noise)), scale=1.0, offset=-128)
 
 
@@ -364,7 +394,7 @@ def render(style, palette, seed):
         img = img.filter(ImageFilter.GaussianBlur(1.2))
 
     img = add_vignette(img)
-    img = add_grain(img)
+    img = add_grain(img, seed=seed + 977)
     return img
 
 
@@ -504,10 +534,17 @@ def main():
         slugs = [plan['cover']] + [slug for slug, _ in plan['payload']]
         for slug in dict.fromkeys(slugs):
             data, mime, ext = objects[slug]
-            path = f'gifts/catalogue/{owner_id}/{slug}.{ext}'
+            # The path carries a hash of the bytes, so the URL of an
+            # object is immutable by construction (OOP-6723): the same
+            # artwork lands on the same path every run, and different
+            # artwork lands on a new path rather than behind a URL a
+            # browser has already cached.
+            digest = hashlib.sha256(data).hexdigest()[:12]
+            path = f'gifts/catalogue/{owner_id}/{slug}-{digest}.{ext}'
             status, raw = request(
                 f'{storage_base}/{path}', 'POST', data,
-                {'Content-Type': mime, 'x-upsert': 'true'}, secret,
+                {'Content-Type': mime, 'x-upsert': 'true', 'cache-control': CACHE_CONTROL},
+                secret,
             )
             if status >= 300:
                 raise SystemExit(f'upload {path} -> {status}: {raw[:400]!r}')
@@ -559,6 +596,26 @@ def main():
              'PATCH', {'is_listed': False, 'published_at': None},
              prefer='return=representation')
         print(f'  unlisted {UNLIST["title"]!r} ({UNLIST["id"]})')
+
+    # 6. Retire the objects this run superseded.
+    #
+    # The path carries a content hash, so a cover whose artwork changed
+    # landed on a NEW path and the object it replaced is now
+    # unreferenced. The gifts were re-pointed above, so these rows are
+    # safe to drop — `gifts.cover_media_id` is `on delete set null`
+    # anyway. Leaving them would accumulate a dead object and a dead
+    # `gift_media` row on every re-seed.
+    live_paths = {info['path'] for info in uploaded.values()}
+    for row in existing:
+        path = row['storage_path']
+        if not path.startswith('gifts/catalogue/') or path in live_paths:
+            continue
+        rest(base, secret, f'gift_media?id=eq.{row["id"]}', 'DELETE')
+        status, raw = request(f'{storage_base}/{path}', 'DELETE', None, None, secret)
+        if status >= 300:
+            print(f'  WARNING: retire {path} -> {status}: {raw[:200]!r}')
+        else:
+            print(f'  retired {path}')
 
     print('\nDone.')
 

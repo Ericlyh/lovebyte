@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition, useCallback, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { publishToMarketplaceAction } from '@/lib/actions/publish';
 import { BRAND } from '@/lib/brand';
@@ -9,6 +10,7 @@ import {
   PLATFORM_FEE_BPS_MIN,
   SETTLEMENT_CURRENCY_SYMBOL,
 } from '@/lib/money';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 export type GiftMediaItem = {
   id: string;
@@ -248,10 +250,13 @@ export function PublishToMarketplaceCard({
                 onClick={() => setCoverMediaId(coverMediaId === media.id ? null : media.id)}
                 aria-label={`Select cover`}
               >
-                <img
+                <Image
                   src={media.url}
                   alt=""
                   className="lb-publish-cover-thumb__img"
+                  width={72}
+                  height={72}
+                  unoptimized={!isOptimizableMediaUrl(media.url)}
                 />
               </button>
             ))}

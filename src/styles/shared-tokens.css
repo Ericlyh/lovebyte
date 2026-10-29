@@ -1349,6 +1349,10 @@ a:hover { color: var(--lb-primary); }
   justify-content: center;
   background: linear-gradient(135deg, #ffe8e7, #fff1d6);
   overflow: hidden;
+  /* The cover photo is a next/image with `fill` (OOP-6723), and `fill`
+     resolves against the nearest positioned ancestor. Without this the
+     image would size itself against the viewport instead of the tile. */
+  position: relative;
 }
 .lb-gift-card__cover[data-category="memory_cards"]      { background: linear-gradient(135deg, #ffe8e7, #f5d4d2); }
 .lb-gift-card__cover[data-category="dragdrop_puzzle"]    { background: linear-gradient(135deg, #d6e8ff, #c2d8f5); }
@@ -3145,6 +3149,11 @@ a:hover { color: var(--lb-primary); }
   background-size: cover;
   background-position: center;
   opacity: 0.85;
+}
+/* The card back is a next/image with `fill` (OOP-6723) — it used to be
+   a CSS background-image, which is unsized, unoptimized and not lazy. */
+.lb-memory-card__back-photo {
+  object-fit: cover;
 }
 .lb-memory-card__back-fallback {
   font-family: var(--lb-font-display, Georgia, serif);

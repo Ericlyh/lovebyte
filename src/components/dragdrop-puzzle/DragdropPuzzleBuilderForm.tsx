@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
   saveDragdropPuzzleDraftAction,
   type SaveDragdropPuzzleResult,
 } from '@/lib/actions/dragdropPuzzle';
+import { isOptimizableMediaUrl } from '@/lib/media';
 
 /**
  * DragdropPuzzleBuilderForm — sender-side form (Phase 5, OOP-4221).
@@ -137,11 +139,13 @@ export function DragdropPuzzleBuilderForm() {
         <label>{t('photoLabel')}</label>
         <div className="lb-puzzle-upload">
           {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={photo.publicUrl}
               alt={t('photoPreviewAlt')}
               className="lb-puzzle-upload__thumb"
+              width={96}
+              height={96}
+              unoptimized={!isOptimizableMediaUrl(photo.publicUrl)}
             />
           ) : (
             <div className="lb-puzzle-upload__placeholder" aria-hidden="true">

@@ -1,5 +1,7 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import type { CatalogGift } from '@/lib/catalog';
+import { isOptimizableMediaUrl } from '@/lib/media';
 import { PriceBadgeView } from './PriceBadgeView';
 
 /**
@@ -46,6 +48,15 @@ const CATEGORY_EMOJI: Record<string, string> = {
   code: '💻',
 };
 
+/**
+ * How wide a cover tile is, for the optimizer's srcset (OOP-6723).
+ *
+ * The /browse grid is 3-up on desktop, 2-up under 900px and 1-up under
+ * 540px, so a cover is a third of the viewport for most of the
+ * desktop range and the full width on a phone.
+ */
+const COVER_SIZES = '(max-width: 540px) 100vw, (max-width: 900px) 50vw, 33vw';
+
 export function GiftCardView({ gift, byText, likesLabel, freeLabel, href }: Props) {
   const emoji = gift.category ? CATEGORY_EMOJI[gift.category] ?? '🎁' : '🎁';
 
@@ -57,11 +68,13 @@ export function GiftCardView({ gift, byText, likesLabel, freeLabel, href }: Prop
         {gift.cover_url ? (
           // Decorative: the title sits right below it, so the image
           // carries no alt text of its own.
-          <img
+          <Image
             src={gift.cover_url}
             alt=""
             className="lb-gift-card__img"
-            loading="lazy"
+            fill
+            sizes={COVER_SIZES}
+            unoptimized={!isOptimizableMediaUrl(gift.cover_url)}
           />
         ) : (
           <span className="lb-gift-card__emoji" aria-hidden="true">

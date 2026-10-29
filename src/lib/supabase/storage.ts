@@ -25,6 +25,23 @@ import { BRAND } from '@/lib/brand';
  * so the database keeps enforcing ownership (`gift_media_all_own`).
  */
 
+/**
+ * The cache policy stored media is written with (OOP-6723).
+ *
+ * Every media path the app writes embeds a uuid —
+ * `gifts/<kind>/<user-id>/photo-<uuid>.jpg`,
+ * `avatars/<user-id>/avatar-<uuid>.png` — so the URL of an object is
+ * unique per upload and its bytes never change afterwards. A URL that
+ * cannot change is safe to cache forever; the old one-hour default made
+ * every recipient re-download the same photo on every visit.
+ *
+ * Note that Supabase's *public download* endpoint serves its own
+ * `cache-control` header regardless of this value, so what this sets is
+ * the declaration stored on the object. What the browser receives for a
+ * photo is the optimizer's response, whose lifetime this matches.
+ */
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+
 /** Write an object into the brand media bucket. */
 export async function uploadMediaObject(
   path: string,
@@ -34,7 +51,7 @@ export async function uploadMediaObject(
   const supabase = await createServiceRoleClient();
   return supabase.storage.from(BRAND.STORAGE_BUCKET).upload(path, body, {
     contentType: opts.contentType,
-    cacheControl: opts.cacheControl ?? '3600',
+    cacheControl: opts.cacheControl ?? IMMUTABLE_CACHE_CONTROL,
     upsert: opts.upsert ?? false,
   });
 }
