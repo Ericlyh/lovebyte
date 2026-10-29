@@ -38,8 +38,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * `createPublicClient`. They only ever return listed gifts, and the RLS
  * policy lets an anonymous visitor read exactly those rows, so a session
  * would not change the answer — but reading the session cookie would opt
- * the route out of prerendering. The listing detail / comment reads stay on
- * the cookie client: those pages are per-user and dynamic anyway.
+ * the route out of prerendering.
+ *
+ * OOP-6724 extends that rule to the thread reads. `getListingComments`
+ * and `getListingReplies` are role-independent — `gift_comments_select_public`
+ * is `using (deleted_at is null)` and `gift_replies_select_public` is
+ * `using (true)`, with no role condition on either — so they read through
+ * `createPublicClient` too, which is what lets the JSON APIs be cached at
+ * the edge. The listing detail read keeps BOTH doors: `getListingDetail`
+ * for the per-user page, `getPublicListingDetail` for the OG card.
  *
  * Currency (OOP-6714): the catalogue settles in ONE currency (HKD). Every
  * row's `price_cents` is HKD cents and every response reports the
@@ -567,17 +574,11 @@ export async function searchCatalog(rawParams: unknown): Promise<CatalogSearchRe
  * in one select. The comment thread is NOT fetched here — the page reads
  * it from `getListingComments`, which returns the same rows plus the
  * total count. Reading it twice was pure duplicated work (OOP-6722).
- *
- * Memoised with React `cache()` so the `generateMetadata` pass and the
- * page pass share ONE read instead of running it twice.
  */
-async function getListingDetailUncached(
+async function fetchListingDetail(
   giftId: string,
+  supabase: SupabaseClient,
 ): Promise<CatalogListing | null> {
-  if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) return null;
-
-  const supabase = await createClient();
-
   const { data, error } = await supabase
     .from('gifts')
     .select(giftSelect)
@@ -623,7 +624,41 @@ async function getListingDetailUncached(
   };
 }
 
+/**
+ * The page's listing read — cookie-bound, because `/l/[giftId]` is a
+ * per-user page.
+ *
+ * Memoised with React `cache()` so the `generateMetadata` pass and the
+ * page pass share ONE read instead of running it twice.
+ */
+async function getListingDetailUncached(
+  giftId: string,
+): Promise<CatalogListing | null> {
+  if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) return null;
+
+  return fetchListingDetail(giftId, await createClient());
+}
+
 export const getListingDetail = cache(getListingDetailUncached);
+
+/**
+ * The cookie-free twin of `getListingDetail` (OOP-6724).
+ *
+ * The OG listing card is fetched by social platforms, not by a signed-in
+ * visitor, and it is cached at the edge. The read is role-independent —
+ * the query filters to listed, live, published gifts, and
+ * `gifts_select_public_listed` exposes exactly those rows to the `anon`
+ * role — so the anonymous read returns the same card for everybody.
+ */
+async function getPublicListingDetailUncached(
+  giftId: string,
+): Promise<CatalogListing | null> {
+  if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) return null;
+
+  return fetchListingDetail(giftId, createPublicClient());
+}
+
+export const getPublicListingDetail = cache(getPublicListingDetailUncached);
 
 // ─── Paginated comments (M-D, OOP-4276) ────────────────────────────────────
 
@@ -675,7 +710,11 @@ export async function getListingComments(
     return { comments: [], nextCursor: null, totalCount: 0 };
   }
 
-  const supabase = await createClient();
+  // Cookie-free (OOP-6724): a comment thread is the same for everybody —
+  // `gift_comments_select_public` is `using (deleted_at is null)`, with no
+  // role condition — so the thread read is role-independent and the
+  // response can be cached at the edge.
+  const supabase = createPublicClient();
 
   let query = supabase
     .from('gift_comments')
@@ -815,7 +854,10 @@ export async function getListingReplies(
     return { replies: [], nextCursor: null, totalCount: 0 };
   }
 
-  const supabase = await createClient();
+  // Cookie-free (OOP-6724): `gift_replies_select_public` is `using (true)`
+  // — every role reads every reply — so the thread is role-independent and
+  // the response can be cached at the edge.
+  const supabase = createPublicClient();
 
   let query = supabase
     .from('gift_replies')

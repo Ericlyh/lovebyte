@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCatalogFeed } from '@/lib/catalog';
 
+/** Edge cache lifetime for the feed. */
+const CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=60';
+
 /**
  * GET /api/catalog/feed
  *
@@ -20,9 +23,19 @@ import { getCatalogFeed } from '@/lib/catalog';
  * `gifts[].currency` is always "hkd" and `price_cents` is always HKD
  * cents. The price-tier bands are HKD cents too.
  *
- * Caching: `cache: 'no-store'` because the feed reflects the user's
- * own listings + interactions in real time. We can add a 5–10s SWR
- * once the catalog stabilises post-MVP.
+ * Caching (OOP-6724): the feed used to be `no-store`, on the assumption
+ * that it carries the visitor's own listings and interactions. It does
+ * not. The read is cookie-free (`createPublicClient`) and the response
+ * holds only public listing fields plus a GLOBAL like count — the
+ * `gift_likes(count)` aggregate, not "did I like this" (the per-visitor
+ * like state is fetched client-side, separately).
+ *
+ * That was proved, not assumed: the feed was fetched anonymously and as
+ * two different signed-in accounts, and all three bodies were
+ * byte-identical. So the feed is now cached at the edge for 30 s and
+ * served stale for another 60 s while it revalidates; the write side
+ * calls `revalidatePath`, and the short TTL bounds how long a newly
+ * published listing can be missing from the cached copy.
  */
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -36,6 +49,6 @@ export async function GET(req: NextRequest) {
 
   const result = await getCatalogFeed(params);
   return NextResponse.json(result, {
-    headers: { 'cache-control': 'no-store' },
+    headers: { 'cache-control': CACHE_CONTROL },
   });
 }

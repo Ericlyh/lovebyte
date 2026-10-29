@@ -14,9 +14,18 @@ import { OgCard } from '@/lib/og/card';
  *
  * Runtime: nodejs, for the same reason as the listing card next door
  * (OOP-6727): the edge isolate blocks on DNS and cannot be interrupted.
+ *
+ * Caching (OOP-6724): this route touches no database — the slug is
+ * resolved against a fixed in-repo registry — so the card is cached at
+ * the edge. The TTL is short rather than immutable because the card's
+ * text lives in the code: a deploy that rewrites a guide's title would
+ * otherwise leave the old card in the CDN for a year.
  */
 
 export const runtime = 'nodejs';
+
+/** Edge cache lifetime for the card. */
+const CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=3600';
 
 const BROWSE_CARD = {
   eyebrow: 'The catalogue',
@@ -58,5 +67,6 @@ export async function GET(
   return new ImageResponse(<OgCard {...card} />, {
     width: 1200,
     height: 630,
+    headers: { 'cache-control': CACHE_CONTROL },
   });
 }

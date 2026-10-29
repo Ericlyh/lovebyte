@@ -1,6 +1,8 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { getMockEnvelope } from './mock';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   AnimatedLetterPayloadSchema,
   CodeGiftPayloadSchema,
@@ -54,19 +56,47 @@ const PAYLOAD_SCHEMAS: Record<string, { safeParse: (v: unknown) => { success: bo
 async function getEnvelopeByTokenUncached(
   token: string,
 ): Promise<RecipientEnvelope | null> {
-  const liveEnvelope = await fetchFromSupabase(token);
+  const liveEnvelope = await fetchFromSupabase(token, () => createClient());
   if (liveEnvelope) return liveEnvelope;
   return getMockEnvelope(token);
 }
 
 export const getEnvelopeByToken = cache(getEnvelopeByTokenUncached);
 
+/**
+ * The cookie-free twin of `getEnvelopeByToken` (OOP-6724).
+ *
+ * The OG card is fetched by WhatsApp, Twitter and Slack — never by a
+ * signed-in visitor — and its bytes are cached at the edge for a year.
+ * A cookie-bound read would make the cached response depend on whoever
+ * happened to populate the CDN first, so the card reads through the
+ * anonymous client instead.
+ *
+ * That is safe because the read is role-independent: `shares` is
+ * `using (true)`, the embedded gift is readable through the share, and
+ * the creator's display name comes from `profiles_public`. All three
+ * are readable by the `anon` role, so the card is the same image for
+ * every visitor — signed in or not.
+ */
+async function getPublicEnvelopeByTokenUncached(
+  token: string,
+): Promise<RecipientEnvelope | null> {
+  const liveEnvelope = await fetchFromSupabase(token, () =>
+    createPublicClient(),
+  );
+  if (liveEnvelope) return liveEnvelope;
+  return getMockEnvelope(token);
+}
+
+export const getPublicEnvelopeByToken = cache(getPublicEnvelopeByTokenUncached);
+
 async function fetchFromSupabase(
   token: string,
+  makeClient: () => Promise<SupabaseClient> | SupabaseClient,
 ): Promise<RecipientEnvelope | null> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return null;
 
-  const supabase = await createClient();
+  const supabase = await makeClient();
   const { data, error } = await supabase
     .from('shares')
     .select(

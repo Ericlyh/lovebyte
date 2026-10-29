@@ -18,8 +18,18 @@ import { getListingReplies } from '@/lib/catalog';
  *   200 { replies: [...], nextCursor, totalCount }
  *   400 { error }  — giftId is not a uuid, or cursor is malformed
  *   500 { error }  — unexpected DB / RLS failure
+ *
+ * Caching (OOP-6724): `gift_replies_select_public` is `using (true)` —
+ * every role reads every reply — and the read is cookie-free, so the
+ * response is cached at the edge for 30 s and served stale for another
+ * 60 s while it revalidates. The write side
+ * (`src/lib/actions/giftReplies.ts`) calls `revalidatePath`, and the
+ * short TTL bounds how long a reply can be missing from the cached copy.
  */
 export const runtime = 'nodejs';
+
+/** Edge cache lifetime for the thread. */
+const CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=60';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -53,5 +63,7 @@ export async function GET(
   }
 
   const result = await getListingReplies(giftId, parsed.data.cursor ?? null);
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { 'cache-control': CACHE_CONTROL },
+  });
 }

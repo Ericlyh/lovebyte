@@ -15,8 +15,18 @@ import { getListingComments } from '@/lib/catalog';
  *   200 { comments: [...], nextCursor, totalCount }
  *   400 { error }  — giftId is not a uuid, or cursor is malformed
  *   500 { error }  — unexpected DB / RLS failure
+ *
+ * Caching (OOP-6724): the thread is the same for every visitor —
+ * `gift_comments_select_public` has no role condition — and the read is
+ * cookie-free, so the response is cached at the edge for 30 s and served
+ * stale for another 60 s while it revalidates. The write side
+ * (`src/lib/actions/comments.ts`) calls `revalidatePath`, and the short
+ * TTL bounds how long a comment can be missing from the cached copy.
  */
 export const runtime = 'nodejs';
+
+/** Edge cache lifetime for the thread. */
+const CACHE_CONTROL = 'public, s-maxage=30, stale-while-revalidate=60';
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -50,5 +60,7 @@ export async function GET(
   }
 
   const result = await getListingComments(giftId, parsed.data.cursor ?? null);
-  return NextResponse.json(result);
+  return NextResponse.json(result, {
+    headers: { 'cache-control': CACHE_CONTROL },
+  });
 }

@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { getListingDetail } from '@/lib/catalog';
+import { getPublicListingDetail } from '@/lib/catalog';
 import { formatSettlementAmount } from '@/lib/money';
 import { OgCard, type OgCardProps } from '@/lib/og/card';
 
@@ -23,9 +23,18 @@ import { OgCard, type OgCardProps } from '@/lib/og/card';
  * A card is never allowed to 500: a missing or unpublished listing falls
  * back to a generic card rather than an error, because a broken image in
  * a chat bubble is worse than a plain one.
+ *
+ * Caching (OOP-6724): the read is cookie-free and role-independent
+ * (`getPublicListingDetail`), so the card can be cached at the edge. The
+ * TTL is deliberately short — unlike the share card, a listing CAN change
+ * (a creator unlists it, and the card then falls back to the generic one),
+ * so it must not be cached as immutable.
  */
 
 export const runtime = 'nodejs';
+
+/** Edge cache lifetime for the card. */
+const CACHE_CONTROL = 'public, s-maxage=300, stale-while-revalidate=3600';
 
 /** The gift format, in the words the catalogue uses for it. */
 const TYPE_LABELS: Record<string, string> = {
@@ -50,7 +59,7 @@ export async function GET(
   };
 
   try {
-    const listing = await getListingDetail(giftId);
+    const listing = await getPublicListingDetail(giftId);
     if (listing) {
       const creator = listing.owner.display_name ?? `@${listing.owner.handle}`;
       card = {
@@ -70,5 +79,6 @@ export async function GET(
   return new ImageResponse(<OgCard {...card} />, {
     width: 1200,
     height: 630,
+    headers: { 'cache-control': CACHE_CONTROL },
   });
 }

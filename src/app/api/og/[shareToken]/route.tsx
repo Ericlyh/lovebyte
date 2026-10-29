@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import type { NextRequest } from 'next/server';
 import { BRAND } from '@/lib/brand';
-import { getEnvelopeByToken } from '@/lib/gifts/fetch';
+import { getPublicEnvelopeByToken } from '@/lib/gifts/fetch';
 
 /**
  * /api/og/[shareToken] — Open Graph image generator (Phase 3).
@@ -13,6 +13,20 @@ import { getEnvelopeByToken } from '@/lib/gifts/fetch';
  *
  * Hard constraint from OOP-4211: `next/og` for OG cards.
  * `next/og`'s ImageResponse requires Edge Runtime.
+ *
+ * Caching (OOP-6724): every social unfurl re-rendered the card from
+ * scratch — a PostgREST read plus a 1200×630 PNG encode, ~1.2 s, for
+ * bytes that never change. The token → envelope mapping is immutable
+ * (a share points at one gift, and a gift's payload is written once)
+ * and the render is deterministic, so the card is now cached for a
+ * year as `immutable`.
+ *
+ * The read is deliberately cookie-free (`getPublicEnvelopeByToken`).
+ * A cookie-bound read would make the cached response depend on
+ * whoever happened to populate the CDN first; the anonymous read is
+ * role-independent, so the cached card is the same image for every
+ * visitor — the unfurling WhatsApp server and the signed-in recipient
+ * alike.
  */
 
 export const runtime = 'edge';
@@ -22,7 +36,7 @@ export async function GET(
   context: { params: Promise<{ shareToken: string }> },
 ) {
   const { shareToken } = await context.params;
-  const envelope = await getEnvelopeByToken(shareToken);
+  const envelope = await getPublicEnvelopeByToken(shareToken);
 
   const senderName = envelope?.senderName ?? 'Someone special';
   const quote =
@@ -107,6 +121,12 @@ export async function GET(
     {
       width: 1200,
       height: 630,
+      headers: {
+        // `ImageResponse` defaults to `public, max-age=0, must-revalidate`
+        // (see next/dist/server/og/image-response.js) — which is why every
+        // unfurl used to re-render the PNG.
+        'cache-control': 'public, max-age=31536000, immutable',
+      },
     },
   );
 }
