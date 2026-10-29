@@ -77,7 +77,8 @@ export const metadata: Metadata = {
  * `src/proxy.ts` rewrites the public URL (`/`, `/browse`, …) to the internal
  * `/{locale}/…` form, so the locale segment never reaches the browser. The
  * rewrite is what lets one prerendered artefact per locale serve both
- * languages: the edge picks the variant from the `lb-locale` cookie.
+ * languages: the edge picks the variant for the locale it resolved — the
+ * `lb-locale` cookie if the visitor set one, else `Accept-Language`.
  */
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));

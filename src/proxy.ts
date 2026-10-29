@@ -10,6 +10,23 @@ import {
 } from '@/lib/analytics/session-id';
 
 /**
+ * The request headers the rendered HTML actually depends on.
+ *
+ * `Cookie` — because the `lb-locale` cookie overrides the detected
+ * language, and the Supabase session cookies decide whether the visitor
+ * is signed in.
+ *
+ * `Accept-Language` — because a visitor who has never set the cookie
+ * gets their language from it.
+ *
+ * `Cookie` comes first so the header reads as the thing it is most
+ * often mistaken for. Next.js appends its own `RSC, Next-Router-*`
+ * values to whatever we set here (`res.appendHeader('vary', …)`), so
+ * the final header keeps both.
+ */
+const VARY_LOCALE = 'Cookie, Accept-Language';
+
+/**
  * Lovorithm proxy — locale resolution + Supabase auth cookie refresh.
  *
  * Next.js 16 renamed `middleware.ts` → `proxy.ts`. Functionality is the
@@ -87,8 +104,9 @@ export async function proxy(request: NextRequest) {
   // `/` (localePrefix: 'never' — recipient gift links must never carry a
   // locale prefix); this rewrite is internal, so the address bar and every
   // link on the site keep the locale-less form. What the rewrite buys us is
-  // that the edge picks the prerendered variant from the `lb-locale`
-  // cookie, which is the only place the locale lives.
+  // that the edge picks the prerendered variant for the locale it just
+  // resolved — from the `lb-locale` cookie if the visitor set one, else
+  // from `Accept-Language`.
   //
   // The alternative — serving one page and letting the client swap the
   // language — would mean shipping every locale's copy to every visitor
@@ -114,14 +132,28 @@ export async function proxy(request: NextRequest) {
     request: { headers: forwardedHeaders },
   });
 
-  // Persist the resolved locale as a cookie if it changed.
-  if (request.cookies.get('lb-locale')?.value !== locale) {
-    response.cookies.set('lb-locale', locale, {
-      maxAge: 60 * 60 * 24 * 365, // 1 year, matches routing.ts
-      sameSite: 'lax',
-      path: '/',
-    });
-  }
+  // OOP-6721 — declare the variance; do NOT write the locale cookie.
+  //
+  // The HTML we are about to serve depends on the visitor's locale, and
+  // the locale comes from the `lb-locale` cookie first and
+  // `Accept-Language` second. So the response varies by BOTH request
+  // headers, and it has to say so: a shared cache that is not told this
+  // would hand one visitor the HTML (and the auth state) of another.
+  //
+  // What we must not do is WRITE the cookie from here. A `Set-Cookie` on
+  // the response makes it private to that visitor by definition — every
+  // page goes to the origin on every request, forever, and no
+  // `s-maxage` a sibling issue adds can ever produce a cache hit. It is
+  // also a correctness trap: a cached entry that carries somebody
+  // else's `Set-Cookie` pins every later visitor to that person's
+  // locale.
+  //
+  // The cookie was never load-bearing for resolution: `resolveLocale`
+  // below falls back to `Accept-Language`, which the browser sends on
+  // every request anyway. The cookie exists only so an explicit user
+  // toggle can override the detected language, and the toggle writes it
+  // itself (src/app/actions.ts → `setLocale`). We keep READING it here.
+  response.headers.set('Vary', VARY_LOCALE);
 
   // OOP-6716 — mint the analytics session cookie on the visitor's first
   // page request. `httpOnly` so no page script can read it; the
