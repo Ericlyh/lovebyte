@@ -10,15 +10,6 @@
           "value": "Cookie, Accept-Language, rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
         }
       ]
-    },
-    {
-      "source": "/_next/image",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
-      ]
     }
   ]
 }
