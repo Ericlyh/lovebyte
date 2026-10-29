@@ -119,6 +119,8 @@ export const ROUTE_SCOPES: Record<string, readonly string[]> = {
     'Open.quiz',
     'Recipient',
   ],
+  '/gifts': ['Gifts', 'Landing.nav', 'Nav'],
+  '/gifts/[slug]': ['Common.notFound', 'Gifts', 'Landing.nav', 'Nav'],
   '/l/[giftId]': [
     'Catalog.comments',
     'Catalog.likeButton',

@@ -3912,6 +3912,75 @@ a:hover { color: var(--lb-primary); }
 }
 .lb-support-card a:hover { text-decoration: underline; }
 
+/* === /gifts — the gift guides (OOP-6727) ================================== */
+.lb-gift-page__crumb {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+.lb-gift-points {
+  margin: 10px 0 4px;
+  padding-left: 20px;
+}
+.lb-gift-points li {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 4px;
+}
+.lb-gift-faq details {
+  border-top: 1px solid var(--lb-ink-soft, #6b4a4a);
+  padding: 12px 0;
+}
+.lb-gift-faq summary {
+  cursor: pointer;
+  font-family: var(--lb-font-body);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--lb-ink, #2a1a1a);
+}
+.lb-gift-faq details p { margin: 8px 0 0; }
+.lb-gift-cta {
+  background: var(--lb-surface-raised, #ffffff);
+  border-radius: var(--lb-radius-md, 8px);
+  padding: 24px;
+  margin: 32px 0 8px;
+}
+.lb-gift-cta h2 { margin-bottom: 6px; }
+.lb-gift-cta .lb-btn {
+  display: inline-block;
+  margin-top: 10px;
+}
+.lb-gift-grid {
+  list-style: none;
+  margin: 12px 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.lb-gift-card {
+  background: var(--lb-surface-raised, #ffffff);
+  border-radius: var(--lb-radius-md, 8px);
+  padding: 18px 20px;
+}
+.lb-gift-card h3 {
+  font-family: var(--lb-font-display);
+  font-size: 19px;
+  color: var(--lb-ink, #2a1a1a);
+  margin: 0 0 6px;
+}
+.lb-gift-card p {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.lb-gift-related ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.lb-gift-related li {
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+
 /* ─── multimedia_collage (Phase 7, OOP-4223) ──────────────────────────────
  * Sender-side builder + recipient canvas. Three templates (polaroid-wall,
  * timeline, magazine) share the slot grid primitives; template variants

@@ -1091,5 +1091,25 @@
       "status": "Status",
       "privacy": "Privacy"
     }
+  },
+  "Gifts": {
+    "hub": {
+      "title": "Gift guides",
+      "lede": "Seven guides to what Lovorithm can actually make, when to send it, and which format fits the occasion. Every number here is the product's real limit, not a rounded one.",
+      "readMore": "Read the guide →"
+    },
+    "kind": {
+      "format": "The formats",
+      "occasion": "The occasions",
+      "audience": "Who it is for"
+    },
+    "faq": "The questions people actually ask",
+    "related": "Read these next",
+    "back": "All gift guides",
+    "cta": {
+      "title": "Make one in about twenty minutes",
+      "body": "Pick a format, drop in the photographs you already have, and send it as a link.",
+      "label": "Start your gift →"
+    }
   }
 }
