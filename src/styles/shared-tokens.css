@@ -226,7 +226,9 @@ a.lb-btn:hover { text-decoration: none; }
   outline: none;
 }
 .lb-mobile-drawer__link--primary {
-  background: var(--lb-primary);
+  /* OOP-6733 — white on --lb-primary is 2.81:1. The fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep);
   color: #fff;
   margin-top: 8px;
 }
@@ -467,7 +469,9 @@ a.lb-btn:hover { text-decoration: none; }
 }
 .lb-step__num {
   width: 56px; height: 56px;
-  background: var(--lb-primary);
+  /* OOP-6733 — white on --lb-primary is 2.81:1, below the 3:1 that
+   * 24px text needs. */
+  background: var(--lb-primary-deep);
   color: #fff;
   border-radius: 50%;
   display: inline-flex; align-items: center; justify-content: center;
@@ -1715,9 +1719,11 @@ a.lb-btn:hover { text-decoration: none; }
   gap: 8px;
 }
 .lb-like-button--liked {
-  background: var(--lb-primary) !important;
+  /* OOP-6733 — white on --lb-primary is 2.81:1; the fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep) !important;
   color: #fff !important;
-  border-color: var(--lb-primary) !important;
+  border-color: var(--lb-primary-deep) !important;
 }
 .lb-like-button__hint {
   font-size: 12px;
@@ -2613,7 +2619,9 @@ a.lb-btn:hover { text-decoration: none; }
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #fff;
-  background: var(--lb-primary);
+  /* OOP-6733 — white on --lb-primary is 2.81:1; the fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep);
   padding: 2px 8px;
   border-radius: 999px;
   text-transform: uppercase;
@@ -3218,7 +3226,9 @@ a.lb-btn:hover { text-decoration: none; }
   box-shadow: var(--lb-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
 }
 .lb-memory-card__face--back {
-  background: var(--lb-primary, #cc5858);
+  /* OOP-6733 — white on --lb-primary is 2.81:1, below the 3:1 that
+   * 32px text needs. */
+  background: var(--lb-primary-deep, #a83e3e);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3522,7 +3532,9 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-quiz__start {
   appearance: none;
   border: none;
-  background: var(--lb-primary, #cc5858);
+  /* OOP-6733 — white on --lb-primary is 2.81:1; the fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep, #a83e3e);
   color: #fff;
   font-weight: 600;
   padding: 12px 24px;
@@ -3626,8 +3638,10 @@ a.lb-btn:hover { text-decoration: none; }
 }
 .lb-quiz__nav-btn:disabled { opacity: 0.4; cursor: default; }
 .lb-quiz__nav-btn--primary {
-  background: var(--lb-primary, #cc5858);
-  border-color: var(--lb-primary, #cc5858);
+  /* OOP-6733 — white on --lb-primary is 2.81:1; the fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep, #a83e3e);
+  border-color: var(--lb-primary-deep, #a83e3e);
   color: #fff;
 }
 .lb-quiz__nav-btn--primary:hover { background: var(--lb-primary-deep, #a83e3e); }
@@ -4293,7 +4307,9 @@ a.lb-btn:hover { text-decoration: none; }
   border-color: var(--lb-primary, #cc5858);
 }
 .lb-multimedia-music__toggle[aria-pressed="true"] {
-  background: var(--lb-primary, #cc5858);
+  /* OOP-6733 — white on --lb-primary is 2.81:1; the fill has to be
+   * the deep coral for the label to clear WCAG AA. */
+  background: var(--lb-primary-deep, #a83e3e);
   color: #fff;
   border-color: var(--lb-primary-deep, #a83e3e);
 }
@@ -4920,4 +4936,110 @@ a.lb-btn:hover { text-decoration: none; }
 
 .lb-code-builder__react .lb-field-hint {
   margin-top: var(--lb-space-2);
+}
+
+/* === OOP-6734 — classes that were applied but never styled =============
+ * Every rule below is a `className` that the TSX applied and no
+ * selector in this file ever matched. The worst was `lb-btn--block`:
+ * 13 call sites (the checkout Pay button, the Stripe Connect button,
+ * every auth form) and no rule, so those CTAs rendered at 220px inside
+ * a 376px form.
+ *
+ * `scripts/check-css-classes.mjs` now fails the build on a repeat —
+ * see `src/styles/css-classes.test.ts`.
+ */
+
+/* Full-width CTA. The minimum is the width; the centring keeps the
+ * label in the middle of the pill. */
+.lb-btn--block {
+  width: 100%;
+  justify-content: center;
+}
+/* `.lb-form .lb-btn` (above) deliberately centres the CTA and gives it
+ * a 220px floor so the auth submit button doesn't fill the card. A
+ * block button opts out of that centring — it fills the field stack. */
+.lb-form .lb-btn--block {
+  align-self: stretch;
+}
+
+/* Field hints. `.lb-field small` already covers every current call
+ * site, but the class is what the markup actually asked for. */
+.lb-field__hint {
+  font-size: 12px;
+  color: var(--lb-ink-soft);
+}
+
+/* The avatar block is a picker, not a text field — undo the text-input
+ * chrome that `.lb-field input` puts on the file input. */
+.lb-field--avatar input[type='file'] {
+  width: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Page shells for the typed 404 / loading states. Each wraps the
+ * shared `.lb-empty-card` primitive; without a rule the card spanned
+ * the whole viewport instead of sitting in a centred column. */
+.lb-landing-page,
+.lb-checkout-page,
+.lb-listing-page,
+.lb-finish-page,
+.lb-profile-edit-page,
+.lb-purchases-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  flex: 1;
+}
+
+/* The grid sits below the browse hero — give the column room to end. */
+.lb-browse-body {
+  padding-bottom: var(--lb-space-8);
+}
+
+/* The /gifts hub and the gift guide share one column. */
+.lb-gift-page {
+  width: 100%;
+}
+
+/* Quiz intro and result cards: centre the copy and the single CTA. */
+.lb-quiz--intro,
+.lb-quiz--done {
+  text-align: center;
+}
+.lb-quiz--intro .lb-quiz__head,
+.lb-quiz--done .lb-quiz__head {
+  justify-content: center;
+}
+
+/* The face-down state was implicit (the default transform); say it
+ * explicitly so the class the JSX applies is not a no-op. */
+.lb-memory-card--face-down .lb-memory-card__face--back {
+  transform: rotateY(0deg);
+}
+.lb-memory-card--face-down .lb-memory-card__face--front {
+  transform: rotateY(180deg);
+}
+
+/* Collage tiles. Photos and videos get their own backdrop; audio
+ * already had a rule of its own. */
+.lb-multimedia__item--photo {
+  background: #fff;
+}
+.lb-multimedia__item--video {
+  background: #000;
+}
+
+/* The recipient canvas mirrors the sender-side template: a wall, a
+ * strip and a magazine spread are three different shapes. */
+.lb-multimedia__canvas--polaroid-wall {
+  aspect-ratio: 5 / 3;
+}
+.lb-multimedia__canvas--timeline {
+  aspect-ratio: 16 / 9;
+}
+.lb-multimedia__canvas--magazine {
+  aspect-ratio: 4 / 5;
 }

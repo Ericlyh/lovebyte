@@ -210,7 +210,11 @@ export function ListingReplies({
     return (
       <li
         key={node.id}
-        className={`lb-listing-replies__item lb-listing-replies__item--depth-${depth}`}
+        className={
+          depth > 0
+            ? 'lb-listing-replies__item lb-listing-replies__item--depth-1'
+            : 'lb-listing-replies__item'
+        }
       >
         <div className="lb-listing-replies__row">
           {renderAuthor(node.user, isAuthor, isCreator)}

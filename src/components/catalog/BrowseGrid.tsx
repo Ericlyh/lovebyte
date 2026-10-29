@@ -126,7 +126,7 @@ export function BrowseGrid() {
 
   if (state.status === 'loading') {
     return (
-      <p className="lb-empty" role="status">
+      <p className="lb-browse-empty" role="status">
         {t('loading')}
       </p>
     );
@@ -134,7 +134,7 @@ export function BrowseGrid() {
 
   if (state.status === 'error') {
     return (
-      <p className="lb-empty" role="alert">
+      <p className="lb-browse-empty" role="alert">
         {t('error')}
       </p>
     );
@@ -143,7 +143,7 @@ export function BrowseGrid() {
   if (state.gifts.length === 0) {
     return (
       <div className="lb-browse-empty">
-        <p className="lb-empty">{t('empty')}</p>
+        <p>{t('empty')}</p>
         {!state.isSearch ? (
           <p>
             <Link href="/signup" className="lb-link">

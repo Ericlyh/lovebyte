@@ -215,7 +215,7 @@ async function AnimatedLetter({
         {letter.inline_media.length > 0 && (
           <ul className="lb-inline-media">
             {letter.inline_media.map((m, i) => (
-              <li key={i} className={`lb-inline-media__item lb-inline-media--${m.type}`}>
+              <li key={i} className="lb-inline-media__item">
                 <span aria-hidden="true">
                   {m.type === 'photo' ? '📷' : m.type === 'voice' ? '🎙️' : m.type === 'music' ? '🎵' : '✨'}
                 </span>

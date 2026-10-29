@@ -146,7 +146,7 @@ export function BrowseControls() {
 
   return (
     <div className="lb-browse-controls">
-      <div className="lb-browse-controls__search-row">
+      <div className="lb-browse-controls__row">
         <input
           type="search"
           className="lb-input"
