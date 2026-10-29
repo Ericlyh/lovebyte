@@ -248,8 +248,23 @@ async function handleCheckoutCompleted(
   const { error: purchaseErr } = await (service.from('purchases') as unknown as {
     insert: (row: typeof purchaseInsert) => Promise<{ error: { code?: string; message: string } | null }>;
   }).insert(purchaseInsert);
-  if (purchaseErr && purchaseErr.code !== '23505') {
-    // 23505 = PK/UNIQUE collision on stripe_payment_intent_id; safe to ignore.
+  if (purchaseErr) {
+    if (purchaseErr.code === '23505') {
+      // This payment intent (or session) is ALREADY on the ledger: the
+      // event was delivered before, and this is a redelivery that the
+      // event-id dedup above did not catch — a different event id
+      // carrying the same payment.
+      //
+      // The purchase stands. But the side effects must not repeat: the
+      // recipient would get a SECOND email, with a different share link,
+      // for a gift they already received, and the funnel would record a
+      // second purchase for one payment. Returning here is what makes
+      // the purchases insert idempotent (OOP-6736).
+      console.log(
+        '[stripe/webhook] purchase already recorded for this payment intent, skipping side effects',
+      );
+      return;
+    }
     console.error('[stripe/webhook] purchases insert failed', purchaseErr.message);
     return;
   }

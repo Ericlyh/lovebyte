@@ -24,6 +24,10 @@ const state = vi.hoisted(() => ({
   }[],
   emails: [] as { to: string }[],
   event: null as { id: string; type: string; data: { object: unknown } } | null,
+  /** Event ids already recorded in `stripe_webhook_events` (its PK). */
+  seenEventIds: new Set<string>(),
+  /** Payment intents already recorded in `purchases` (its UNIQUE column). */
+  seenPaymentIntents: new Set<string>(),
 }));
 
 vi.mock('@/lib/stripe', () => ({
@@ -51,6 +55,36 @@ vi.mock('@/lib/supabase/service-role', () => {
     return {
       select: () => builder,
       insert: async (row: Record<string, unknown>) => {
+        // The two UNIQUE constraints the route leans on, simulated:
+        // `stripe_webhook_events.event_id` is the PK, and
+        // `purchases.stripe_payment_intent_id` is UNIQUE. A second
+        // insert of either raises 23505, exactly as Postgres would.
+        if (table === 'stripe_webhook_events') {
+          const eventId = String(row.event_id);
+          if (state.seenEventIds.has(eventId)) {
+            return {
+              error: {
+                code: '23505',
+                message:
+                  'duplicate key value violates unique constraint "stripe_webhook_events_pkey"',
+              },
+            };
+          }
+          state.seenEventIds.add(eventId);
+        }
+        if (table === 'purchases') {
+          const paymentIntentId = String(row.stripe_payment_intent_id);
+          if (state.seenPaymentIntents.has(paymentIntentId)) {
+            return {
+              error: {
+                code: '23505',
+                message:
+                  'duplicate key value violates unique constraint "purchases_stripe_payment_intent_id_key"',
+              },
+            };
+          }
+          state.seenPaymentIntents.add(paymentIntentId);
+        }
         state.inserted.push({ table, row });
         return { error: null };
       },
@@ -108,6 +142,8 @@ beforeEach(() => {
   state.events = [];
   state.emails = [];
   state.event = null;
+  state.seenEventIds = new Set<string>();
+  state.seenPaymentIntents = new Set<string>();
   vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_test');
   vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test');
 });
@@ -217,5 +253,91 @@ describe('POST /api/stripe/webhook — the purchase event (OOP-6716)', () => {
       currency: 'HKD',
       status: 'paid',
     });
+  });
+});
+
+/**
+ * Idempotency (OOP-6736).
+ *
+ * Stripe delivers webhooks at-least-once, so the SAME event can arrive
+ * twice. The route has to absorb that without paying the recipient
+ * twice, and without booking the purchase twice.
+ *
+ * There are two independent guards, and both are exercised here:
+ *
+ *   1. `stripe_webhook_events.event_id` is the PRIMARY KEY. The route
+ *      records the event id before it does anything else, so a
+ *      redelivery of the same event id collides (23505) and the route
+ *      answers 200 `{ dedup: true }` having done nothing.
+ *
+ *   2. `purchases.stripe_payment_intent_id` is UNIQUE. This is the
+ *      guard for a redelivery the first one misses — a different event
+ *      id carrying the same payment intent, which is what happens when
+ *      the dedup row itself fails to write.
+ *
+ * Guard 1 is the common case. Guard 2 is the one that was missing its
+ * side-effect check: the 23505 was swallowed and the handler carried
+ * on to email the recipient a SECOND time, with a different share
+ * link, for a purchase that had already been paid for.
+ */
+describe('POST /api/stripe/webhook — idempotency (OOP-6736)', () => {
+  const SESSION_METADATA = {
+    gift_id: 'aaaa3333-0000-0000-0000-000000000002',
+    buyer_id: '11111111-1111-1111-1111-111111111111',
+    delivery_mode: 'send_to_recipient',
+    recipient_contact: 'them@example.com',
+    session_id: SESSION_ID,
+  };
+
+  it('does nothing at all when the same event id is delivered twice', async () => {
+    state.event = {
+      id: 'evt_1',
+      type: 'checkout.session.completed',
+      data: { object: completedSession(SESSION_METADATA) },
+    };
+
+    const first = await POST(webhookRequest());
+    expect(first.status).toBe(200);
+    await expect(first.json()).resolves.toMatchObject({ ok: true });
+
+    const second = await POST(webhookRequest());
+    expect(second.status).toBe(200);
+    await expect(second.json()).resolves.toMatchObject({ ok: true, dedup: true });
+
+    // One purchase, one share, one email, one purchase event — the
+    // replay changed nothing.
+    expect(state.inserted.filter((i) => i.table === 'purchases')).toHaveLength(1);
+    expect(state.inserted.filter((i) => i.table === 'shares')).toHaveLength(1);
+    expect(state.emails).toHaveLength(1);
+    expect(state.events.filter((e) => e.event === 'purchase')).toHaveLength(1);
+  });
+
+  it('does not email the recipient twice when the payment intent is already recorded', async () => {
+    // A different event id, but the same payment intent — the event-id
+    // dedup cannot catch this one. The UNIQUE constraint on
+    // `purchases.stripe_payment_intent_id` is the last line of defence,
+    // and it has to stop the SECOND email, not just the second row.
+    state.event = {
+      id: 'evt_1',
+      type: 'checkout.session.completed',
+      data: { object: completedSession(SESSION_METADATA) },
+    };
+    await POST(webhookRequest());
+
+    state.event = {
+      id: 'evt_2',
+      type: 'checkout.session.completed',
+      data: { object: completedSession(SESSION_METADATA) },
+    };
+    const res = await POST(webhookRequest());
+
+    expect(res.status).toBe(200);
+    // The purchase stands — exactly one row for one payment.
+    expect(state.inserted.filter((i) => i.table === 'purchases')).toHaveLength(1);
+    // The recipient is told once. A second email would carry a
+    // different share link for a gift they already received.
+    expect(state.emails).toHaveLength(1);
+    // And the funnel records the purchase once.
+    expect(state.events.filter((e) => e.event === 'purchase')).toHaveLength(1);
   });
 });

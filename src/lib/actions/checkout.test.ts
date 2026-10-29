@@ -3,6 +3,7 @@ import {
   startCheckoutSessionAction,
   startFreeGiftAction,
 } from './checkout';
+import { SETTLEMENT_CURRENCY } from '@/lib/money';
 
 /**
  * Regression tests for the free-listing send path (OOP-6715).
@@ -52,6 +53,8 @@ const { state, fakeFrom } = vi.hoisted(() => {
     },
     /** How many Stripe Checkout Sessions were created. */
     stripeSessionsCreated: 0,
+    /** The parameters of every Stripe Checkout Session we created. */
+    stripeSessionParams: [] as Record<string, unknown>[],
     /** Every analytics event the action recorded (OOP-6716). */
     events: [] as { event: string; props: Record<string, unknown> }[],
   };
@@ -108,8 +111,9 @@ vi.mock('@/lib/stripe', () => ({
   stripe: {
     checkout: {
       sessions: {
-        create: async () => {
+        create: async (params: Record<string, unknown>) => {
           state.stripeSessionsCreated += 1;
+          state.stripeSessionParams.push(params);
           return { id: 'cs_test', url: 'https://checkout.stripe.test/session' };
         },
       },
@@ -160,6 +164,7 @@ beforeEach(() => {
   state.emails = [];
   state.emailResult = { ok: true, id: 'stub-1' };
   state.stripeSessionsCreated = 0;
+  state.stripeSessionParams = [];
   state.events = [];
 });
 
@@ -355,5 +360,135 @@ describe('startCheckoutSessionAction (the paid path)', () => {
 
     expect(result.ok).toBe(true);
     expect(state.stripeSessionsCreated).toBe(1);
+  });
+});
+
+/**
+ * The money itself (OOP-6736).
+ *
+ * The tests above only count the Stripe sessions — they never look at
+ * WHAT was charged. That is the part that has never run against a real
+ * Stripe account: the Stripe keys are still missing in production
+ * (OOP-6168), so the first live `checkout.sessions.create` will be its
+ * first execution, on the path that takes the buyer's money.
+ *
+ * These tests pin the amount, the mode and the currency of that call.
+ *
+ * Currency (OOP-6714, which landed FIRST):
+ *   The marketplace settles in ONE currency — HKD. `price_cents` is
+ *   already HKD cents, so there is NO FX conversion at checkout: the
+ *   amount Stripe charges is the amount the listing shows, unchanged.
+ *   The legacy USD/EUR rows were converted ONCE, by the data migration
+ *   `0012_settlement_currency_hkd.sql`. A listing still priced in
+ *   another currency is REFUSED rather than charged at a rate we do
+ *   not have — that refusal is asserted below too, because it is the
+ *   half of the policy that decides whether money moves.
+ */
+describe('startCheckoutSessionAction — the amount charged (OOP-6736)', () => {
+  /** The params of the single Stripe session the action created. */
+  function createdSession(): {
+    mode: string;
+    line_items: {
+      quantity: number;
+      price_data: {
+        currency: string;
+        unit_amount: number;
+        product_data: { name: string };
+      };
+    }[];
+    payment_intent_data: {
+      application_fee_amount: number;
+      transfer_data: { destination: string };
+    };
+    metadata: Record<string, string>;
+  } {
+    expect(state.stripeSessionParams).toHaveLength(1);
+    return state.stripeSessionParams[0] as never;
+  }
+
+  beforeEach(() => {
+    state.gift = { ...PAID_GIFT };
+  });
+
+  it('charges the listed price, in the settlement currency', async () => {
+    const result = await startCheckoutSessionAction({
+      giftId: PAID_GIFT.id,
+      deliveryMode: 'buyer_shares',
+    });
+
+    expect(result.ok).toBe(true);
+    const session = createdSession();
+
+    // A one-off purchase, not a subscription and not a setup.
+    expect(session.mode).toBe('payment');
+
+    expect(session.line_items).toHaveLength(1);
+    const item = session.line_items[0];
+    expect(item.quantity).toBe(1);
+
+    // The amount: the listing's `price_cents`, unchanged. 1800 HKD
+    // cents = HK$18.00. There is no conversion step here — OOP-6714
+    // moved the FX into a one-off data migration, so the stored amount
+    // IS the charged amount.
+    expect(item.price_data.unit_amount).toBe(1800);
+    expect(item.price_data.unit_amount).toBe(PAID_GIFT.price_cents);
+
+    // The currency: Stripe wants lower-case ISO-4217, the database
+    // column is upper-case. Both spellings are pinned, because a
+    // silent change to either one is a real Stripe API error (and a
+    // real refund/reconciliation mismatch) that no unit test would
+    // otherwise catch.
+    expect(SETTLEMENT_CURRENCY).toBe('hkd');
+    expect(item.price_data.currency).toBe(SETTLEMENT_CURRENCY);
+    expect(item.price_data.product_data.name).toBe(PAID_GIFT.title);
+  });
+
+  it('takes the platform fee and routes the payout to the creator', async () => {
+    await startCheckoutSessionAction({
+      giftId: PAID_GIFT.id,
+      deliveryMode: 'buyer_shares',
+    });
+
+    const session = createdSession();
+    // 10% of 1800 = 180 cents, truncated down — the creator keeps the
+    // sub-cent remainder. A rounding change here is a rounding change
+    // in every payout on the platform.
+    expect(session.payment_intent_data.application_fee_amount).toBe(180);
+    // Destination charge: the money goes to the connected account.
+    expect(session.payment_intent_data.transfer_data.destination).toBe('acct_123');
+  });
+
+  it('stamps the payment with the gift, the buyer and the session', async () => {
+    await startCheckoutSessionAction({
+      giftId: PAID_GIFT.id,
+      deliveryMode: 'send_to_recipient',
+      recipientContact: 'them@example.com',
+    });
+
+    const session = createdSession();
+    expect(session.metadata.gift_id).toBe(PAID_GIFT.id);
+    expect(session.metadata.buyer_id).toBe(BUYER_ID);
+    expect(session.metadata.delivery_mode).toBe('send_to_recipient');
+    expect(session.metadata.recipient_contact).toBe('them@example.com');
+  });
+
+  it('refuses a listing priced in another currency instead of converting it', async () => {
+    // OOP-6714: a row that still carries a foreign currency has a
+    // `price_cents` in the wrong unit. Charging it at the settlement
+    // currency would take a different amount of money from the buyer
+    // than the listing showed, so the action refuses.
+    state.gift = { ...PAID_GIFT, currency: 'USD' };
+
+    const result = await startCheckoutSessionAction({
+      giftId: PAID_GIFT.id,
+      deliveryMode: 'buyer_shares',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain('not available for purchase');
+    // No session, so no money moves.
+    expect(state.stripeSessionsCreated).toBe(0);
+    expect(state.stripeSessionParams).toHaveLength(0);
   });
 });
