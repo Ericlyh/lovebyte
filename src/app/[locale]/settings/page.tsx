@@ -78,8 +78,20 @@ export default async function SettingsPage({ params }: PageProps<'/[locale]/sett
         <div className="lb-settings-section">
           <h2>{t('account.title')}</h2>
           <div className="lb-field">
-            <span>{t('account.emailLabel')}</span>
-            <input type="email" value={email} readOnly aria-readonly="true" />
+            {/*
+              OOP-6735 — a <span> next to an <input> is not a label: the
+              input had no accessible name at all (axe: "Form elements
+              must have labels", critical). A real <label for> gives it
+              one, and the visible text is unchanged.
+            */}
+            <label htmlFor="lb-settings-email">{t('account.emailLabel')}</label>
+            <input
+              id="lb-settings-email"
+              type="email"
+              value={email}
+              readOnly
+              aria-readonly="true"
+            />
             <small>{t('account.emailHint')}</small>
           </div>
         </div>

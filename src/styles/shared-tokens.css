@@ -959,7 +959,8 @@ a.lb-btn:hover { text-decoration: none; }
   flex-direction: column;
   gap: 6px;
 }
-.lb-field > span {
+.lb-field > span,
+.lb-field > label {
   font-size: 13px;
   font-weight: 600;
   color: var(--lb-ink-soft);
@@ -986,7 +987,7 @@ a.lb-btn:hover { text-decoration: none; }
  * a field-specific error). Keep the change subtle so the form stays warm. */
 .lb-field input[aria-invalid="true"],
 .lb-field textarea[aria-invalid="true"] {
-  border-color: var(--lb-danger);
+  border-color: var(--lb-danger-deep);
 }
 .lb-field small {
   font-size: 12px;
@@ -1004,13 +1005,13 @@ a.lb-btn:hover { text-decoration: none; }
   color: var(--lb-success);
 }
 .lb-field__status--bad {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-field__status--checking {
   color: var(--lb-ink-soft);
 }
 .lb-field__status--warn {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 /* Section heading inside a form — separates "Profile fields" from
@@ -1034,7 +1035,7 @@ a.lb-btn:hover { text-decoration: none; }
   font-variant-numeric: tabular-nums;
 }
 .lb-field__countdown--warn {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 /* Password rules checklist — one row per requirement, ticking from
@@ -1254,7 +1255,7 @@ a.lb-btn:hover { text-decoration: none; }
 }
 
 .lb-settings-section--danger h2 {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-settings-section--danger .lb-btn[disabled] {
   cursor: not-allowed;
@@ -1732,7 +1733,7 @@ a.lb-btn:hover { text-decoration: none; }
 }
 .lb-like-button__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 /* ─── M-D (OOP-4276): comment composer + thread + report ─────────────── */
@@ -1798,12 +1799,12 @@ a.lb-btn:hover { text-decoration: none; }
   margin-right: auto;
 }
 .lb-comment-form__count--over {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   font-weight: 700;
 }
 .lb-comment-form__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 .lb-listing-comments__row {
@@ -1826,7 +1827,7 @@ a.lb-btn:hover { text-decoration: none; }
   border-radius: var(--lb-radius-sm);
 }
 .lb-listing-comments__delete:hover:not(:disabled) {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   background: #fff;
 }
 .lb-listing-comments__delete:disabled {
@@ -1836,7 +1837,7 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-listing-comments__error {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-listing-comments__more {
   display: flex;
@@ -1863,7 +1864,7 @@ a.lb-btn:hover { text-decoration: none; }
   padding: 0;
 }
 .lb-comment-report__trigger:hover {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   text-decoration: underline;
 }
 .lb-comment-report__label {
@@ -1897,12 +1898,12 @@ a.lb-btn:hover { text-decoration: none; }
   margin-right: auto;
 }
 .lb-comment-report__count--over {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   font-weight: 700;
 }
 .lb-comment-report__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-comment-report__actions {
   display: flex;
@@ -2171,7 +2172,7 @@ a.lb-btn:hover { text-decoration: none; }
 }
 .lb-profile-follow__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-profile-followers-badge {
   font-size: 13px;
@@ -2349,7 +2350,7 @@ a.lb-btn:hover { text-decoration: none; }
 
 .lb-owned-gift__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 .lb-followers-list {
@@ -2452,7 +2453,7 @@ a.lb-btn:hover { text-decoration: none; }
   font-weight: 600;
 }
 .lb-purchase-row__status--refunded {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   font-weight: 600;
 }
 
@@ -2659,7 +2660,7 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-listing-replies__error {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 .lb-listing-replies__delete {
   background: transparent;
@@ -2671,7 +2672,7 @@ a.lb-btn:hover { text-decoration: none; }
   border-radius: var(--lb-radius-sm);
 }
 .lb-listing-replies__delete:hover:not(:disabled) {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   background: #fff;
 }
 .lb-listing-replies__delete:disabled {
@@ -2756,12 +2757,12 @@ a.lb-btn:hover { text-decoration: none; }
   margin-right: auto;
 }
 .lb-reply-form__count--over {
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
   font-weight: 700;
 }
 .lb-reply-form__error {
   font-size: 12px;
-  color: var(--lb-danger);
+  color: var(--lb-danger-deep);
 }
 
 /* === Memory cards — sender builder (Phase 4, OOP-4219) ==========

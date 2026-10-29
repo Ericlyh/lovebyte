@@ -19,7 +19,8 @@
   --lb-surface:        #fbf7f7;
   --lb-surface-raised: #ffffff;
 
-  --lb-danger:         #c87878;
+  --lb-danger:         #c87878;  /* FILLS ONLY — borders, badges, icon accents. NEVER text (3.27:1 on white). Text uses --lb-danger-deep. */
+  --lb-danger-deep:    #9e4c4c;  /* TEXT — error and warning copy. 5.85:1 on white, 5.50:1 on --lb-surface, 4.86:1 on --lb-blush. */
 
   /* Same typography + spacing scale as Warm Romantic — only colors differ. */
 }

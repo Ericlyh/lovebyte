@@ -2,30 +2,38 @@
 // Visits each shipped route, measures whether the body horizontally
 // overflows the viewport, and dumps any element wider than 360px.
 //
-// Usage:  pnpm dev   (in another terminal, leave running)
-//         node scripts/mobile-audit.mjs
+// Usage:
+//   node scripts/mobile-audit.mjs
+//   AUDIT_BASE=https://lovorithm.vercel.app node scripts/mobile-audit.mjs
+//
+// OOP-6735 — this script launched Playwright's BUNDLED Chromium, which
+// is not installed on this host, so it crashed before it measured
+// anything. It also carried its own (10-route) route list, so it never
+// saw the builders, /settings, /purchases or the checkout pages. Both
+// are fixed: the browser is the system Chrome (no download) and the
+// route table is shared with the a11y audit
+// (scripts/lib/audit-routes.mjs), so the two audits cannot drift apart
+// again.
 //
 // Phase 9 (OOP-4225) — acceptance criterion: every page renders
 // usably at 360px width.
 
-import { chromium } from 'playwright';
+import {
+  AUDIT_ROUTES,
+  expandRoutes,
+  launchBrowser,
+  readEnvLocal,
+  resolveRouteParams,
+  signInAsAuditUser,
+} from './lib/audit-routes.mjs';
 
 const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
 
-const ROUTES = [
-  { path: '/', label: 'landing' },
-  { path: '/browse', label: 'browse' },
-  { path: '/g/demo', label: 'recipient-demo' },
-  { path: '/l/00000000-0000-0000-0000-000000000000', label: 'listing-bad' },
-  { path: '/login', label: 'login' },
-  { path: '/signup', label: 'signup' },
-  { path: '/create', label: 'create' },
-  { path: '/onboarding', label: 'onboarding' },
-  { path: '/u/arjun', label: 'profile-arjun' },
-  { path: '/random-404', label: '404' },
-];
+const env = readEnvLocal();
+const params = await resolveRouteParams({ base: BASE, env });
+const routes = expandRoutes(AUDIT_ROUTES, params);
 
-const browser = await chromium.launch();
+const browser = await launchBrowser();
 const context = await browser.newContext({
   viewport: { width: 360, height: 800 },
   deviceScaleFactor: 2,
@@ -33,9 +41,25 @@ const context = await browser.newContext({
   hasTouch: true,
 });
 
+// The builders and the account pages need a session, or they bounce to
+// /login and the audit measures the login page instead of the builder.
+let session = null;
+try {
+  const signInPage = await context.newPage();
+  session = await signInAsAuditUser({ page: signInPage, base: BASE, env });
+  await signInPage.close();
+  console.log(session ? 'signed in as a throwaway audit user' : 'no credentials — auth-gated routes will not be measured');
+} catch (err) {
+  console.log(`could not sign in (${err.message}) — auth-gated routes will not be measured`);
+}
+
 const results = [];
 
-for (const { path, label } of ROUTES) {
+for (const { path, label, auth } of routes) {
+  if (auth && !session) {
+    results.push({ label, path, skipped: 'no session' });
+    continue;
+  }
   const page = await context.newPage();
   const url = `${BASE}${path}`;
   try {
@@ -112,10 +136,19 @@ for (const { path, label } of ROUTES) {
 }
 
 await browser.close();
+if (session) await session.cleanup();
 
 console.log('\n=== Mobile Audit @ 360px ===\n');
+console.log(`base=${BASE}`);
+console.log(`routes=${routes.length} ids=${JSON.stringify(params)}`);
 const fail = [];
+let skipped = 0;
 for (const r of results) {
+  if (r.skipped) {
+    skipped++;
+    console.log(`– ${r.label.padEnd(20)} ${r.path.padEnd(50)} not measured (${r.skipped})`);
+    continue;
+  }
   if (r.error) {
     console.log(`❌ ${r.label.padEnd(20)} ${r.path}  ERROR: ${r.error}`);
     fail.push(r.label);
@@ -139,5 +172,14 @@ for (const r of results) {
   if (r.overflow) fail.push(r.label);
 }
 
-console.log(`\n=== Result: ${fail.length === 0 ? 'PASS' : `${fail.length} routes with horizontal overflow`} ===`);
+console.log(
+  `\n=== Result: ${fail.length === 0 ? 'PASS' : `${fail.length} routes with horizontal overflow`} (${results.length - skipped} measured, ${skipped} skipped) ===`
+);
 console.log(fail.length ? fail.map((f) => `  - ${f}`).join('\n') : '');
+
+// A gate that only prints cannot gate anything (OOP-6735).
+if (fail.length > 0) {
+  console.error(`\n✗ FAIL — ${fail.length} route(s) overflow horizontally at 360px.`);
+  process.exit(1);
+}
+console.log('\n✓ PASS — every measured route fits 360px.');

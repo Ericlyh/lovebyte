@@ -19,5 +19,6 @@
   --lb-surface:        #ffffff;
   --lb-surface-raised: #ffffff;
 
-  --lb-danger:         #c62828;
+  --lb-danger:         #c62828;  /* FILLS ONLY — borders, badges, icon accents. Text uses --lb-danger-deep. */
+  --lb-danger-deep:    #a32121;  /* TEXT — error and warning copy. 7.51:1 on white. */
 }

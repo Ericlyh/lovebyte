@@ -214,11 +214,47 @@ const GUARDS = [
     min: 4.5,
     why: '14px body text, transient state',
   },
+  {
+    // OOP-6735 — axe caught this one live: the "Danger zone" heading was
+    // painted with --lb-danger (#d94545), 4.29:1 on the raised card.
+    // It is a heading, but a 14px bold one, so it needs the full 4.5:1.
+    name: 'settings danger heading',
+    selector: '.lb-settings-section--danger h2',
+    background: ['.lb-settings-card', 'body'],
+    min: 4.5,
+    why: '14px bold heading on a raised card',
+  },
+  {
+    // OOP-6735 — the private panels of a profile sit on a gradient, so
+    // axe cannot resolve their background and reports the section title
+    // as "incomplete" rather than judging it. This static gate CAN
+    // judge it: it reads the gradient and measures the text against the
+    // worst stop. Without this entry the title's contrast was simply
+    // unmeasured by anything.
+    name: 'profile private section title',
+    selector: '.lb-profile-section__title',
+    background: ['.lb-profile-section--private', 'body'],
+    min: 3,
+    why: '22px bold heading over a gradient panel',
+  },
 ];
 
-/** The fill token. Text may never be painted with it. */
-const FILL_TOKEN = '--lb-primary';
-const FILL_TOKEN_RE = /var\(\s*--lb-primary\s*[,)]/;
+/**
+ * The fill tokens. Text may never be painted with them.
+ *
+ * --lb-primary has been a fill-only token since OOP-6733 (white on
+ * --lb-primary is 2.81:1). --lb-danger joined it in OOP-6735: the coral
+ * it used to be is 4.30:1 on white, which is under the AA threshold for
+ * body text, so every error message the site painted in it was a
+ * near-miss at best. Text uses the -deep variant of each.
+ */
+const FILL_TOKENS = ['--lb-primary', '--lb-danger'];
+const FILL_TOKEN_RE = /var\(\s*--(?:primary|danger)\s*[,)]/;
+
+/** Which fill token a declaration paints with, for the failure message. */
+function fillTokenUsed(value) {
+  return FILL_TOKENS.find((t) => new RegExp(`var\\(\\s*${t}\\s*[,)]`).test(value));
+}
 
 /* ------------------------------------------------------------------ *
  * Run
@@ -303,12 +339,12 @@ for (const guard of GUARDS) {
   });
 }
 
-/* The global invariant: --lb-primary is a fill token, never a text colour. */
+/* The global invariant: a fill token is never a text colour. */
 for (const rule of rules) {
   const c = rule.decls.color;
   if (!c || !FILL_TOKEN_RE.test(c)) continue;
   failures.push(
-    `text painted with the fill token ${FILL_TOKEN}: \`${rule.selectors.join(', ')}\` — ${c}`,
+    `text painted with the fill token ${fillTokenUsed(c)}: \`${rule.selectors.join(', ')}\` — ${c}`,
   );
 }
 
@@ -367,7 +403,8 @@ for (const rule of rules) {
   }
 }
 console.log(
-  `\nText colours painted with ${FILL_TOKEN}: ${fillUses.length === 0 ? 'none' : fillUses.join(' | ')}`,
+  `\nText colours painted with a fill token (${FILL_TOKENS.join(', ')}): ` +
+    `${fillUses.length === 0 ? 'none' : fillUses.join(' | ')}`,
 );
 
 if (failures.length) {

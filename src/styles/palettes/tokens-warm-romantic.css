@@ -27,7 +27,8 @@
   --lb-surface-raised: #ffffff;  /* Card surface */
 
   /* Semantic */
-  --lb-danger:         #d94545;
+  --lb-danger:         #d94545;  /* FILLS ONLY — borders, badges, icon accents. NEVER text: 4.30:1 on white is below the WCAG AA threshold for body text (OOP-6735). Text uses --lb-danger-deep. */
+  --lb-danger-deep:    #b3312f;  /* TEXT — error and warning copy. #d94545 was 4.30:1 on white and 3.67:1 on --lb-blush; #b3312f is 6.18:1 on white, 5.97:1 on --lb-surface and 5.28:1 on --lb-blush. */
   --lb-success:        var(--lb-sage);
 
   /* Typography (per slide deck hints — Norican + Overlock from Google Fonts) */

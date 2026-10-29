@@ -304,6 +304,12 @@ export function CodeGiftBuilderForm() {
             multiple
             accept={CODE_FILE_ACCEPT}
             className="lb-code-drop__input"
+            // OOP-6735 — the control is visually hidden (it is the
+            // native picker behind the "Choose files" button), so it
+            // has no visible label of its own. Without an accessible
+            // name it read as an unlabelled form control (axe:
+            // "Form elements must have labels", critical).
+            aria-label={t('uploadButton')}
             onChange={(e) => {
               void handleFiles(e.target.files);
               // Clear the control so the same file can be picked again.
