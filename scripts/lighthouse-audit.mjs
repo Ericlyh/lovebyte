@@ -24,6 +24,15 @@
 //      threshold is a coin flip. This takes the MEDIAN of N samples,
 //      the same estimator the readiness gate uses.
 //
+//   4. it scored the SEO category on a page the site deliberately keeps
+//      out of the index. The gift envelope (/g/<token>) is Disallowed
+//      in robots.txt — the token is the access control — so Lighthouse
+//      read "Page is blocked from indexing" and reported seo=63. A page
+//      the site hides on purpose is not an SEO failure. Such a page is
+//      scored on performance, accessibility and best-practices (the
+//      visitor already holding the link still deserves all three) and
+//      its SEO score is reported as n/a.
+//
 // Thresholds (override with env):
 //   LH_PERF_MIN default 90   performance score
 //   LH_A11Y_MIN default 90   accessibility score
@@ -73,12 +82,59 @@ async function isHtmlPage(path) {
   }
 }
 
+/**
+ * Is this path disallowed by the site's own robots.txt?
+ *
+ * The gift envelope (/g/<token>) is deliberately unindexable — the
+ * token is the access control, so the whole prefix is Disallowed. That
+ * is correct, and Lighthouse's SEO category reads it as a failure
+ * ("Page is blocked from indexing", seo=63), because SEO is a score for
+ * pages that are MEANT to be in an index. Scoring SEO on a page the
+ * site deliberately hides would make the gate fail on the site's own
+ * privacy policy.
+ *
+ * So: a page the site disallows is scored on performance, accessibility
+ * and best-practices — the things that matter for the visitor who is
+ * already holding the link — and its SEO score is reported as "n/a".
+ *
+ * robots.txt matching, per the search-engine spec: a rule matches when
+ * the URL path starts with the rule; `*` is any run of characters and
+ * `$` anchors the end.
+ */
+async function loadRobotsRules() {
+  try {
+    const res = await fetch(`${BASE}/robots.txt`, { redirect: 'follow' });
+    if (!res.ok) return [];
+    const text = await res.text();
+    return text
+      .split('\n')
+      .map((line) => line.match(/^\s*disallow:\s*(\S*)\s*$/i)?.[1])
+      .filter((rule) => Boolean(rule));
+  } catch {
+    return [];
+  }
+}
+
+function robotsDisallows(rules, path) {
+  return rules.some((rule) => {
+    const anchored = rule.endsWith('$');
+    const body = anchored ? rule.slice(0, -1) : rule;
+    const pattern = body
+      .split('*')
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*');
+    return new RegExp('^' + pattern + (anchored ? '$' : '')).test(path);
+  });
+}
+
 const chrome = await chromeLauncher.launch({
   chromeFlags: ['--headless=new', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 
 console.log('\n=== Lighthouse Audit ===\n');
 console.log(`base=${BASE} samples=${SAMPLES}`);
+
+const robotsRules = await loadRobotsRules();
 
 let allPass = true;
 for (const path of TARGETS) {
@@ -92,6 +148,15 @@ for (const path of TARGETS) {
     continue;
   }
 
+  // A page the site deliberately keeps out of the index is not an SEO
+  // failure — it is the site's own privacy policy working. It is still
+  // scored on performance, accessibility and best-practices, because the
+  // visitor holding the link still deserves all three.
+  const unindexable = robotsDisallows(robotsRules, path);
+  const categories = unindexable
+    ? ['performance', 'accessibility', 'best-practices']
+    : ['performance', 'accessibility', 'best-practices', 'seo'];
+
   try {
     const perf = [];
     const a11y = [];
@@ -102,30 +167,31 @@ for (const path of TARGETS) {
         port: chrome.port,
         output: 'json',
         logLevel: 'error',
-        onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
+        onlyCategories: categories,
       });
       const cats = result.lhr.categories;
       perf.push(Math.round(cats.performance.score * 100));
       a11y.push(Math.round(cats.accessibility.score * 100));
       bp.push(Math.round(cats['best-practices'].score * 100));
-      seo.push(Math.round(cats.seo.score * 100));
+      if (cats.seo) seo.push(Math.round(cats.seo.score * 100));
     }
     const scores = {
       perf: median(perf),
       a11y: median(a11y),
       bp: median(bp),
-      seo: median(seo),
+      seo: seo.length ? median(seo) : null,
     };
     const passed =
       scores.perf >= PERF_MIN &&
       scores.a11y >= A11Y_MIN &&
       scores.bp >= BP_MIN &&
-      scores.seo >= SEO_MIN;
+      (scores.seo === null || scores.seo >= SEO_MIN);
     const mark = passed ? '✓' : '⚠';
     if (!passed) allPass = false;
+    const seoText = scores.seo === null ? 'seo=n/a (disallowed by robots.txt)' : `seo=${scores.seo}`;
     console.log(
       `${mark} ${path.padEnd(30)} ` +
-        `perf=${scores.perf} a11y=${scores.a11y} bp=${scores.bp} seo=${scores.seo}  ` +
+        `perf=${scores.perf} a11y=${scores.a11y} bp=${scores.bp} ${seoText}  ` +
         `(samples ${perf.join(',')})`,
     );
     if (!passed) {
@@ -133,7 +199,7 @@ for (const path of TARGETS) {
       if (scores.perf < PERF_MIN) shortfalls.push(`perf=${scores.perf} < ${PERF_MIN}`);
       if (scores.a11y < A11Y_MIN) shortfalls.push(`a11y=${scores.a11y} < ${A11Y_MIN}`);
       if (scores.bp < BP_MIN) shortfalls.push(`bp=${scores.bp} < ${BP_MIN}`);
-      if (scores.seo < SEO_MIN) shortfalls.push(`seo=${scores.seo} < ${SEO_MIN}`);
+      if (scores.seo !== null && scores.seo < SEO_MIN) shortfalls.push(`seo=${scores.seo} < ${SEO_MIN}`);
       console.log(`     below threshold: ${shortfalls.join(', ')}`);
     }
   } catch (err) {
