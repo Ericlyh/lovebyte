@@ -20,9 +20,16 @@ import {
  * gets their language from it.
  *
  * `Cookie` comes first so the header reads as the thing it is most
- * often mistaken for. Next.js appends its own `RSC, Next-Router-*`
- * values to whatever we set here (`res.appendHeader('vary', …)`), so
- * the final header keeps both.
+ * often mistaken for.
+ *
+ * NOTE: Next's app-router runtime owns the `Vary` header of a page
+ * response — it does `res.setHeader('Vary', varyHeader)` (see
+ * next/dist/build/templates/app-page-runtime.js) with its own list, so
+ * whatever we set here is overwritten before the response is sent. That
+ * is why `vercel.json` carries the same declaration: it is applied by
+ * the platform after Next has finished, so it is the one that actually
+ * reaches the client. Keep the two in step — `src/proxy.test.ts` checks
+ * that they agree.
  */
 const VARY_LOCALE = 'Cookie, Accept-Language';
 

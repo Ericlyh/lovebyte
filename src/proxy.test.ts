@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { NextRequest } from 'next/server';
 import { proxy } from './proxy';
 
@@ -141,5 +142,41 @@ describe('proxy — the locale cookie is read, never written (OOP-6721)', () => 
     expect(response.headers.get('x-middleware-request-cookie')).toContain(
       'sb-abc-auth-token',
     );
+  });
+});
+
+describe('the platform layer carries the same declaration (OOP-6721)', () => {
+  /**
+   * Next's app-router runtime owns the `Vary` header of a page response
+   * (`res.setHeader('Vary', varyHeader)` in the app-page runtime), so the
+   * proxy's declaration is overwritten before the response is sent. What
+   * reaches the client is `vercel.json`'s — applied by the platform after
+   * Next has finished. The two have to agree, or the client is told the
+   * response does not vary when it does.
+   */
+  const vercel = JSON.parse(
+    readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'),
+  );
+  const varyHeader = (
+    vercel.headers as { headers: { key: string; value: string }[] }[]
+  )[0].headers.find((h) => h.key.toLowerCase() === 'vary')?.value ?? '';
+
+  it('declares the cookie and language variance', () => {
+    expect(varyHeader).toContain('Cookie');
+    expect(varyHeader).toContain('Accept-Language');
+  });
+
+  it('keeps the values Next sets, in case the platform replaces the header', () => {
+    // If Vercel's config REPLACES the header rather than appending, these
+    // are the only thing keeping an RSC response and a document response
+    // apart in the browser's cache.
+    for (const header of [
+      'rsc',
+      'next-router-state-tree',
+      'next-router-prefetch',
+      'next-router-segment-prefetch',
+    ]) {
+      expect(varyHeader).toContain(header);
+    }
   });
 });

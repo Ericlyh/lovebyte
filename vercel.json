@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/((?!api|_next|_vercel).*)",
+      "headers": [
+        {
+          "key": "Vary",
+          "value": "Cookie, Accept-Language, rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch"
+        }
+      ]
+    }
+  ]
+}
