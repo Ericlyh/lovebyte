@@ -8,8 +8,8 @@
 
 :root {
   /* Action / CTA */
-  --lb-primary:        #fc6b6b;  /* Send gift, Continue, primary CTA (large fills only — see .lb-hero h1 + button fills) */
-  --lb-primary-deep:   #a83e3e;  /* Hover / pressed / text — darkened 2026-09-23 (OOP-4225 Phase 9) for WCAG AA. #cc5858 was 4.11:1 on white; #a83e3e is ~6.8:1. */
+  --lb-primary:        #fc6b6b;  /* FILLS ONLY — button fills, card backs, borders, focus rings. NEVER text: 2.7:1 on the page surface is below the WCAG AA threshold (OOP-6733). Text uses --lb-primary-deep. */
+  --lb-primary-deep:   #a83e3e;  /* TEXT — headings, links, hover states. Darkened 2026-09-23 (OOP-4225 Phase 9) for WCAG AA: #cc5858 was 4.11:1 on white, #a83e3e is ~6.8:1 on white and ~5.8:1 on --lb-surface. */
 
   /* Accents */
   --lb-accent:         #ffce6c;  /* Highlight, ribbons, badges, success */

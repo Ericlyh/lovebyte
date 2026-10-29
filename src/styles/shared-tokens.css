@@ -46,7 +46,17 @@ a {
   color: var(--lb-primary-deep);
   text-decoration: none;
 }
-a:hover { color: var(--lb-primary); }
+/* OOP-6733 — the hover state used --lb-primary (#fc6b6b), which is
+ * 2.68:1 on the page surface: a transient WCAG 1.4.3 failure on every
+ * link in the app, and invisible to axe because axe only samples the
+ * resting state. Hover keeps the resting colour and adds an underline
+ * instead, so the affordance survives without a colour that fails. */
+a:hover {
+  color: var(--lb-primary-deep);
+  text-decoration: underline;
+}
+/* A link that IS a button keeps the button shape — no underline. */
+a.lb-btn:hover { text-decoration: none; }
 
 .lb-container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 .lb-container--narrow { max-width: 720px; margin: 0 auto; padding: 0 24px; }
@@ -342,7 +352,13 @@ a:hover { color: var(--lb-primary); }
 .lb-landing-hero h1 {
   font-family: var(--lb-font-display);
   font-size: clamp(56px, 10vw, 128px);
-  color: var(--lb-primary);
+  /* OOP-6733 — the headline is text, so it needs the text token.
+   * --lb-primary (#fc6b6b) is 2.47:1 against the top of this hero's
+   * own gradient, below the 3:1 WCAG AA threshold for large text, and
+   * axe cannot see it because it cannot resolve a gradient background.
+   * --lb-primary-deep (#a83e3e) is 6.13:1 on --lb-blush and 5.83:1
+   * on --lb-surface — the two ends of the gradient. */
+  color: var(--lb-primary-deep);
   line-height: 0.95;
   margin-bottom: var(--lb-space-3);
 }
@@ -1236,7 +1252,10 @@ a:hover { color: var(--lb-primary); }
 .lb-browse-hero__title {
   font-family: var(--lb-font-display);
   font-size: clamp(40px, 7vw, 72px);
-  color: var(--lb-primary);
+  /* OOP-6733 — same failure as .lb-landing-hero h1: --lb-primary is
+   * 2.51:1 against this hero's gradient. --lb-primary-deep clears the
+   * 3:1 large-text threshold across the whole gradient. */
+  color: var(--lb-primary-deep);
   line-height: 1.05;
   margin-bottom: 16px;
 }
@@ -1534,7 +1553,10 @@ a:hover { color: var(--lb-primary); }
 .lb-listing-hero__title {
   font-family: var(--lb-font-display);
   font-size: clamp(36px, 6vw, 56px);
-  color: var(--lb-primary);
+  /* OOP-6733 — same large-text failure as the other hero titles:
+   * --lb-primary is 2.7:1 on the page surface. --lb-primary-deep is
+   * 5.83:1 there. */
+  color: var(--lb-primary-deep);
   line-height: 1.1;
   margin-bottom: 8px;
 }
@@ -1865,7 +1887,9 @@ a:hover { color: var(--lb-primary); }
 .lb-profile-hero h1 {
   font-family: var(--lb-font-display);
   font-size: clamp(36px, 6vw, 56px);
-  color: var(--lb-primary);
+  /* OOP-6733 — this hero has the same blush→surface gradient as the
+   * landing and browse heroes, so --lb-primary is 2.5:1 here too. */
+  color: var(--lb-primary-deep);
   line-height: 1.1;
   margin: 0 0 8px;
   word-break: break-word;
@@ -1907,7 +1931,10 @@ a:hover { color: var(--lb-primary); }
 }
 
 .lb-profile-links li a:hover {
-  color: var(--lb-primary);
+  /* OOP-6733 — the hover colour was --lb-primary (2.7:1), the same
+   * transient failure as the global a:hover. The dotted→solid border
+   * change is the affordance now. */
+  color: var(--lb-primary-deep);
   border-bottom-style: solid;
 }
 
@@ -2032,7 +2059,8 @@ a:hover { color: var(--lb-primary); }
 }
 
 .lb-profile-section__about-links li a:hover {
-  color: var(--lb-primary);
+  /* OOP-6733 — see .lb-profile-links li a:hover. */
+  color: var(--lb-primary-deep);
   border-bottom-style: solid;
 }
 
@@ -3906,7 +3934,12 @@ a:hover { color: var(--lb-primary); }
   margin: 0 0 10px;
 }
 .lb-support-card a {
-  color: var(--lb-primary, #c25555);
+  /* OOP-6733 — these mailto links are 16px body text, so they need
+   * 4.5:1, not the 3:1 large-text threshold. --lb-primary was
+   * 2.81:1 on --lb-surface-raised (#fff) — an axe `serious`
+   * violation on the three addresses a paying customer uses when a
+   * gift fails. --lb-primary-deep is 6.8:1 on white. */
+  color: var(--lb-primary-deep, #a83e3e);
   font-weight: 600;
   text-decoration: none;
 }
@@ -4176,7 +4209,10 @@ a:hover { color: var(--lb-primary); }
 }
 
 .lb-multimedia-swap-hint {
-  color: var(--lb-primary, #cc5858);
+  /* OOP-6733 — text, so it takes the text token. (This rule has no
+   * matching markup today; it is kept in step with the rest of the
+   * palette so it cannot fail if the class is ever used.) */
+  color: var(--lb-primary-deep, #a83e3e);
   font-weight: 700;
 }
 

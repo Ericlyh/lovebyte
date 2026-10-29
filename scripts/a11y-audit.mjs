@@ -16,6 +16,7 @@ const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
 const ROUTES = [
   { path: '/', label: 'landing' },
   { path: '/browse', label: 'browse' },
+  { path: '/support', label: 'support' },
   { path: '/g/demo', label: 'recipient-demo' },
   { path: '/g/this-token-does-not-exist', label: 'recipient-404' },
   { path: '/l/00000000-0000-0000-0000-000000000000', label: 'listing-404' },
@@ -58,6 +59,21 @@ for (const { path, label } of ROUTES) {
           failureSummary: n.failureSummary,
         })),
       })),
+      // OOP-6733 — an "incomplete" result is NOT a pass. axe reports
+      // "incomplete" when it cannot determine a background (a gradient
+      // hero) and skips the element, so a page can read "0 violations"
+      // while the largest text on it fails WCAG. Counted and printed
+      // separately so that silence cannot be mistaken for a clean bill.
+      incomplete: audit.incomplete.map((v) => ({
+        id: v.id,
+        impact: v.impact,
+        help: v.help,
+        nodes: v.nodes.length,
+        samples: v.nodes.slice(0, 2).map((n) => ({
+          target: n.target.join(' / '),
+          failureSummary: n.failureSummary,
+        })),
+      })),
     });
   } catch (err) {
     results.push({ label, path, error: err.message.slice(0, 100) });
@@ -70,6 +86,7 @@ await browser.close();
 console.log('\n=== A11y Audit (axe-core) ===\n');
 let totalCritical = 0;
 let totalSerious = 0;
+let totalIncomplete = 0;
 for (const r of results) {
   if (r.error) {
     console.log(`❌ ${r.label.padEnd(20)} ${r.path}  ERROR: ${r.error}`);
@@ -79,11 +96,13 @@ for (const r of results) {
   const serious = r.violations.filter((v) => v.impact === 'serious').length;
   const moderate = r.violations.filter((v) => v.impact === 'moderate').length;
   const minor = r.violations.filter((v) => v.impact === 'minor').length;
+  const incomplete = (r.incomplete ?? []).length;
   totalCritical += critical;
   totalSerious += serious;
+  totalIncomplete += incomplete;
   console.log(
     `${r.violations.length === 0 ? '✓' : '⚠'} ${r.label.padEnd(20)} ${r.path.padEnd(50)} ` +
-      `crit=${critical} serious=${serious} mod=${moderate} minor=${minor}`
+      `crit=${critical} serious=${serious} mod=${moderate} minor=${minor} incomplete=${incomplete}`
   );
   for (const v of r.violations) {
     if (v.impact === 'critical' || v.impact === 'serious') {
@@ -96,8 +115,32 @@ for (const r of results) {
       }
     }
   }
+  for (const v of r.incomplete ?? []) {
+    console.log(`     [incomplete] ${v.id}: ${v.help}  (${v.nodes} nodes)`);
+    for (const s of v.samples) {
+      console.log(`       target: ${typeof s === 'string' ? s : s.target}`);
+      if (typeof s === 'object' && s.failureSummary) {
+        console.log(`       why: ${s.failureSummary.replace(/\n/g, ' / ')}`);
+      }
+    }
+  }
 }
 
 console.log(
-  `\n=== Total: ${totalCritical} critical + ${totalSerious} serious ===`
+  `\n=== Total: ${totalCritical} critical + ${totalSerious} serious, ${totalIncomplete} incomplete ===`
 );
+
+// OOP-6733 — an audit that finds a critical or serious violation, or a
+// color-contrast result axe could not resolve, is not a clean bill.
+// Exit non-zero so "the audit passed" is a fact and not a reading.
+const contrastIncomplete = results.flatMap((r) =>
+  (r.incomplete ?? []).filter((v) => v.id === 'color-contrast').map(() => r.path),
+);
+if (totalCritical > 0 || totalSerious > 0 || contrastIncomplete.length > 0) {
+  console.error(
+    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ` +
+      `${contrastIncomplete.length} unresolved color-contrast result(s)` +
+      (contrastIncomplete.length ? ` on ${contrastIncomplete.join(', ')}` : ''),
+  );
+  process.exit(1);
+}
