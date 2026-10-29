@@ -397,4 +397,27 @@ describe('catalog settlement currency (OOP-6714)', () => {
       }
     }
   });
+
+  it('a row in another currency is reported in the settlement currency, and flagged', async () => {
+    // A stray row means migration 0012 has not been applied and its
+    // `price_cents` are in the wrong unit. The feed must not report a
+    // second currency, and the server must say so.
+    const stray = toRow({
+      id: 'stray',
+      title: 'A weekend in Paris',
+      price_cents: 2500,
+      currency: 'EUR',
+    });
+    ROWS.push(stray);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = await getCatalogFeed({});
+      const row = result.gifts.find((g) => g.id === 'stray');
+      expect(row?.currency).toBe('hkd');
+      expect(logged.mock.calls.flat().join(' ')).toContain('settlement currency');
+    } finally {
+      logged.mockRestore();
+      ROWS.splice(ROWS.indexOf(stray), 1);
+    }
+  });
 });
