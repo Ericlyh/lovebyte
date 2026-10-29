@@ -86,7 +86,7 @@ const OWNED_PAGE_SIZE = 20;
  *
  * The aggregate is fetched instead as the `gift_likes(count)` EMBED, so
  * the count arrives with the row (OOP-6722). The mapper used to call
- * the `gift_like_count` RPC once per gift — 21 round trips for a full
+ * the per-gift like-count RPC once per gift — 21 round trips for a full
  * owner library.
  */
 const ownedGiftSelect =

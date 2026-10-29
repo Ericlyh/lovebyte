@@ -250,14 +250,15 @@ const giftSelect =
  * three are read here. `count` may also arrive as a string (bigint), so
  * it is coerced and range-checked.
  *
- * Why an embed and not the `gift_like_count` RPC (OOP-6722): the RPC is
- * `security definer` and counts every row in `gift_likes` for one gift,
- * so calling it once per feed row cost 21 round trips per page render.
- * The embed folds the same count into the `gifts` select, so the whole
- * feed costs ONE query. The counts agree: `gift_likes_select_public` is
- * `using (true)`, so the aggregate sees exactly the rows the
- * `security definer` function sees. `src/lib/catalog.test.ts` pins that
- * equality so the rewrite cannot silently change the numbers.
+ * Why an embed and not the per-gift like-count RPC (OOP-6722): that
+ * function is `security definer` and counts every row in `gift_likes`
+ * for one gift, so calling it once per feed row cost 21 round trips per
+ * page render. The embed folds the same count into the `gifts` select,
+ * so the whole feed costs ONE query. The counts agree:
+ * `gift_likes_select_public` is `using (true)`, so the aggregate sees
+ * exactly the rows the `security definer` function sees.
+ * `src/lib/catalog.test.ts` pins that equality so the rewrite cannot
+ * silently change the numbers.
  */
 function aggregateLikeCount(embed: unknown): number {
   const row = Array.isArray(embed) ? embed[0] : embed;
@@ -354,7 +355,7 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
 
   // The like count rides along in the select (`gift_likes(count)`), so
   // hydrating 20 rows costs no extra round trips (OOP-6722). This used
-  // to fire one `gift_like_count` RPC per row — 21 queries per feed.
+  // to fire one like-count RPC per row — 21 queries per feed.
   let gifts: CatalogGift[] = rows.map((r) => hydrateFeedRow(supabase, r));
 
   // Sort fallback for `most_liked` — re-sort by like_count desc, then
