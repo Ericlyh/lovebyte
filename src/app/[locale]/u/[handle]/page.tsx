@@ -184,13 +184,11 @@ export default async function CreatorProfilePage({ params }: Props) {
       {/* OOP-6728 — the trail from the site root, through the
           catalogue, to this creator's storefront. */}
       <JsonLd
-        nodes={[
-          breadcrumbJsonLd([
-            { name: BRAND.NAME, url: homeUrl() },
-            { name: tNav('browse'), url: browseUrl() },
-            { name: displayName, url: profileUrl(profile.handle) },
-          ]),
-        ]}
+        node={breadcrumbJsonLd([
+          { name: BRAND.NAME, url: homeUrl() },
+          { name: tNav('browse'), url: browseUrl() },
+          { name: displayName, url: profileUrl(profile.handle) },
+        ])}
       />
 
       <Nav />

@@ -74,12 +74,10 @@ export default async function BrowsePage({ params }: Props) {
     <main className="min-h-screen flex flex-col">
       {/* OOP-6728 — the trail from the site root to the catalogue. */}
       <JsonLd
-        nodes={[
-          breadcrumbJsonLd([
-            { name: BRAND.NAME, url: homeUrl() },
-            { name: tNav('browse'), url: browseUrl() },
-          ]),
-        ]}
+        node={breadcrumbJsonLd([
+          { name: BRAND.NAME, url: homeUrl() },
+          { name: tNav('browse'), url: browseUrl() },
+        ])}
       />
 
       {/* `deferAuth` keeps the auth cookie out of this tree so the page

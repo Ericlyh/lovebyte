@@ -141,13 +141,21 @@ export default async function LocaleLayout({
           (Organization) and what it is (WebSite). Published once, here,
           rather than repeated on every page.
 
+          Two script elements, one node each. A reader that picks a
+          single block out of the page — `grep -o '<script
+          type="application/ld+json">.*</script>'`, say — can then
+          parse that block on its own, because it holds exactly one
+          node. Packing both nodes into one element would make that
+          block un-parseable on its own.
+
           It sits AFTER the page's own content on purpose. A page that
           carries its own structured data (the listing's Product, the
           BreadcrumbList on /browse and /u/[handle]) emits it first, so
           the page-specific block is the one a reader — or a crawler
           reading the first JSON-LD element on the page — meets.
         */}
-        <JsonLd nodes={[organizationJsonLd(), websiteJsonLd()]} />
+        <JsonLd node={organizationJsonLd()} />
+        <JsonLd node={websiteJsonLd()} />
       </body>
     </html>
   );

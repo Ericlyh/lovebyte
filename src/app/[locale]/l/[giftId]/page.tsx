@@ -141,20 +141,18 @@ export default async function ListingPage({ params }: Props) {
           price. A free gift emits no `offers` block at all — see the
           free-listing rule in `src/lib/seo/jsonld.ts`. */}
       <JsonLd
-        nodes={[
-          productJsonLd({
-            id: listing.id,
-            title: listing.title,
-            description: listing.description,
-            category: listing.category,
-            priceCents: listing.price_cents,
-            coverUrl: listing.cover_url,
-            creator: {
-              handle: listing.owner.handle,
-              displayName: listing.owner.display_name,
-            },
-          }),
-        ]}
+        node={productJsonLd({
+          id: listing.id,
+          title: listing.title,
+          description: listing.description,
+          category: listing.category,
+          priceCents: listing.price_cents,
+          coverUrl: listing.cover_url,
+          creator: {
+            handle: listing.owner.handle,
+            displayName: listing.owner.display_name,
+          },
+        })}
       />
 
       <Nav />

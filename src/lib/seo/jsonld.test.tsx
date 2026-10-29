@@ -63,7 +63,7 @@ const PAID_LISTING = {
 describe('JSON-LD (OOP-6728)', () => {
   describe('a paid listing', () => {
     const html = renderToStaticMarkup(
-      <JsonLd nodes={[productJsonLd(PAID_LISTING)]} />,
+      <JsonLd node={productJsonLd(PAID_LISTING)} />,
     );
 
     it('renders one JSON-LD script', () => {
@@ -96,9 +96,7 @@ describe('JSON-LD (OOP-6728)', () => {
     it('falls back to the brand image when the listing has no cover', () => {
       const rendered = renderToStaticMarkup(
         <JsonLd
-          nodes={[
-            productJsonLd({ ...PAID_LISTING, coverUrl: null }),
-          ]}
+          node={productJsonLd({ ...PAID_LISTING, coverUrl: null })}
         />,
       );
       const [product] = firstBlock(rendered);
@@ -122,12 +120,10 @@ describe('JSON-LD (OOP-6728)', () => {
     it('falls back to the handle when the creator has no display name', () => {
       const rendered = renderToStaticMarkup(
         <JsonLd
-          nodes={[
-            productJsonLd({
-              ...PAID_LISTING,
-              creator: { handle: 'ada', displayName: null },
-            }),
-          ]}
+          node={productJsonLd({
+            ...PAID_LISTING,
+            creator: { handle: 'ada', displayName: null },
+          })}
         />,
       );
       const [product] = firstBlock(rendered);
@@ -150,7 +146,7 @@ describe('JSON-LD (OOP-6728)', () => {
     it('prices in the settlement currency, to two decimals', () => {
       const rendered = renderToStaticMarkup(
         <JsonLd
-          nodes={[productJsonLd({ ...PAID_LISTING, priceCents: 21835 })]}
+          node={productJsonLd({ ...PAID_LISTING, priceCents: 21835 })}
         />,
       );
       const [product] = firstBlock(rendered);
@@ -172,7 +168,9 @@ describe('JSON-LD (OOP-6728)', () => {
   describe('a free listing', () => {
     it('publishes no Offer at all — not one missing a price', () => {
       const rendered = renderToStaticMarkup(
-        <JsonLd nodes={[productJsonLd({ ...PAID_LISTING, priceCents: null })]} />,
+        <JsonLd
+          node={productJsonLd({ ...PAID_LISTING, priceCents: null })}
+        />,
       );
       const [product] = firstBlock(rendered);
 
@@ -183,7 +181,7 @@ describe('JSON-LD (OOP-6728)', () => {
 
     it('publishes no Offer for a zero-priced listing either', () => {
       const rendered = renderToStaticMarkup(
-        <JsonLd nodes={[productJsonLd({ ...PAID_LISTING, priceCents: 0 })]} />,
+        <JsonLd node={productJsonLd({ ...PAID_LISTING, priceCents: 0 })} />,
       );
       const [product] = firstBlock(rendered);
 
@@ -195,13 +193,11 @@ describe('JSON-LD (OOP-6728)', () => {
     it('publishes an ordered trail from the site root', () => {
       const rendered = renderToStaticMarkup(
         <JsonLd
-          nodes={[
-            breadcrumbJsonLd([
-              { name: 'Lovorithm', url: homeUrl() },
-              { name: 'Browse', url: browseUrl() },
-              { name: 'Ada', url: profileUrl('ada') },
-            ]),
-          ]}
+          node={breadcrumbJsonLd([
+            { name: 'Lovorithm', url: homeUrl() },
+            { name: 'Browse', url: browseUrl() },
+            { name: 'Ada', url: profileUrl('ada') },
+          ])}
         />,
       );
       const [breadcrumb] = firstBlock(rendered);
@@ -231,15 +227,22 @@ describe('JSON-LD (OOP-6728)', () => {
   });
 
   describe('the site', () => {
-    it('publishes the Organization and the WebSite', () => {
+    it('publishes the Organization', () => {
       const rendered = renderToStaticMarkup(
-        <JsonLd nodes={[organizationJsonLd(), websiteJsonLd()]} />,
+        <JsonLd node={organizationJsonLd()} />,
       );
-      const [organization, website] = firstBlock(rendered);
+      const [organization] = firstBlock(rendered);
 
       expect(organization['@type']).toBe('Organization');
       expect(organization.name).toBe('Lovorithm');
       expect(organization.url).toBe('https://lovorithm.vercel.app');
+    });
+
+    it('publishes the WebSite', () => {
+      const rendered = renderToStaticMarkup(
+        <JsonLd node={websiteJsonLd()} />,
+      );
+      const [website] = firstBlock(rendered);
 
       expect(website['@type']).toBe('WebSite');
       expect(website.name).toBe('Lovorithm');
@@ -247,6 +250,32 @@ describe('JSON-LD (OOP-6728)', () => {
       expect(website.publisher).toEqual({
         '@id': 'https://lovorithm.vercel.app/#organization',
       });
+    });
+  });
+
+  /**
+   * A reader that picks ONE block off the page — `grep -o '<script
+   * type="application/ld+json">.*</script>'` — can parse that block on
+   * its own only if it holds a single node. A block with two nodes
+   * (`[{…},{…}]`) is not valid JSON on its own, and a regex that
+   * captures the array's contents gets `{…},{…}` back.
+   */
+  describe('a block on its own', () => {
+    it('holds exactly one node, so it parses by itself', () => {
+      const rendered = renderToStaticMarkup(
+        <JsonLd node={organizationJsonLd()} />,
+      );
+
+      // The raw text of the block, as a reader that picked this block
+      // off the page would see it.
+      const raw = /<script type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(
+        rendered,
+      )?.[1];
+      expect(raw).toBeDefined();
+
+      const parsed = JSON.parse(raw as string);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0]['@type']).toBe('Organization');
     });
   });
 
@@ -259,13 +288,11 @@ describe('JSON-LD (OOP-6728)', () => {
     it('cannot close the script element', () => {
       const rendered = renderToStaticMarkup(
         <JsonLd
-          nodes={[
-            productJsonLd({
-              ...PAID_LISTING,
-              title: 'A gift </script><script>alert(1)</script>',
-              description: 'Ampersands & <angles> too',
-            }),
-          ]}
+          node={productJsonLd({
+            ...PAID_LISTING,
+            title: 'A gift </script><script>alert(1)</script>',
+            description: 'Ampersands & <angles> too',
+          })}
         />,
       );
 
@@ -280,21 +307,21 @@ describe('JSON-LD (OOP-6728)', () => {
 
   it('keeps every block it renders valid JSON', () => {
     const rendered = renderToStaticMarkup(
-      <JsonLd
-        nodes={[
-          productJsonLd(PAID_LISTING),
-          breadcrumbJsonLd([{ name: 'Lovorithm', url: homeUrl() }]),
-          organizationJsonLd(),
-          websiteJsonLd(),
-        ]}
-      />,
+      <>
+        <JsonLd node={productJsonLd(PAID_LISTING)} />
+        <JsonLd
+          node={breadcrumbJsonLd([{ name: 'Lovorithm', url: homeUrl() }])}
+        />
+        <JsonLd node={organizationJsonLd()} />
+        <JsonLd node={websiteJsonLd()} />
+      </>,
     );
 
     const blocks = parseJsonLd(rendered);
-    expect(blocks).toHaveLength(1);
-    expect(blocks[0]).toHaveLength(4);
-    for (const node of blocks[0]) {
-      expect(node['@context']).toBe('https://schema.org');
+    expect(blocks).toHaveLength(4);
+    for (const block of blocks) {
+      expect(block).toHaveLength(1);
+      expect(block[0]['@context']).toBe('https://schema.org');
     }
   });
 
