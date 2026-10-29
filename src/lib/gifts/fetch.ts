@@ -10,6 +10,22 @@ import {
 } from './schemas';
 
 /**
+ * The payload schema for each gift type this fetcher validates.
+ *
+ * `quiz` is deliberately absent: the quiz flow validates its payload at
+ * the /g/[token]/open dispatch, which renders its own "not shipped yet"
+ * state for a mismatch. The other five are checked here as well, so a
+ * broken payload never reaches the envelope.
+ */
+const PAYLOAD_SCHEMAS: Record<string, { safeParse: (v: unknown) => { success: boolean } }> = {
+  animated_letter: AnimatedLetterPayloadSchema,
+  memory_cards: MemoryCardsPayloadSchema,
+  dragdrop_puzzle: DragdropPuzzlePayloadSchema,
+  multimedia_collage: MultimediaCollagePayloadSchema,
+  code: CodeGiftPayloadSchema,
+};
+
+/**
  * Resolve a share token to a RecipientEnvelope.
  *
  * Dispatch:
@@ -64,16 +80,16 @@ async function fetchFromSupabase(
   // Validate the payload against the type-specific schema at the
   // type-narrow boundary (architecture §6). Each gift type validates
   // here AND at the /g/[token]/open dispatch — defence in depth.
-  if (row.gifts.type === 'animated_letter') {
-    AnimatedLetterPayloadSchema.parse(row.gifts.payload);
-  } else if (row.gifts.type === 'memory_cards') {
-    MemoryCardsPayloadSchema.parse(row.gifts.payload);
-  } else if (row.gifts.type === 'dragdrop_puzzle') {
-    DragdropPuzzlePayloadSchema.parse(row.gifts.payload);
-  } else if (row.gifts.type === 'multimedia_collage') {
-    MultimediaCollagePayloadSchema.parse(row.gifts.payload);
-  } else if (row.gifts.type === 'code') {
-    CodeGiftPayloadSchema.parse(row.gifts.payload);
+  //
+  // A mismatch resolves to null instead of throwing (OOP-6715). A
+  // share can point at any listed gift now that a buyer can mint one
+  // for a free listing, and the seeded catalogue has listings whose
+  // payload does not match its schema. `parse` turned that mismatch
+  // into a 500 on /g/[token]; null renders the recipient page's
+  // not-found state, which is what an unresolvable token does anyway.
+  const payloadSchema = PAYLOAD_SCHEMAS[row.gifts.type];
+  if (payloadSchema && !payloadSchema.safeParse(row.gifts.payload).success) {
+    return null;
   }
 
   return {

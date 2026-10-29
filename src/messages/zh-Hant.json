@@ -555,7 +555,20 @@
     "submitting": "開緊結帳頁…",
     "errors": {
       "invalidRecipient": "請輸入有效嘅電郵地址。",
-      "creatorNotReady": "呢個創作人仲未設定收款。"
+      "creatorNotReady": "呢個創作人仲未設定收款。",
+      "signInAgain": "你嘅登入狀態已經過期，請重新登入再繼續。"
+    },
+    "free": {
+      "ledePrefix": "一份免費禮物，來自 {creator}",
+      "deliverySendToRecipientHint": "我哋會用電郵將分享連結傳畀對方。",
+      "deliveryBuyerSharesHint": "我哋會畀你一條連結，由你親手送出。",
+      "submit": "免費送出",
+      "submitting": "送緊…",
+      "shareLinkLabel": "分享連結",
+      "shareLinkHint": "任何攞到呢條連結嘅人都可以打開呢份禮物，請當密碼咁保管。",
+      "emailedTo": "我哋已經用電郵將連結傳咗畀 {email}。",
+      "emailFailed": "我哋未能用電郵傳送連結 —— 請複製上面嘅連結，自己傳畀收禮人。",
+      "copyToSend": "請複製上面嘅連結，自己傳畀收禮人。"
     },
     "success": {
       "title": "多謝你！",

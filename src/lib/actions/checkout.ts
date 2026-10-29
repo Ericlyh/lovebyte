@@ -1,8 +1,10 @@
 'use server';
 
+import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import { sendShareEmail } from '@/lib/email';
 import {
   PLATFORM_FEE_BPS_DEFAULT,
   SETTLEMENT_CURRENCY,
@@ -13,11 +15,15 @@ import {
 /**
  * Checkout + Connect onboarding server actions (M-E, OOP-4277).
  *
- * Two actions:
+ * Three actions:
  *   - `startCheckoutSessionAction`: gates on the gift's `is_listed`,
  *     price > 0, AND the creator's `stripe_charges_enabled`. If any
  *     fails we return early — never create a Stripe Checkout Session
  *     for a purchase that can't settle.
+ *   - `startFreeGiftAction`: the free-listing send path (OOP-6715).
+ *     A gift with `price_cents IS NULL` has no money to move, so it
+ *     never opens a Stripe session — it mints the share row directly
+ *     and hands the buyer the link. See the long comment above it.
  *   - `startConnectOnboardingAction`: creates (or reuses) the creator's
  *     Stripe Express account + AccountLink and returns the hosted URL.
  *     The account id is persisted to `profiles.stripe_account_id`
@@ -43,9 +49,26 @@ import {
  * for "did this pay" is the Stripe webhook.
  */
 
+/**
+ * The gift id shape.
+ *
+ * NOT `z.string().uuid()`. Zod enforces RFC 4122 — the version nibble
+ * must be 1-5 and the variant nibble 8/9/a/b — but Postgres does not:
+ * any 8-4-4-4-12 hex string is a valid `uuid` there. The seeded
+ * catalogue uses `aaaa1111-0000-0000-0000-000000000001`-style ids,
+ * which are valid Postgres uuids with a version nibble of 0, so Zod
+ * rejected every one of them and the action answered "giftId must be
+ * a UUID." for 8 of the 9 live listings.
+ *
+ * The `/api/gift-comments/[giftId]` route already validates ids this
+ * way; this is the same rule, applied to the server action.
+ */
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const checkoutInputSchema = z
   .object({
-    giftId: z.string().uuid('giftId must be a UUID.'),
+    giftId: z.string().regex(UUID_RE, 'giftId must be a UUID.'),
     deliveryMode: z.enum(['send_to_recipient', 'buyer_shares']),
     recipientContact: z
       .string()
@@ -113,7 +136,11 @@ export async function startCheckoutSessionAction(
     return { ok: false, error: 'This gift is no longer available.' };
   }
   if (!gift.price_cents || gift.price_cents <= 0) {
-    return { ok: false, error: 'This gift is free — no checkout needed.' };
+    // Defence in depth. The checkout page routes free gifts to
+    // `startFreeGiftAction`, so a live listing can no longer reach
+    // this branch — it exists only for a stale client that calls the
+    // paid action directly (OOP-6715).
+    return { ok: false, error: 'This gift is free — no payment is needed.' };
   }
   // The price is charged in the settlement currency (HKD). A row that
   // still carries another currency has a `price_cents` in the wrong
@@ -193,6 +220,143 @@ export async function startCheckoutSessionAction(
     console.error('[checkout/start] stripe error', (e as Error).message);
     return { ok: false, error: 'Could not start checkout. Please try again.' };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Free gifts (OOP-6715)
+// ---------------------------------------------------------------------------
+
+export type StartFreeGiftResult =
+  | { ok: true; shareUrl: string; emailed: boolean }
+  | { ok: false; error: string };
+
+/**
+ * `startFreeGiftAction` — send a free listing (OOP-6715).
+ *
+ * A listed gift with `price_cents IS NULL` has no money to move, so it
+ * can never open a Stripe Checkout Session. The catalogue intent was
+ * "free / contact creator" (`0002_marketplace_v2.sql`), but the contact
+ * half was never built, so the listing CTA sent every free buyer into
+ * a checkout that could only refuse them — after they had signed up and
+ * typed a recipient email.
+ *
+ * This action is the send path the free listing was missing. It mints
+ * the `shares` row itself and hands back the link, which is exactly
+ * what the paid flow ends up with after the Stripe webhook fires:
+ *
+ *   paid  → buyer pays → webhook inserts shares(gift_id, created_by=buyer)
+ *   free  → buyer clicks send → this action inserts the same row
+ *
+ * Two deliberate differences from the paid path:
+ *
+ *   1. No `purchases` row. `purchases.amount_cents` carries
+ *      `check (amount_cents > 0)`, so a zero-amount purchase is not
+ *      representable, and purchases are service-role-write only. The
+ *      buyer's history lives in `/purchases` for paid gifts only; a
+ *      free gift shows its link inline instead.
+ *   2. The recipient email is best-effort. Resend is not configured in
+ *      production yet (OOP-6168), so the email usually fails — but the
+ *      share is already minted and the buyer gets the link on screen,
+ *      so a failed email is a degraded delivery, not a failed send.
+ *      We report which happened instead of swallowing it.
+ *
+ * RLS: `shares_insert_owner` checks only `auth.uid() = created_by`, so
+ * the buyer may mint a share for a gift they did not create. That is
+ * the same row the Stripe webhook writes for a paid purchase, where
+ * `created_by` is the buyer too.
+ */
+export async function startFreeGiftAction(
+  rawInput: unknown,
+): Promise<StartFreeGiftResult> {
+  const parsed = checkoutInputSchema.safeParse(rawInput);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? 'Invalid input.',
+    };
+  }
+  const { giftId, deliveryMode, recipientContact } = parsed.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser();
+  if (userErr || !user) {
+    return { ok: false, error: 'unauthenticated' };
+  }
+
+  const { data: gift, error: giftErr } = await supabase
+    .from('gifts')
+    .select('id, title, price_cents')
+    .eq('id', giftId)
+    .eq('is_listed', true)
+    .is('deleted_at', null)
+    .maybeSingle();
+
+  if (giftErr) {
+    console.error('[checkout/free] gift read failed', giftErr.message);
+    return { ok: false, error: 'Could not load this listing right now.' };
+  }
+  if (!gift) {
+    return { ok: false, error: 'This gift is no longer available.' };
+  }
+  if (gift.price_cents && gift.price_cents > 0) {
+    // The buyer is on the paid form; this action only mints free
+    // shares. Refusing here keeps a stale client from getting a free
+    // link for a gift that should have been paid for.
+    return {
+      ok: false,
+      error: 'This gift is not free — continue to payment instead.',
+    };
+  }
+
+  // `shares.token` is the PK: 32 hex chars, the same shape the Stripe
+  // webhook mints. The column default would do this too, but doing it
+  // here saves a round trip and lets us return the link immediately.
+  const shareToken = randomBytes(16).toString('hex');
+  const { error: shareErr } = await supabase.from('shares').insert({
+    token: shareToken,
+    gift_id: gift.id,
+    created_by: user.id,
+  });
+
+  if (shareErr) {
+    console.error('[checkout/free] share insert failed', shareErr.message);
+    return { ok: false, error: 'Could not create the share link. Try again.' };
+  }
+
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(
+    /\/$/,
+    '',
+  );
+  const shareUrl = `${siteUrl}/g/${shareToken}`;
+
+  let emailed = false;
+  const recipient = recipientContact?.trim();
+  if (deliveryMode === 'send_to_recipient' && recipient) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, handle')
+      .eq('id', user.id)
+      .maybeSingle();
+    const buyerName =
+      profile?.display_name ?? (profile?.handle ? `@${profile.handle}` : null);
+
+    const sent = await sendShareEmail({
+      to: recipient,
+      giftTitle: gift.title,
+      shareToken,
+      buyerName,
+    });
+    emailed = sent.ok;
+    if (!sent.ok) {
+      // Not fatal — the link is on screen for the buyer to copy.
+      console.error('[checkout/free] share email failed', sent.error);
+    }
+  }
+
+  return { ok: true, shareUrl, emailed };
 }
 
 // ---------------------------------------------------------------------------

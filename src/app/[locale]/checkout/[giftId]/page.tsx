@@ -67,6 +67,13 @@ export default async function CheckoutPage({ params }: Props) {
     owner?.display_name ?? (owner?.handle ? `@${owner.handle}` : 'a creator');
   const creatorReady = !!owner?.stripe_charges_enabled;
 
+  // A free listing has no money to move, so it never opens a Stripe
+  // session — and it must not be gated on the creator's Stripe
+  // readiness either, because no payout is involved (OOP-6715).
+  // `gifts_price_cents_chk` constrains `price_cents` to NULL or a
+  // positive integer, so a listed gift is either free or paid.
+  const isFree = gift.price_cents == null || gift.price_cents <= 0;
+
   return (
     <main className="min-h-screen flex flex-col">
       <Nav />
@@ -74,7 +81,9 @@ export default async function CheckoutPage({ params }: Props) {
       <section className="lb-onboarding-card">
         <h1>{t('title')}</h1>
         <p className="lede">
-          {t('ledePrefix', { creator: creatorLabel })}
+          {isFree
+            ? t('free.ledePrefix', { creator: creatorLabel })
+            : t('ledePrefix', { creator: creatorLabel })}
         </p>
 
         <article className="lb-checkout-summary">
@@ -83,7 +92,9 @@ export default async function CheckoutPage({ params }: Props) {
           <PriceBadge priceCents={gift.price_cents} />
         </article>
 
-        {creatorReady ? (
+        {isFree ? (
+          <CheckoutForm giftId={gift.id} variant="free" />
+        ) : creatorReady ? (
           <CheckoutForm giftId={gift.id} />
         ) : (
           <div className="lb-form__error" role="alert">

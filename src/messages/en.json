@@ -555,7 +555,20 @@
     "submitting": "Opening checkout…",
     "errors": {
       "invalidRecipient": "Please enter a valid email address.",
-      "creatorNotReady": "This creator is not set up to receive payouts yet."
+      "creatorNotReady": "This creator is not set up to receive payouts yet.",
+      "signInAgain": "Your session has expired. Please sign in again to continue."
+    },
+    "free": {
+      "ledePrefix": "A free gift from {creator}",
+      "deliverySendToRecipientHint": "We’ll email them the share link.",
+      "deliveryBuyerSharesHint": "We’ll give you the link so you can deliver it yourself.",
+      "submit": "Send for free",
+      "submitting": "Sending…",
+      "shareLinkLabel": "Share link",
+      "shareLinkHint": "Anyone with this link can open the gift. Treat it like a password.",
+      "emailedTo": "We’ve emailed the link to {email}.",
+      "emailFailed": "We couldn’t email the link — copy it above and send it to your recipient yourself.",
+      "copyToSend": "Copy the link above and send it to your recipient."
     },
     "success": {
       "title": "Thank you!",
