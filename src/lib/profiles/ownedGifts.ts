@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { SETTLEMENT_CURRENCY } from '@/lib/money';
+import { resolveCoverUrl } from '@/lib/catalog';
 
 /**
  * Owner-only "my gifts" collection for /u/[handle] (OOP-5685).
@@ -47,6 +48,8 @@ export type OwnedGift = {
   like_count: number;
   is_listed: boolean;
   cover_media_id: string | null;
+  /** Absolute URL of the cover photo, or null when there is none (OOP-6717). */
+  cover_url: string | null;
   created_at: string;
   owner: {
     id: string;
@@ -66,7 +69,7 @@ const TYPE_LABEL: Record<OwnedGift['type'], string> = {
 const OWNED_PAGE_SIZE = 20;
 
 const ownedGiftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, like_count, is_listed, cover_media_id, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, like_count, is_listed, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
 
 /**
  * Fetch the creator's own gifts by handle. Returns `[]` if the handle
@@ -133,6 +136,10 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
         like_count: likeCount,
         is_listed: r.is_listed,
         cover_media_id: r.cover_media_id,
+        // The card renders the cover photo when there is one, and the
+        // category tile when there is not — same resolution as the
+        // catalogue feed (OOP-6717).
+        cover_url: resolveCoverUrl(supabase, r),
         created_at: r.created_at,
         owner: {
           id: owner?.id ?? profile.id,

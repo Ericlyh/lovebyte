@@ -56,6 +56,7 @@ function toRow(partial: Row): Row {
     description: null,
     category: 'memory_cards',
     cover_media_id: null,
+    cover: null,
     payload: null,
     deleted_at: null,
     is_listed: true,
@@ -301,6 +302,16 @@ function createFakeClient() {
     rpc() {
       return Promise.resolve({ data: 0, error: null });
     },
+    /** The media bucket is public, so the public URL is a plain path. */
+    storage: {
+      from(bucket: string) {
+        return {
+          getPublicUrl(path: string) {
+            return { data: { publicUrl: `https://cdn.test/${bucket}/${path}` } };
+          },
+        };
+      },
+    },
   };
 }
 
@@ -419,5 +430,82 @@ describe('catalog settlement currency (OOP-6714)', () => {
       logged.mockRestore();
       ROWS.splice(ROWS.indexOf(stray), 1);
     }
+  });
+});
+
+// ─── Cover images (OOP-6717) ───────────────────────────────────────────────
+
+describe('catalog cover images (OOP-6717)', () => {
+  /**
+   * The bug: `hydrateFeedRow` read `cover_media_id` and threw it away, so
+   * the feed carried no image field at all and /browse drew an emoji tile
+   * for every listing — the catalogue looked like a template.
+   */
+  async function coverFor(partial: Row): Promise<string | null | undefined> {
+    const row = toRow(partial);
+    ROWS.push(row);
+    try {
+      const result = await getCatalogFeed({});
+      return result.gifts.find((g) => g.id === row.id)?.cover_url;
+    } finally {
+      ROWS.splice(ROWS.indexOf(row), 1);
+    }
+  }
+
+  it('resolves the cover from cover_media_id', async () => {
+    const url = await coverFor({
+      id: 'with-cover',
+      cover_media_id: 'm1',
+      cover: { id: 'm1', storage_path: 'gifts/catalogue/me/cover.jpg' },
+    });
+    expect(url).toBe('https://cdn.test/lovorithm-media/gifts/catalogue/me/cover.jpg');
+  });
+
+  it('falls back to the first photo in the payload', async () => {
+    // The publish card treats the cover as optional, so a creator can
+    // list a gift with photos in its payload and no cover of its own.
+    const url = await coverFor({
+      id: 'payload-cover',
+      type: 'dragdrop_puzzle',
+      payload: { grid: 4, photo_url: 'https://cdn.test/photo.jpg' },
+    });
+    expect(url).toBe('https://cdn.test/photo.jpg');
+  });
+
+  it('takes the first pair of a memory-cards payload', async () => {
+    const url = await coverFor({
+      id: 'memory-cover',
+      type: 'memory_cards',
+      payload: {
+        pairs: [
+          { caption: 'first', photo_url: 'https://cdn.test/one.jpg' },
+          { caption: 'second', photo_url: 'https://cdn.test/two.jpg' },
+        ],
+      },
+    });
+    expect(url).toBe('https://cdn.test/one.jpg');
+  });
+
+  it('ignores a collage item that is not a photo', async () => {
+    const url = await coverFor({
+      id: 'collage-cover',
+      type: 'multimedia_collage',
+      payload: {
+        media: [
+          { type: 'audio', url: 'https://cdn.test/song.mp3' },
+          { type: 'photo', url: 'https://cdn.test/street.jpg' },
+        ],
+      },
+    });
+    expect(url).toBe('https://cdn.test/street.jpg');
+  });
+
+  it('reports no cover for a gift with no photo at all', async () => {
+    const url = await coverFor({
+      id: 'no-cover',
+      type: 'quiz',
+      payload: { questions: [{ q: 'Where did we meet?', options: ['a', 'b'] }] },
+    });
+    expect(url).toBeNull();
   });
 });

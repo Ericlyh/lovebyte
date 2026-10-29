@@ -11,9 +11,9 @@ import { PriceBadgeView } from './PriceBadgeView';
  * (OOP-6710), while `/u/[handle]` still renders cards on the server, so
  * the markup lives here rather than in either wrapper.
  *
- * Cover is a category-tinted tile (placeholder gradient; cover image
- * arrives in M-F when gift_media is fully wired). Title + creator handle +
- * price + like count.
+ * Cover is the listing's cover photo when it has one (OOP-6717), and a
+ * category-tinted tile otherwise. Title + creator handle + price + like
+ * count.
  *
  * Like count is rendered as a small inline badge. We deliberately don't
  * show the like BUTTON on /browse cards — M-C's acceptance test covers the
@@ -45,9 +45,20 @@ export function GiftCardView({ gift, byText, likesLabel, freeLabel }: Props) {
   return (
     <Link href={`/l/${gift.id}`} className="lb-gift-card">
       <div className="lb-gift-card__cover" data-category={gift.category ?? 'unknown'}>
-        <span className="lb-gift-card__emoji" aria-hidden="true">
-          {emoji}
-        </span>
+        {gift.cover_url ? (
+          // Decorative: the title sits right below it, so the image
+          // carries no alt text of its own.
+          <img
+            src={gift.cover_url}
+            alt=""
+            className="lb-gift-card__img"
+            loading="lazy"
+          />
+        ) : (
+          <span className="lb-gift-card__emoji" aria-hidden="true">
+            {emoji}
+          </span>
+        )}
       </div>
       <div className="lb-gift-card__body">
         <h3 className="lb-gift-card__title">{gift.title}</h3>

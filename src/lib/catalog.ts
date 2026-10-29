@@ -8,6 +8,7 @@ import {
   SETTLEMENT_CURRENCY,
   SETTLEMENT_CURRENCY_DB,
 } from '@/lib/money';
+import { BRAND } from '@/lib/brand';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -70,6 +71,15 @@ export type CatalogGift = {
   currency: string;
   published_at: string;
   like_count: number;
+  /**
+   * Absolute URL of the listing's cover image, or null when the listing
+   * has no image at all (OOP-6717).
+   *
+   * The feed used to drop the cover entirely — `hydrateFeedRow` read
+   * `cover_media_id` and threw it away, so the JSON had no image field
+   * and /browse drew an emoji tile for every gift.
+   */
+  cover_url: string | null;
   owner: {
     id: string;
     handle: string;
@@ -228,7 +238,7 @@ function priceTierRange(tier: PriceTier): PriceTierRange {
 }
 
 const giftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, cover_media_id, payload, owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, cover_media_id, payload, cover:gift_media!cover_media_id (id, storage_path), owner:profiles_public!owner_id (id, handle, display_name)';
 
 /**
  * Run the feed query. Pagination is via range: we fetch `PAGE_SIZE + 1`
@@ -388,6 +398,7 @@ async function hydrateFeedRow(
   } catch {
     likeCount = 0;
   }
+  const coverUrl = resolveCoverUrl(supabase, row);
   return {
     id: row.id,
     type: row.type,
@@ -398,12 +409,79 @@ async function hydrateFeedRow(
     currency: SETTLEMENT_CURRENCY,
     published_at: row.published_at,
     like_count: likeCount,
+    cover_url: coverUrl,
     owner: {
       id: owner?.id ?? '',
       handle: owner?.handle ?? '',
       display_name: owner?.display_name ?? null,
     },
   };
+}
+
+/**
+ * The cover image of a gift row, or null when it has none.
+ *
+ * Two sources, in order:
+ *   1. `cover_media_id` → the `gift_media` row it points at. This is what
+ *      the publish card sets when a creator picks a cover photo.
+ *   2. The first photo in the payload. The publish card treats the cover
+ *      as optional, so a creator can list a gift whose photos live in the
+ *      payload without picking one.
+ *
+ * The row must carry the embedded media — `cover:gift_media!cover_media_id
+ * (id, storage_path)` — and its payload.
+ *
+ * Exported because the creator's own collection (`getOwnedGifts`) renders
+ * the same cards and must resolve covers the same way.
+ */
+export function resolveCoverUrl(
+  supabase: SupabaseClient,
+  row: { cover?: unknown; payload?: unknown },
+): string | null {
+  const cover = Array.isArray(row.cover) ? row.cover[0] : row.cover;
+  if (cover?.storage_path) return publicMediaUrl(supabase, cover.storage_path);
+  return coverUrlFromPayload(row.payload);
+}
+
+/**
+ * Absolute URL of a Storage object in the brand media bucket.
+ *
+ * The bucket is public (OOP-5816), so the Storage public endpoint serves
+ * the object without a signed URL — the same URL the upload routes hand
+ * back to the client.
+ */
+function publicMediaUrl(supabase: SupabaseClient, storagePath: string): string {
+  return supabase.storage
+    .from(BRAND.STORAGE_BUCKET)
+    .getPublicUrl(storagePath).data.publicUrl;
+}
+
+/**
+ * Cover for a listing that has photos but no explicit cover.
+ *
+ * The publish card treats the cover photo as OPTIONAL, so a creator can
+ * list a gift whose photos live in the payload without picking one. The
+ * first photo of the payload is the honest stand-in for the cover.
+ *
+ * A gift with no photo at all — a quiz, a code gift — has no cover and
+ * keeps its category tile. Only photos count: a collage's audio or
+ * video item would render as a broken image.
+ */
+function coverUrlFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as Record<string, any>;
+  const candidates = [
+    p.pairs?.[0]?.photo_url, // memory_cards
+    p.photo_url, // dragdrop_puzzle
+    p.media?.find?.((m: any) => m?.type === 'photo')?.url, // multimedia_collage
+    p.inline_media?.find?.((m: any) => m?.type === 'photo')?.url, // animated_letter
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && /^https?:\/\//.test(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 /**

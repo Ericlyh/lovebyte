@@ -1305,6 +1305,7 @@ a:hover { color: var(--lb-primary); }
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #ffe8e7, #fff1d6);
+  overflow: hidden;
 }
 .lb-gift-card__cover[data-category="memory_cards"]      { background: linear-gradient(135deg, #ffe8e7, #f5d4d2); }
 .lb-gift-card__cover[data-category="dragdrop_puzzle"]    { background: linear-gradient(135deg, #d6e8ff, #c2d8f5); }
@@ -1312,6 +1313,14 @@ a:hover { color: var(--lb-primary); }
 .lb-gift-card__cover[data-category="multimedia_collage"]{ background: linear-gradient(135deg, #e6f4ea, #cfe6d5); }
 .lb-gift-card__cover[data-category="animated_letter"]   { background: linear-gradient(135deg, #f5e9d4, #e8d8c8); }
 .lb-gift-card__emoji { font-size: 56px; line-height: 1; }
+/* The cover photo fills the tile; the category gradient shows through
+   only while the image loads (OOP-6717). */
+.lb-gift-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
 
 .lb-gift-card__body {
   padding: var(--lb-space-4);

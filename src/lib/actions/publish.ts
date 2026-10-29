@@ -45,10 +45,10 @@ const publishInputSchema = z.object({
  *   2. Load the gift + creator's stripe_charges_enabled.
  *   3. If price > 0 AND creator not Stripe-enabled → return needsStripe;
  *      client redirects to onboarding, then re-calls with publishAfterStripe.
- *   4. Update gifts: is_listed=true, published_at=now(), plus the listing
- *      fields (title, description, cover_media_id, price_cents, currency,
- *      platform_fee_bps). `currency` is always the settlement currency
- *      (HKD) — it is not a creator's choice (OOP-6714).
+ *   4. Update gifts: is_listed=true, published_at=now(), status='published',
+ *      plus the listing fields (title, description, cover_media_id,
+ *      price_cents, currency, platform_fee_bps). `currency` is always the
+ *      settlement currency (HKD) — it is not a creator's choice (OOP-6714).
  *   5. Return { ok: true, giftId } so the client can redirect.
  *
  * Auth: requires authenticated user who owns the gift.
@@ -142,26 +142,51 @@ export async function publishToMarketplaceAction(
 
   // Perform the publish update.
   const now = new Date().toISOString();
+  const listingFields = {
+    is_listed: true,
+    published_at: now,
+    title,
+    description: description ?? null,
+    cover_media_id: coverMediaId ?? null,
+    price_cents: effectivePriceCents,
+    // The marketplace settles in one currency (OOP-6714). A creator
+    // does not pick one: every listing is priced in HKD, so the
+    // catalogue, the filters and the platform fee all share a unit.
+    currency: SETTLEMENT_CURRENCY_DB,
+    platform_fee_bps: platformFeeBps,
+  };
+
   const { error: updateErr } = await supabase
     .from('gifts')
-    .update({
-      is_listed: true,
-      published_at: now,
-      title,
-      description: description ?? null,
-      cover_media_id: coverMediaId ?? null,
-      price_cents: effectivePriceCents,
-      // The marketplace settles in one currency (OOP-6714). A creator
-      // does not pick one: every listing is priced in HKD, so the
-      // catalogue, the filters and the platform fee all share a unit.
-      currency: SETTLEMENT_CURRENCY_DB,
-      platform_fee_bps: platformFeeBps,
-    })
+    // A listed gift is a published gift (OOP-6717). `status` is what
+    // tells a listed row apart from a draft the creator is still
+    // working on.
+    .update({ ...listingFields, status: 'published' })
     .eq('id', giftId);
 
   if (updateErr) {
-    console.error('[publish] gift update failed', updateErr.message);
-    return { ok: false, needsStripe: false, error: 'Could not publish this gift right now.' };
+    // `gifts_status_check` only allows draft/sent/archived until
+    // migration 0013 is applied, and there is no DDL path from the
+    // agent host — the change needs a human paste (OOP-6717). Publish
+    // anyway rather than fail the creator's publish: the listing goes
+    // up, and `status` catches up as soon as the migration lands.
+    const statusNotMigrated =
+      updateErr.code === '23514' && /status/.test(updateErr.message);
+    if (!statusNotMigrated) {
+      console.error('[publish] gift update failed', updateErr.message);
+      return { ok: false, needsStripe: false, error: 'Could not publish this gift right now.' };
+    }
+    console.warn(
+      '[publish] gifts.status = published rejected — migration 0013_gifts_status_published.sql is not applied yet',
+    );
+    const { error: retryErr } = await supabase
+      .from('gifts')
+      .update(listingFields)
+      .eq('id', giftId);
+    if (retryErr) {
+      console.error('[publish] gift update failed', retryErr.message);
+      return { ok: false, needsStripe: false, error: 'Could not publish this gift right now.' };
+    }
   }
 
   return { ok: true, giftId };
