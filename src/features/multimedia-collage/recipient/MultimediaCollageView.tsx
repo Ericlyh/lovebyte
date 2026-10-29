@@ -94,7 +94,7 @@ export function MultimediaCollageView({
         <h1 className="lb-multimedia__heading">{t('heading', { name: senderName })}</h1>
         <p className="lb-multimedia__lede">{t('lede')}</p>
 
-        <div className={`lb-multimedia__canvas lb-multimedia__canvas--${payload.template}`}>
+        <div className="lb-multimedia__canvas">
           {payload.media.map((item, idx) => (
             <CanvasMediaItem key={idx} item={item} index={idx} />
           ))}

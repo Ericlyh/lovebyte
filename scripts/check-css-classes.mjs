@@ -40,11 +40,11 @@ export const REPO_ROOT = path.resolve(
 // variants are declared here instead. A prefix that is neither
 // type-resolvable nor listed here is reported as unresolved and fails the
 // check — a human has to say what it can be.
-export const DYNAMIC_VARIANT_FALLBACK = {
-  // `template` is a free-form string on the wire. The builder offers
-  // exactly these three (MultimediaCollageBuilderForm.tsx).
-  'lb-multimedia__canvas--': ['polaroid-wall', 'timeline', 'magazine'],
-};
+//
+// (Empty on purpose: every dynamic class in the app is either a literal
+// union the type checker can narrow — `lb-memory-card--${cardState}` —
+// or was removed from the JSX because no rule ever matched it.)
+export const DYNAMIC_VARIANT_FALLBACK = {};
 
 // ── CSS ───────────────────────────────────────────────────────────────
 

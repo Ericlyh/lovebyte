@@ -5033,15 +5033,3 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-multimedia__item--video {
   background: #000;
 }
-
-/* The recipient canvas mirrors the sender-side template: a wall, a
- * strip and a magazine spread are three different shapes. */
-.lb-multimedia__canvas--polaroid-wall {
-  aspect-ratio: 5 / 3;
-}
-.lb-multimedia__canvas--timeline {
-  aspect-ratio: 16 / 9;
-}
-.lb-multimedia__canvas--magazine {
-  aspect-ratio: 4 / 5;
-}
