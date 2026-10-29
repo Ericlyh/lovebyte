@@ -312,6 +312,41 @@ for (const rule of rules) {
   );
 }
 
+/**
+ * And the other way round: the fill token must never carry a label.
+ * White on --lb-primary is 2.81:1, so any rule that paints text on that
+ * fill fails WCAG AA — 4.5:1 for body text, 3:1 for large text. This is
+ * the rule that Phase 9 (OOP-4225) applied to the CTA buttons and
+ * missed everywhere else: the step badge, the quiz buttons, the liked
+ * button, the creator badge, the memory-card back.
+ */
+for (const rule of rules) {
+  const bg = rule.decls.background;
+  const fg = rule.decls.color;
+  if (!bg || !fg) continue;
+  if (!FILL_TOKEN_RE.test(bg)) continue;
+
+  const bgColour = resolveColour(bg, tokens);
+  const fgColour = resolveColour(fg, tokens);
+  if (!bgColour || !fgColour) continue;
+
+  const ratio = contrast(fgColour, bgColour);
+  // Large text: >=24px, or >=18.66px bold. A rule that does not declare
+  // a font-size is measured against the strict 4.5:1.
+  const fontSize = parseFloat(rule.decls['font-size'] ?? '');
+  const weight = rule.decls['font-weight'] ?? '';
+  const bold = weight === 'bold' || Number(weight) >= 700;
+  const large = Number.isFinite(fontSize) && (fontSize >= 24 || (bold && fontSize >= 18.66));
+  const min = large ? 3 : 4.5;
+
+  if (ratio < min) {
+    failures.push(
+      `label on the fill token: \`${rule.selectors.join(', ')}\` — ${fg} on ${bg} is ` +
+        `${ratio.toFixed(2)}:1, needs ${min}:1`,
+    );
+  }
+}
+
 /* ------------------------------------------------------------------ *
  * Report
  * ------------------------------------------------------------------ */

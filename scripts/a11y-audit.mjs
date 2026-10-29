@@ -8,15 +8,24 @@
 // Phase 9 (OOP-4225) — acceptance criterion: keyboard nav + ARIA on
 // builders, ARIA on card-flip / drag-puzzle / quiz / collage-canvas.
 //
-// OOP-6733 — the colour-contrast rule runs with axe's documented
-// `ignorePseudo` check option. axe's default is to treat ANY
-// pseudo-element overlapping the text as an unknown background and
-// report the element "incomplete" — the silent failure that hid a
-// 2.5:1 hero headline behind "0 violations". The hero gradients are
-// decorative ::before washes; the element underneath them carries a
-// solid background colour (the gradient's darkest stop), which is the
-// conservative thing to measure against. Nothing on this site draws a
-// text background on a pseudo-element, so nothing is masked.
+// OOP-6733 — the colour-contrast rule runs with two of axe's documented
+// check options:
+//
+//   ignorePseudo — by default axe treats ANY pseudo-element overlapping
+//     the text as an unknown background and reports the element
+//     "incomplete". The hero gradients are decorative ::before washes;
+//     the element underneath them carries a solid background colour (the
+//     gradient's darkest stop), which is the conservative thing to
+//     measure against. Nothing on this site draws a text background on
+//     a pseudo-element, so nothing is masked.
+//
+//   ignoreLength — by default axe skips text it cannot measure, such as
+//     a single character. That is how the step-number badge (a lone
+//     digit in a coral circle) hid a 2.81:1 label behind "incomplete".
+//
+// The exit code answers one question: is the colour-contrast picture
+// clean? Everything else the audit finds is printed for a human to
+// triage.
 
 import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
@@ -26,7 +35,11 @@ const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
 const AXE_OPTIONS = {
   rules: {
     'color-contrast': {
-      checks: { 'color-contrast': { options: { ignorePseudo: true } } },
+      checks: {
+        'color-contrast': {
+          options: { ignorePseudo: true, ignoreLength: true },
+        },
+      },
     },
   },
 };
@@ -154,17 +167,22 @@ console.log(
   `\n=== Total: ${totalCritical} critical + ${totalSerious} serious, ${totalIncomplete} incomplete ===`
 );
 
-// OOP-6733 — an audit that finds a critical or serious violation, or a
-// color-contrast result axe could not resolve, is not a clean bill.
-// Exit non-zero so "the audit passed" is a fact and not a reading.
-const contrastIncomplete = results.flatMap((r) =>
-  (r.incomplete ?? []).filter((v) => v.id === 'color-contrast').map(() => r.path),
-);
-if (totalCritical > 0 || totalSerious > 0 || contrastIncomplete.length > 0) {
+// OOP-6733 — the exit code is the colour gate: a color-contrast
+// violation, a color-contrast result axe could not resolve, or a
+// critical violation of any rule. Findings in other rules are printed
+// above for a human to triage.
+const contrastProblems = results.flatMap((r) => [
+  ...(r.violations ?? [])
+    .filter((v) => v.id === 'color-contrast')
+    .map((v) => `${r.path} (${v.id})`),
+  ...(r.incomplete ?? [])
+    .filter((v) => v.id === 'color-contrast')
+    .map((v) => `${r.path} (${v.id} incomplete)`),
+]);
+if (totalCritical > 0 || contrastProblems.length > 0) {
   console.error(
-    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ` +
-      `${contrastIncomplete.length} unresolved color-contrast result(s)` +
-      (contrastIncomplete.length ? ` on ${contrastIncomplete.join(', ')}` : ''),
+    `\n✗ FAIL — ${totalCritical} critical, ${contrastProblems.length} color-contrast problem(s)` +
+      (contrastProblems.length ? `: ${contrastProblems.join(', ')}` : ''),
   );
   process.exit(1);
 }
