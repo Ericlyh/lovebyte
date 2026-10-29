@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,6 +10,14 @@ import {
   type SaveCodeGiftResult,
 } from '@/lib/actions/code';
 import { scanCodeGift } from '@/lib/gifts/code-scan';
+import {
+  appendCodeFiles,
+  mergeCodeFiles,
+  planCodeFileImport,
+  CODE_FILE_ACCEPT,
+  CODE_FILE_MAX_COUNT,
+  type CodeFileField,
+} from '@/lib/gifts/code-files';
 import { composeCodeGiftDocument } from '@/lib/gifts/code-render';
 import type { CodeAiReview } from '@/lib/gifts/code-ai';
 
@@ -35,6 +43,11 @@ import type { CodeAiReview } from '@/lib/gifts/code-ai';
  * dynamically so it only reaches the browser when the sender actually
  * asks for React — it is a big dependency and most code gifts never
  * touch it.
+ *
+ * Uploading: a sender who already has the page on disk should not have
+ * to paste it in. The upload panel drops `.html`, `.css` and `.js` files
+ * into the matching box, and turns React mode on when the JavaScript
+ * they uploaded is JSX.
  */
 
 const MAX_TITLE = 100;
@@ -62,6 +75,12 @@ export function CodeGiftBuilderForm() {
   // The compiled JSX, once the server has compiled it.
   const [compiledJs, setCompiledJs] = useState('');
   const [jsxError, setJsxError] = useState<string | null>(null);
+
+  // File upload.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     if (!useReact) {
@@ -105,6 +124,67 @@ export function CodeGiftBuilderForm() {
     if (field === 'html') setHtml(value);
     else if (field === 'css') setCss(value);
     else setJs(value);
+  }
+
+  /**
+   * Read the dropped files and put each one in the box it belongs in.
+   *
+   * A refused file never takes the whole drop down with it: a sender
+   * who drags a folder of images onto the builder still wants their
+   * `.html` and `.js` to land, so the refusals are reported and the
+   * accepted files are imported anyway.
+   */
+  async function handleFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+
+    setUploadError(null);
+    setUploadMessage(null);
+
+    const files = Array.from(fileList);
+    const plan = planCodeFileImport(
+      files.map((file) => ({ name: file.name, size: file.size })),
+    );
+
+    if (plan.rejected.length > 0) {
+      const reasons = plan.rejected.map((rejection) => {
+        if (rejection.reason === 'too-large') return t('uploadTooLarge', { name: rejection.name });
+        if (rejection.reason === 'too-many') {
+          return t('uploadTooMany', { max: CODE_FILE_MAX_COUNT });
+        }
+        return t('uploadUnsupported', { name: rejection.name });
+      });
+      setUploadError(reasons.join(' '));
+    }
+
+    if (plan.accepted.length === 0) return;
+
+    const byField: Record<CodeFileField, { name: string; content: string }[]> = {
+      html: [],
+      css: [],
+      js: [],
+    };
+    for (const entry of plan.accepted) {
+      const file = files[entry.index];
+      if (!file) continue;
+      byField[entry.field].push({ name: entry.name, content: await file.text() });
+    }
+
+    const htmlAddition = mergeCodeFiles('html', byField.html);
+    const cssAddition = mergeCodeFiles('css', byField.css);
+    const jsAddition = mergeCodeFiles('js', byField.js);
+
+    if (htmlAddition) setHtml((current) => appendCodeFiles(current, htmlAddition));
+    if (cssAddition) setCss((current) => appendCodeFiles(current, cssAddition));
+    if (jsAddition) setJs((current) => appendCodeFiles(current, jsAddition));
+
+    // React mode follows the uploaded JavaScript: JSX needs the
+    // compiler, plain JavaScript must not have it switched on.
+    if (plan.accepted.some((entry) => entry.field === 'js')) {
+      setUseReact(plan.react);
+    }
+
+    setUploadMessage(t('uploadLoaded', { count: plan.accepted.length }));
+    setError(null);
   }
 
   function applySuggestion(suggestionId: string, original: string, replacement: string, field: Field) {
@@ -192,6 +272,58 @@ export function CodeGiftBuilderForm() {
           required
         />
       </div>
+
+      <section className="lb-code-builder__upload">
+        <h3 className="lb-code-builder__upload-title">{t('uploadHeading')}</h3>
+        <p className="lb-field-hint">{t('uploadHint')}</p>
+
+        <div
+          className={`lb-code-drop${isDragging ? ' lb-code-drop--active' : ''}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            void handleFiles(e.dataTransfer.files);
+          }}
+        >
+          <button
+            type="button"
+            className="lb-btn lb-btn--ghost"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {t('uploadButton')}
+          </button>
+          <input
+            ref={fileInputRef}
+            id="code-files"
+            type="file"
+            multiple
+            accept={CODE_FILE_ACCEPT}
+            className="lb-code-drop__input"
+            onChange={(e) => {
+              void handleFiles(e.target.files);
+              // Clear the control so the same file can be picked again.
+              e.target.value = '';
+            }}
+          />
+          <p className="lb-code-drop__hint">{t('uploadDropHint')}</p>
+        </div>
+
+        {uploadMessage && (
+          <p className="lb-field-hint" role="status">
+            {uploadMessage}
+          </p>
+        )}
+        {uploadError && (
+          <p className="lb-form-error" role="alert">
+            {uploadError}
+          </p>
+        )}
+      </section>
 
       <div className="lb-code-builder__grid">
         <div className="lb-code-builder__editors">

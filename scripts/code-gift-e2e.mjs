@@ -1,5 +1,7 @@
 import { chromium } from 'playwright';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 /**
  * Code-gift e2e (Playwright, real session) — OOP-5688.
@@ -18,7 +20,9 @@ import { readFileSync } from 'node:fs';
  *   6. the preview renders the sender's code inside the sandbox;
  *   7. the AI review comes back with a summary (this is what proves the
  *      LOVEBYTE_AI_* env vars reached the deployment);
- *   8. saving either lands on the share page, or fails with the
+ *   8. an uploaded file lands in the matching editor (drag-and-drop and
+ *      the file picker), and an unsupported file is refused by name;
+ *   9. saving either lands on the share page, or fails with the
  *      "not switched on yet" message that says the only thing missing
  *      is the migration that adds the `code` gift type.
  *
@@ -223,6 +227,12 @@ try {
   await page.waitForTimeout(1200);
 
   // 6. the AI review (proves the deployment has the model configured).
+  //
+  //    This runs on the gift as typed, before any files are uploaded:
+  //    the review has an 8000-token output cap and the model writes a
+  //    longer review for a bigger gift, so uploading first would turn
+  //    this check into a test of the model's verbosity rather than of
+  //    the deployment's model configuration.
   await page.click('button:has-text("Ask the AI")');
   const reviewSummary = page.locator('.lb-code-review__summary');
   const gotReview = await reviewSummary
@@ -239,16 +249,121 @@ try {
     console.log('  ai error:', aiErrText);
   }
 
-  // 7. saving. Either it works (migration applied) or it says exactly
+  // 7. file upload. The sender drops the page they already have on
+  //     disk and each file lands in the matching editor.
+  const uploadDir = mkdtempSync(join(tmpdir(), 'code-gift-upload-'));
+  const uploadFiles = [
+    {
+      name: 'index.html',
+      content: '<h2 id="uploaded">From a file</h2>',
+      type: 'text/html',
+    },
+    {
+      name: 'style.css',
+      content: '#uploaded { color: #3d6c0e; }',
+      type: 'text/css',
+    },
+    {
+      name: 'app.js',
+      content: 'document.getElementById("uploaded").dataset.ready = "1";',
+      type: 'text/javascript',
+    },
+  ];
+  for (const file of uploadFiles) {
+    writeFileSync(join(uploadDir, file.name), file.content);
+  }
+
+  const dropFiles = async (files) =>
+    page.evaluateHandle((payload) => {
+      const transfer = new DataTransfer();
+      for (const file of payload) {
+        transfer.items.add(new File([file.content], file.name, { type: file.type }));
+      }
+      return transfer;
+    }, files);
+
+  // The drop path first — that is the headline interaction.
+  await page.dispatchEvent('.lb-code-drop', 'drop', {
+    dataTransfer: await dropFiles(uploadFiles),
+  });
+  await page.waitForTimeout(600);
+
+  const uploadedHtml = await page.inputValue('#code-html');
+  const uploadedCss = await page.inputValue('#code-css');
+  const uploadedJs = await page.inputValue('#code-js');
+  check(
+    'an uploaded HTML file lands in the HTML box',
+    uploadedHtml.includes('From a file'),
+    uploadedHtml.slice(-80),
+  );
+  check(
+    'an uploaded CSS file lands in the CSS box',
+    uploadedCss.includes('#uploaded'),
+    uploadedCss.slice(-80),
+  );
+  check(
+    'an uploaded JavaScript file lands in the JavaScript box',
+    uploadedJs.includes('dataset.ready'),
+    uploadedJs.slice(-80),
+  );
+  check(
+    'the upload is confirmed to the sender',
+    (await page.locator('.lb-code-builder__upload [role="status"]').count()) === 1,
+  );
+
+  // An unsupported file is refused by name, and the good files that
+  // came with it are still imported.
+  await page.dispatchEvent('.lb-code-drop', 'drop', {
+    dataTransfer: await dropFiles([
+      { name: 'photo.png', content: 'not really a png', type: 'image/png' },
+      { name: 'extra.js', content: 'console.log("extra");', type: 'text/javascript' },
+    ]),
+  });
+  await page.waitForTimeout(600);
+  const uploadErrorText = await page
+    .locator('.lb-code-builder__upload .lb-form-error')
+    .innerText()
+    .catch(() => '');
+  check(
+    'an unsupported file is refused with a reason',
+    uploadErrorText.includes('photo.png'),
+    uploadErrorText.slice(0, 120),
+  );
+  check(
+    'a refused file does not take the good ones down',
+    (await page.inputValue('#code-js')).includes('console.log("extra")'),
+  );
+
+  // The file picker does the same thing.
+  try {
+    await page.setInputFiles(
+      '#code-files',
+      uploadFiles.map((file) => join(uploadDir, file.name)),
+    );
+    await page.waitForTimeout(600);
+    check(
+      'the file picker imports files too',
+      (await page.inputValue('#code-html')).includes('From a file'),
+    );
+  } catch (err) {
+    check('the file picker imports files too', false, String(err).slice(0, 160));
+  }
+  rmSync(uploadDir, { recursive: true, force: true });
+
+  // 8. saving. Either it works (migration applied) or it says exactly
   //    what is missing.
   await Promise.all([
     page.waitForURL(/\/create\/[^/]+\/finish/, { timeout: 30000 }).catch(() => {}),
     page.click('form.lb-code-builder button[type="submit"]'),
   ]);
   await page.waitForTimeout(2500);
-  const saveError = await page.locator('.lb-form-error').count();
-  if (saveError) {
-    const msg = (await page.locator('.lb-form-error').first().innerText()).trim();
+  // Scoped to the form's own error: the upload panel also uses
+  // .lb-form-error, and a refused file would otherwise be mistaken for
+  // the save failing.
+  const saveError = page.locator('form.lb-code-builder > .lb-form-error');
+  const saveErrorCount = await saveError.count();
+  if (saveErrorCount) {
+    const msg = (await saveError.first().innerText()).trim();
     check(
       'save reports the missing migration (not a crash)',
       msg.includes('not switched on') || msg.includes('Could not save'),
