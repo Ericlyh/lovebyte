@@ -20,6 +20,13 @@ import { getOwnedGifts } from '@/lib/profiles/ownedGifts';
 import { getCreatorSales } from '@/lib/profiles/sales';
 import { createClient } from '@/lib/supabase/server';
 import { BRAND } from '@/lib/brand';
+import { JsonLd } from '@/components/seo/JsonLd';
+import {
+  breadcrumbJsonLd,
+  browseUrl,
+  homeUrl,
+  profileUrl,
+} from '@/lib/seo/jsonld';
 
 /**
  * /u/[handle] — public creator profile (OOP-4274 M-B; M-D extends
@@ -104,6 +111,9 @@ export default async function CreatorProfilePage({ params }: Props) {
   }
 
   const t = await getTranslations('Profile');
+  // OOP-6728 — the breadcrumb labels are the nav's own, so they are
+  // translated like the nav is.
+  const tNav = await getTranslations('Nav');
   const displayName = profile.display_name ?? `@${profile.handle}`;
   const links = Array.isArray(profile.links)
     ? (profile.links as unknown[]).filter(
@@ -164,6 +174,18 @@ export default async function CreatorProfilePage({ params }: Props) {
 
   return (
     <main className="min-h-screen flex flex-col">
+      {/* OOP-6728 — the trail from the site root, through the
+          catalogue, to this creator's storefront. */}
+      <JsonLd
+        nodes={[
+          breadcrumbJsonLd([
+            { name: BRAND.NAME, url: homeUrl() },
+            { name: tNav('browse'), url: browseUrl() },
+            { name: displayName, url: profileUrl(profile.handle) },
+          ]),
+        ]}
+      />
+
       <Nav />
 
       <section className="lb-profile-hero">

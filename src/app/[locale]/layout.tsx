@@ -4,7 +4,9 @@ import { hasLocale } from 'next-intl';
 import { setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { JsonLd } from '@/components/seo/JsonLd';
 import { BRAND } from '@/lib/brand';
+import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/jsonld';
 import { ScopedMessages } from '@/lib/i18n/ScopedMessages';
 import { ROOT_SCOPES } from '@/lib/i18n/scopes';
 import { routing } from '@/lib/i18n/routing';
@@ -133,6 +135,19 @@ export default async function LocaleLayout({
           <OfflineBanner />
           {children}
         </ScopedMessages>
+
+        {/*
+          OOP-6728 — the site-level structured data: who the site is
+          (Organization) and what it is (WebSite). Published once, here,
+          rather than repeated on every page.
+
+          It sits AFTER the page's own content on purpose. A page that
+          carries its own structured data (the listing's Product, the
+          BreadcrumbList on /browse and /u/[handle]) emits it first, so
+          the page-specific block is the one a reader — or a crawler
+          reading the first JSON-LD element on the page — meets.
+        */}
+        <JsonLd nodes={[organizationJsonLd(), websiteJsonLd()]} />
       </body>
     </html>
   );

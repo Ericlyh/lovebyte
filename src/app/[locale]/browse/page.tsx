@@ -3,6 +3,9 @@ import { Nav } from '@/components/Nav';
 import { BrowseControls } from '@/components/catalog/BrowseControls';
 import { BrowseGrid } from '@/components/catalog/BrowseGrid';
 import { TrackView } from '@/components/analytics/TrackView';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { BRAND } from '@/lib/brand';
+import { breadcrumbJsonLd, browseUrl, homeUrl } from '@/lib/seo/jsonld';
 
 /**
  * /browse — public catalog (M-C, OOP-4275).
@@ -44,9 +47,22 @@ export default async function BrowsePage({ params }: Props) {
   setRequestLocale(locale);
 
   const t = await getTranslations('Catalog');
+  // OOP-6728 — the breadcrumb labels are the nav's own, so they are
+  // translated like the nav is.
+  const tNav = await getTranslations('Nav');
 
   return (
     <main className="min-h-screen flex flex-col">
+      {/* OOP-6728 — the trail from the site root to the catalogue. */}
+      <JsonLd
+        nodes={[
+          breadcrumbJsonLd([
+            { name: BRAND.NAME, url: homeUrl() },
+            { name: tNav('browse'), url: browseUrl() },
+          ]),
+        ]}
+      />
+
       {/* `deferAuth` keeps the auth cookie out of this tree so the page
           can be prerendered — same trade the landing page makes. */}
       <Nav deferAuth />

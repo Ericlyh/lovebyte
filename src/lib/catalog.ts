@@ -121,6 +121,15 @@ export type CatalogListing = {
   like_count: number;
   payload: unknown;
   cover_media_id: string | null;
+  /**
+   * Absolute URL of the listing's cover photo, resolved from the media
+   * row the select already embeds — null when the gift has no photo.
+   *
+   * OOP-6728: the structured data needs the listing's image, and
+   * resolving it here costs no extra round trip (the `cover` embed is
+   * already in the select).
+   */
+  cover_url: string | null;
   owner: {
     id: string;
     handle: string;
@@ -603,6 +612,9 @@ async function getListingDetailUncached(
     like_count: likeCount,
     payload: data.payload,
     cover_media_id: data.cover_media_id,
+    // The `cover` embed is already in the select, so the cover URL
+    // costs no extra round trip (OOP-6728).
+    cover_url: resolveCoverUrl(supabase, data),
     owner: {
       id: owner?.id ?? '',
       handle: owner?.handle ?? '',

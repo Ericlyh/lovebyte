@@ -13,6 +13,8 @@ import { TrackedLink } from '@/components/analytics/TrackedLink';
 import { createClient } from '@/lib/supabase/server';
 import { getListingDetail, getListingComments, getListingReplies } from '@/lib/catalog';
 import { BRAND } from '@/lib/brand';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { listingUrl, productJsonLd } from '@/lib/seo/jsonld';
 
 /**
  * /l/[giftId] — listing detail (M-C, OOP-4275).
@@ -37,9 +39,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: `Gift not found — ${BRAND.NAME}` };
   }
   const creatorLabel = listing.owner.display_name ?? `@${listing.owner.handle}`;
+  const title = `${listing.title} by ${creatorLabel} — ${BRAND.NAME}`;
+  const description =
+    listing.description ?? `${listing.title} on ${BRAND.NAME}.`;
+  // OOP-6728 — the listing's canonical URL is the same URL the
+  // structured data and the sitemap use, so the three agree on which
+  // URL a gift lives at.
+  const canonical = listingUrl(giftId);
   return {
-    title: `${listing.title} by ${creatorLabel} — ${BRAND.NAME}`,
-    description: listing.description ?? `${listing.title} on ${BRAND.NAME}.`,
+    title,
+    description,
+    alternates: { canonical },
+    // The listing had no social card at all, so a shared link unfurled
+    // with the site-wide card (or none). The listing's own cover is
+    // the image that represents it.
+    openGraph: {
+      type: 'website',
+      siteName: BRAND.NAME,
+      title,
+      description,
+      url: canonical,
+      images: listing.cover_url
+        ? [{ url: listing.cover_url, alt: listing.title }]
+        : undefined,
+    },
   };
 }
 
@@ -93,6 +116,27 @@ export default async function ListingPage({ params }: Props) {
 
   return (
     <main className="min-h-screen flex flex-col">
+      {/* OOP-6728 — the listing IS the product, so it says so in
+          structured data: the title, the cover, the creator and the
+          price. A free gift emits no `offers` block at all — see the
+          free-listing rule in `src/lib/seo/jsonld.ts`. */}
+      <JsonLd
+        nodes={[
+          productJsonLd({
+            id: listing.id,
+            title: listing.title,
+            description: listing.description,
+            category: listing.category,
+            priceCents: listing.price_cents,
+            coverUrl: listing.cover_url,
+            creator: {
+              handle: listing.owner.handle,
+              displayName: listing.owner.display_name,
+            },
+          }),
+        ]}
+      />
+
       <Nav />
 
       {/* OOP-6716 — the listing step of the funnel, and the step the
