@@ -27,7 +27,12 @@ const ROUTES = [
   { path: '/random-404', label: 'random-404' },
 ];
 
-const browser = await chromium.launch();
+// Playwright's bundled Chromium is not installed everywhere (OOP-6733:
+// this host has system Chrome and no ms-playwright cache). Try the
+// bundled browser first, fall back to the system Chrome.
+const browser = await chromium
+  .launch()
+  .catch(() => chromium.launch({ channel: 'chrome' }));
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
 });
