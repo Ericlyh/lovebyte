@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MemoryCardsPayload } from '@/features/memory-cards/schemas';
+import { buildMemoryDeck, type MemoryCard } from '@/features/memory-cards/deck';
 import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
 
 /**
@@ -32,13 +33,7 @@ import { RecipientWriteBack } from '@/components/recipient/RecipientWriteBack';
  * Safari/iOS autoplay. If music_url is null, no audio.
  */
 
-type Card = {
-  /** Stable id per card instance (different positions in the same pair). */
-  cardId: string;
-  /** Photo URL — the matching key. Two cards share this when they're a pair. */
-  photoUrl: string;
-  caption: string;
-};
+type Card = MemoryCard;
 
 type FlippedState = 'face-down' | 'face-up' | 'matched';
 
@@ -58,28 +53,8 @@ export function MemoryCardsGame({
   const t = useTranslations('Open.memoryCards');
 
   // Build the deck once per payload. Stable order so React keys don't churn.
-  const deck = useMemo<Card[]>(() => {
-    const cards: Card[] = [];
-    payload.pairs.forEach((pair, pairIdx) => {
-      cards.push({
-        cardId: `${pairIdx}-a`,
-        photoUrl: pair.photo_url,
-        caption: pair.caption,
-      });
-      cards.push({
-        cardId: `${pairIdx}-b`,
-        photoUrl: pair.photo_url,
-        caption: pair.caption,
-      });
-    });
-    // Shuffle deterministically on mount via Fisher–Yates. We don't need
-    // crypto-strength randomness for a card game.
-    for (let i = cards.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [cards[i], cards[j]] = [cards[j], cards[i]];
-    }
-    return cards;
-  }, [payload]);
+  // The deck's determinism is load-bearing — see `buildMemoryDeck`.
+  const deck = useMemo<Card[]>(() => buildMemoryDeck(payload), [payload]);
 
   const [state, setState] = useState<FlippedState[]>(() =>
     deck.map(() => 'face-down'),
