@@ -4988,8 +4988,10 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-finish-page,
 .lb-profile-edit-page,
 .lb-purchases-page {
+  width: 100%;
   max-width: 720px;
   margin: 0 auto;
+  align-self: center;
   padding: 48px 24px;
   flex: 1;
 }
