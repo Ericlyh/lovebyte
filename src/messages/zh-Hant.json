@@ -421,7 +421,9 @@
       "lede": "六種來自獨立創作者的客製禮物 —— 依你想看的排序。",
       "empty": "仲未有禮物符合呢啲條件。",
       "emptyCta": "做第一個上架嘅人 →",
-      "loadMore": "睇更多"
+      "loadMore": "睇更多",
+      "loading": "載入緊禮物…",
+      "error": "暫時載入唔到禮物，等陣再試下。"
     },
     "controls": {
       "searchPlaceholder": "搜尋禮物（例如「點心」、「曼谷」）…",

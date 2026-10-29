@@ -1,28 +1,30 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import {
+  BROWSE_PARAMS_CHANGED,
+  readBrowseParams,
+  writeBrowseParams,
+  type BrowseParams,
+} from './browseParams';
 
 /**
  * Browse controls — search input + sort + category pills (M-C, OOP-4275).
  *
- * Client component because the search box debounces and pushes to the URL
- * (server reads the params on the next render). Filters are URL-driven so
- * `/browse?category=quiz&priceTier=under_5` is shareable.
+ * Client component because the search box debounces and pushes to the URL.
+ * Filters are URL-driven so `/browse?category=quiz&priceTier=under_5` is
+ * shareable.
  *
  * The debounce window is 300ms — fast enough that the URL updates while
  * the user is still typing the last word, slow enough that we don't
- * trigger an SSR round-trip per keystroke.
+ * trigger a reload per keystroke.
+ *
+ * OOP-6710: the page is prerendered once per locale, so the filters can no
+ * longer arrive as props from a server render that read `searchParams`.
+ * They are read from the address bar instead, and written back to it with
+ * `history.replaceState` — a URL change, not a navigation.
  */
-type Props = {
-  initialCategory?: string;
-  initialPriceTier?: string;
-  initialCreator?: string;
-  initialSort?: string;
-  initialQuery?: string;
-};
-
 const CATEGORIES = [
   'memory_cards',
   'dragdrop_puzzle',
@@ -36,46 +38,61 @@ const PRICE_TIERS = ['free', 'under_5', 'under_20', 'over_20'] as const;
 
 const SORTS = ['published_desc', 'most_liked', 'price_asc'] as const;
 
-export function BrowseControls(props: Props) {
+export function BrowseControls() {
   const t = useTranslations('Catalog.controls');
-  const router = useRouter();
-  const sp = useSearchParams();
-  const [, startTransition] = useTransition();
 
-  const [query, setQuery] = useState(props.initialQuery ?? '');
+  const [params, setParams] = useState<BrowseParams>({});
+  const [query, setQuery] = useState('');
+  const [creator, setCreator] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The text inputs are seeded from the URL once, on mount. After that
+  // they are the user's, so a filter change elsewhere on the page does not
+  // wipe what they are typing.
+  const seeded = useRef(false);
+
+  // Read the filters from the address bar, and keep them in step with it.
+  useEffect(() => {
+    const sync = () => {
+      const next = readBrowseParams(window.location.search);
+      setParams(next);
+      if (!seeded.current) {
+        seeded.current = true;
+        setQuery(next.q ?? '');
+        setCreator(next.creator ?? '');
+      }
+    };
+    sync();
+    window.addEventListener(BROWSE_PARAMS_CHANGED, sync);
+    return () => {
+      window.removeEventListener(BROWSE_PARAMS_CHANGED, sync);
+    };
+  }, []);
 
   // Push a URL change whenever a filter changes. Search input is
   // debounced separately below so it doesn't fight the other controls.
   function pushParams(next: Record<string, string | null>) {
-    const params = new URLSearchParams(sp.toString());
-    for (const [k, v] of Object.entries(next)) {
-      if (v == null || v === '') params.delete(k);
-      else params.set(k, v);
-    }
-    // Any filter change resets the cursor to page 1.
-    params.delete('cursor');
-    startTransition(() => {
-      router.replace(`/browse?${params.toString()}`);
-    });
+    writeBrowseParams(next);
   }
 
   function setCategory(cat: string | null) {
     pushParams({ category: cat });
   }
+
   function setPriceTier(tier: string | null) {
     pushParams({ priceTier: tier });
   }
-  function setCreator(handle: string) {
+
+  function setCreatorFilter(handle: string) {
     pushParams({ creator: handle.trim() || null });
   }
+
   function setSort(sort: string) {
     pushParams({ sort: sort === 'published_desc' ? null : sort });
   }
 
   // Debounced search push.
   useEffect(() => {
-    if (query === (props.initialQuery ?? '')) return;
+    if (query === (params.q ?? '')) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       pushParams({ q: query.trim() || null });
@@ -86,9 +103,9 @@ export function BrowseControls(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
-  const currentCategory = props.initialCategory ?? '';
-  const currentPriceTier = props.initialPriceTier ?? '';
-  const currentSort = props.initialSort ?? 'published_desc';
+  const currentCategory = params.category ?? '';
+  const currentPriceTier = params.priceTier ?? '';
+  const currentSort = params.sort ?? 'published_desc';
 
   return (
     <div className="lb-browse-controls">
@@ -123,7 +140,6 @@ export function BrowseControls(props: Props) {
             </button>
           ))}
         </div>
-
         <div className="lb-browse-controls__group" role="group" aria-label={t('priceAria')}>
           {PRICE_TIERS.map((p) => (
             <button
@@ -144,11 +160,12 @@ export function BrowseControls(props: Props) {
           <input
             type="text"
             className="lb-input lb-input--inline"
-            defaultValue={props.initialCreator ?? ''}
+            value={creator}
+            onChange={(e) => setCreator(e.target.value)}
             placeholder={t('creatorPlaceholder')}
-            onBlur={(e) => setCreator(e.target.value)}
+            onBlur={(e) => setCreatorFilter(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') setCreator((e.target as HTMLInputElement).value);
+              if (e.key === 'Enter') setCreatorFilter((e.target as HTMLInputElement).value);
             }}
           />
         </label>

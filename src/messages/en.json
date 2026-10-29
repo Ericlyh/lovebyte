@@ -421,7 +421,9 @@
       "lede": "Six kinds of personalised gifts from independent creators — sorted by what's new.",
       "empty": "No gifts match those filters yet.",
       "emptyCta": "Be the first to publish one →",
-      "loadMore": "Load more"
+      "loadMore": "Load more",
+      "loading": "Loading gifts…",
+      "error": "We couldn't load the gifts just now. Try again in a moment."
     },
     "controls": {
       "searchPlaceholder": "Search gifts (e.g. \"dim sum\", \"Bangkok\")…",

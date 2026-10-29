@@ -1,107 +1,54 @@
-import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { BrowseControls } from '@/components/catalog/BrowseControls';
-import { GiftCard } from '@/components/catalog/GiftCard';
-import { getCatalogFeed, searchCatalog, FeedQuerySchema } from '@/lib/catalog';
-import { BRAND } from '@/lib/brand';
+import { BrowseGrid } from '@/components/catalog/BrowseGrid';
 
 /**
  * /browse — public catalog (M-C, OOP-4275).
  *
- * Server component. Reads filters from the URL via FeedQuerySchema,
- * dispatches to `getCatalogFeed` (or `searchCatalog` when `q` is set),
- * and renders a grid of GiftCards.
+ * OOP-6710: this page is a static shell. The hero, the controls and the
+ * nav are prerendered once per locale and served from the edge; the
+ * listing grid is fetched in the browser by `BrowseGrid`.
  *
- * Search vs. feed: when `?q=...` is present we run `searchCatalog`
- * (FTS, no pagination) and ignore the other filters. The user can
- * clear the query to fall back to the filterable feed.
+ * The reason it cannot stay a server render is the catalog itself. A
+ * prerendered page holds the data it was built with, and the catalog is
+ * empty at build time — a build-time grid would ship empty and stay empty
+ * until the next deploy. Reading `searchParams` (the filters) would force
+ * the route dynamic as well, which is the thing this page is trying to
+ * avoid. So the filters live in the address bar and the grid reads them
+ * there; see `components/catalog/browseParams.ts`.
  *
- * Cursor pagination: `nextCursor` is rendered as a "Load more" link.
- * No client-side fetch — the next page is a full SSR render with the
- * cursor appended. Keeps the JS surface small and means a back-button
- * navigation always lands on a complete page state.
+ * Crawlers still reach every listing: `sitemap.xml` lists each listed gift
+ * and each creator profile, and reads the same feed this grid does.
+ *
+ * There is deliberately no `loading.tsx` or `not-found.tsx` in this
+ * segment. Both call `getTranslations()` with no request locale, so
+ * next-intl falls back to reading the `X-NEXT-INTL-LOCALE` request header —
+ * and a `headers()` read opts the whole segment out of prerendering, which
+ * is what kept /browse dynamic even after the locale moved into the route.
+ * The segment-root `not-found.tsx` already renders the same `CommonNotFound`
+ * card, and a static route never streams, so the loading skeleton had
+ * nothing left to cover.
+ *
+ * Search vs. feed: when `?q=...` is present we run the search endpoint
+ * (FTS, no pagination) and ignore the other filters. The user can clear
+ * the query to fall back to the filterable feed.
  */
 type Props = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const sp = await searchParams;
-  const query = typeof sp.q === 'string' ? sp.q : '';
-  const title = query
-    ? `Search "${query}" — ${BRAND.NAME} marketplace`
-    : `Browse gifts — ${BRAND.NAME} marketplace`;
-  return {
-    title,
-    description:
-      'Six kinds of personalised gifts from independent creators. Find a memory card game, photo puzzle, quiz, collage, animated letter, or a little piece of code for the people you love.',
-  };
-}
-
-function pickFirst(v: string | string[] | undefined): string | undefined {
-  if (Array.isArray(v)) return v[0];
-  return v;
-}
-
-export default async function BrowsePage({ params, searchParams }: Props) {
+export default async function BrowsePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const sp = await searchParams;
   const t = await getTranslations('Catalog');
-
-  const query = {
-    category: pickFirst(sp.category),
-    priceTier: pickFirst(sp.priceTier),
-    creator: pickFirst(sp.creator),
-    sort: pickFirst(sp.sort),
-    cursor: pickFirst(sp.cursor),
-    q: pickFirst(sp.q),
-  };
-
-  const isSearch = typeof query.q === 'string' && query.q.trim().length > 0;
-  let gifts: Awaited<ReturnType<typeof getCatalogFeed>>['gifts'] = [];
-  let nextCursor: string | null = null;
-  let feedParams: Record<string, string | undefined> = {};
-
-  if (isSearch) {
-    const searchResult = await searchCatalog({ q: query.q });
-    gifts = searchResult.gifts;
-  } else {
-    const feedParamsParsed = FeedQuerySchema.safeParse({
-      category: query.category,
-      priceTier: query.priceTier,
-      creator: query.creator,
-      sort: query.sort,
-      cursor: query.cursor,
-    });
-    if (feedParamsParsed.success) {
-      const feedResult = await getCatalogFeed(feedParamsParsed.data);
-      gifts = feedResult.gifts;
-      nextCursor = feedResult.nextCursor;
-    }
-    feedParams = {
-      category: query.category,
-      priceTier: query.priceTier,
-      creator: query.creator,
-      sort: query.sort,
-    };
-  }
-
-  // Build the "Load more" URL preserving the current filters + new cursor.
-  const loadMoreHref = nextCursor
-    ? `/browse?${new URLSearchParams({
-        ...feedParams,
-        cursor: nextCursor,
-      }).toString()}`
-    : null;
 
   return (
     <main className="min-h-screen flex flex-col">
-      <Nav />
+      {/* `deferAuth` keeps the auth cookie out of this tree so the page
+          can be prerendered — same trade the landing page makes. */}
+      <Nav deferAuth />
 
       <section className="lb-browse-hero">
         <div className="lb-container">
@@ -111,44 +58,8 @@ export default async function BrowsePage({ params, searchParams }: Props) {
       </section>
 
       <section className="lb-container lb-browse-body">
-        <BrowseControls
-          initialCategory={query.category}
-          initialPriceTier={query.priceTier}
-          initialCreator={query.creator}
-          initialSort={query.sort ?? 'published_desc'}
-          initialQuery={query.q}
-        />
-
-        {gifts.length === 0 ? (
-          <div className="lb-browse-empty">
-            <p className="lb-empty">{t('browse.empty')}</p>
-            {!isSearch ? (
-              <p>
-                <Link href="/signup" className="lb-link">
-                  {t('browse.emptyCta')}
-                </Link>
-              </p>
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <ul className="lb-gift-grid">
-              {gifts.map((gift) => (
-                <li key={gift.id}>
-                  <GiftCard gift={gift} />
-                </li>
-              ))}
-            </ul>
-
-            {loadMoreHref ? (
-              <p className="lb-browse-more">
-                <Link href={loadMoreHref} className="lb-btn lb-btn--ghost">
-                  {t('browse.loadMore')}
-                </Link>
-              </p>
-            ) : null}
-          </>
-        )}
+        <BrowseControls />
+        <BrowseGrid />
       </section>
     </main>
   );
