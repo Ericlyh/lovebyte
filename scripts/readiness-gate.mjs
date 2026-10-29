@@ -12,17 +12,24 @@
 // Thresholds (override with env if needed):
 //   GATE_PERF_MIN   default 95   Lighthouse performance score, per route
 //   GATE_A11Y_MIN   default 98   Lighthouse accessibility score, per route
-//   GATE_ROUTES_MIN default 200  required HTTP status for every critical route
+//   GATE_ROUTES_MIN default 200  lowest acceptable status for a critical route
+//   GATE_ROUTES_MAX default 399  highest acceptable status for a critical route
 //   GATE_ROUTE_MAX_MS default 4000  max time to serve a critical route in full
 //   GATE_CATALOG_MIN default 1   gifts the public catalog must serve
 //   GATE_LH_SAMPLES default 3    Lighthouse samples per route; the MEDIAN is
 //                                 scored. One sample is a coin flip against a
 //                                 95 threshold (see the Lighthouse probe below).
 
+import { probeRoute } from './lib/http-probe.mjs';
+
 const BASE = process.env.AUDIT_BASE ?? 'https://lovorithm.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
 const A11Y_MIN = Number(process.env.GATE_A11Y_MIN ?? 98);
 const ROUTES_MIN = Number(process.env.GATE_ROUTES_MIN ?? 200);
+// A critical route must SERVE. The upper bound is what makes a 404 or a
+// 500 on a critical route a failure — the floor alone (`status < 200`)
+// let a broken route pass as healthy (OOP-6701).
+const ROUTES_MAX = Number(process.env.GATE_ROUTES_MAX ?? 399);
 const ROUTE_MAX_MS = Number(process.env.GATE_ROUTE_MAX_MS ?? 4000);
 const CATALOG_MIN = Number(process.env.GATE_CATALOG_MIN ?? 1);
 
@@ -87,28 +94,38 @@ function pass(scope, msg) {
 // out, so the visitor saw a blank white page. Reading the body here
 // (rather than just the headers) is what makes that visible: a route
 // that streams slowly fails the budget instead of passing as 200.
+//
+// The probe itself lives in scripts/lib/http-probe.mjs so its one
+// interesting decision — cold boot vs genuinely slow route — is unit
+// tested (OOP-6701).
 let httpResults = [];
 for (const path of ROUTES) {
-  const started = Date.now();
-  try {
-    const res = await fetch(`${BASE}${path}`, { redirect: 'manual' });
-    await res.text();
-    const ms = Date.now() - started;
-    httpResults.push({ path, status: res.status, ms });
-    if (res.status < ROUTES_MIN) {
-      fail('http', `${path} returned ${res.status} (expected >= ${ROUTES_MIN})`, `http-${path}-status`);
-    } else if (ms > ROUTE_MAX_MS) {
-      fail(
-        'http',
-        `${path} served in ${ms}ms (expected <= ${ROUTE_MAX_MS}ms) — too slow to serve`,
-        `http-${path}-slow`,
-      );
-    } else {
-      pass('http', `${path} ${res.status} in ${ms}ms`);
-    }
-  } catch (err) {
-    httpResults.push({ path, status: 0, ms: Date.now() - started });
-    fail('http', `${path} unreachable — ${err.message}`, `http-${path}-unreachable`);
+  const probe = await probeRoute(path, {
+    base: BASE,
+    routesMin: ROUTES_MIN,
+    routesMax: ROUTES_MAX,
+    routeMaxMs: ROUTE_MAX_MS,
+  });
+  httpResults.push({
+    path,
+    status: probe.status,
+    ms: probe.ms,
+    firstMs: probe.firstMs,
+  });
+  if (probe.verdict === 'status') {
+    fail('http', probe.message, `http-${path}-status`);
+  } else if (probe.verdict === 'slow') {
+    fail('http', probe.message, `http-${path}-slow`);
+  } else if (probe.verdict === 'unreachable') {
+    fail('http', probe.message, `http-${path}-unreachable`);
+  } else if (probe.verdict === 'cold') {
+    // The first hit paid the cold boot, not the route: a note, not a gap.
+    // The cost stays visible in the run summary without failing a gate the
+    // loop can never converge on (OOP-6701).
+    notes.push(probe.message);
+    pass('http', `${path} ${probe.status} in ${probe.ms}ms (cold first hit ${probe.firstMs}ms)`);
+  } else {
+    pass('http', `${path} ${probe.status} in ${probe.ms}ms`);
   }
 }
 

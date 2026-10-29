@@ -39,12 +39,27 @@ Exit codes:
 The gate checks, against `https://lovorithm.vercel.app`:
 
 - HTTP 200 on `/`, `/browse`, `/g/demo`, `/status`, `/support`,
-  `/privacy`, `/terms`, `/login`, `/signup`
+  `/privacy`, `/terms`, `/login`, `/signup`. The accepted range is
+  `GATE_ROUTES_MIN`–`GATE_ROUTES_MAX` (default 200–399): a 404 or a 500
+  on a critical route is a failure. The gate used to test only
+  `status < 200`, which let a broken route pass as healthy (OOP-6701).
 - Each critical route is served **in full** within `GATE_ROUTE_MAX_MS`
   (default 4000ms). The gate reads the response body, not just the
   headers: `/browse` once answered 200 with its first byte in 350ms and
   its markup 6.5s later, so a visitor saw a blank white page while a
   database read timed out. A slow route is a failed route.
+- **A slow first hit is retried before it counts as a gap.** The gate
+  runs once a day, so whichever route it probes first is the first
+  request after the function slept: it pays the cold lambda boot (~4s on
+  the landing page) and that cost is paid ONCE per idle period. A route
+  with a slow dependency pays it on EVERY request — that is the failure
+  the budget exists to catch. So when the first hit misses the budget
+  the probe hits the route again: miss it on the retry too and the route
+  is genuinely slow and the gate fails; serve within budget on the
+  retry and the first hit was the cold boot, which is recorded as a
+  **note** (visible in the run summary, not a filed gap). Without this
+  the gate flapped on the cold boot alone and the loop could never
+  converge (OOP-6701).
 - The **data layer** is live (OOP-6154): `/status` must emit
   `data-status-state="operational"` — that marker is only rendered when
   the incident read actually succeeded, and `"unknown"` means the read
