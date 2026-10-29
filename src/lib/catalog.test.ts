@@ -2,14 +2,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getCatalogFeed } from './catalog';
 
 /**
- * Regression tests for the catalogue price-tier filter (OOP-6713).
+ * Regression tests for the catalogue price-tier filter (OOP-6713) and
+ * the single settlement currency (OOP-6714).
  *
- * The bug: `priceTierPredicate` packed a tier's bounds into ONE
+ * OOP-6713 — the bug: `priceTierPredicate` packed a tier's bounds into ONE
  * comma-joined PostgREST string (`price_cents.gte.1,price_cents.lt.500`)
  * and handed it to `.or()`. PostgREST reads `or=(a,b)` as two OR'd
  * conditions, so the filter was really `(price >= 1) OR (price < 500)` —
  * true for every paid row. Every paid tier therefore returned the whole
  * catalogue, and "Under $5" showed a $120 item.
+ *
+ * OOP-6714 — the tiers are now bands in the settlement currency (HKD):
+ * under HK$50, HK$50–HK$200, HK$200 and up. The fixture prices sit
+ * exactly on the new band edges so an off-by-one in either bound fails a
+ * test, and every row carries the settlement currency because the feed
+ * reports one currency for the whole catalogue.
  *
  * These tests run the real `getCatalogFeed` against a fake PostgREST
  * engine with the same semantics as the real one — `.or()` is a
@@ -24,18 +31,19 @@ type Condition = (row: Row) => boolean;
 // ─── The fixture catalogue ────────────────────────────────────────────────
 
 /**
- * Prices sit exactly on the band edges on purpose (499/500/1999/2000) so
- * an off-by-one in either bound fails a test.
+ * Prices sit exactly on the band edges on purpose (4999/5000/19999/20000)
+ * so an off-by-one in either bound fails a test. Every row is in the
+ * settlement currency (HKD) — the catalogue no longer holds a second one.
  */
 const CATALOGUE: Row[] = [
-  { id: 'f1', title: 'Free note', price_cents: null, currency: 'USD' },
+  { id: 'f1', title: 'Free note', price_cents: null, currency: 'HKD' },
   { id: 'f2', title: 'Free quiz', price_cents: null, currency: 'HKD' },
-  { id: 'u5a', title: 'Ninety-nine cents', price_cents: 99, currency: 'USD' },
-  { id: 'u5b', title: 'Four ninety-nine', price_cents: 499, currency: 'USD' },
-  { id: 'u20a', title: 'Five dollars', price_cents: 500, currency: 'USD' },
-  { id: 'u20b', title: 'Nineteen ninety-nine', price_cents: 1999, currency: 'EUR' },
-  { id: 'o20a', title: 'Twenty dollars', price_cents: 2000, currency: 'USD' },
-  { id: 'o20b', title: 'One twenty', price_cents: 12000, currency: 'USD' },
+  { id: 'u50a', title: 'Ninety-nine cents', price_cents: 99, currency: 'HKD' },
+  { id: 'u50b', title: 'Forty-nine ninety-nine', price_cents: 4999, currency: 'HKD' },
+  { id: 'u200a', title: 'Fifty', price_cents: 5000, currency: 'HKD' },
+  { id: 'u200b', title: 'One hundred ninety-nine', price_cents: 19999, currency: 'HKD' },
+  { id: 'o200a', title: 'Two hundred', price_cents: 20000, currency: 'HKD' },
+  { id: 'o200b', title: 'Nine hundred', price_cents: 90000, currency: 'HKD' },
 ];
 
 const PROFILES: Row[] = [
@@ -320,37 +328,39 @@ describe('catalog price-tier filter (OOP-6713)', () => {
     expect(await idsForTier('free')).toEqual(['f1', 'f2']);
   });
 
-  it('under_5 returns only rows priced below 500 cents', async () => {
-    expect(await idsForTier('under_5')).toEqual(['u5a', 'u5b']);
+  it('under_50 returns only rows priced below HK$50 (5000 cents)', async () => {
+    expect(await idsForTier('under_50')).toEqual(['u50a', 'u50b']);
   });
 
-  it('under_20 returns only rows priced from 500 up to 2000 cents', async () => {
-    expect(await idsForTier('under_20')).toEqual(['u20a', 'u20b']);
+  it('under_200 returns only rows priced from HK$50 up to HK$200', async () => {
+    expect(await idsForTier('under_200')).toEqual(['u200a', 'u200b']);
   });
 
-  it('over_20 returns only rows priced 2000 cents or more', async () => {
-    expect(await idsForTier('over_20')).toEqual(['o20a', 'o20b']);
+  it('over_200 returns only rows priced HK$200 (20000 cents) or more', async () => {
+    expect(await idsForTier('over_200')).toEqual(['o200a', 'o200b']);
   });
 
-  it('does not show a $120 item under "Under $5"', async () => {
+  it('does not show a HK$900 item under "Under HK$50"', async () => {
     // The symptom from the issue report, pinned as its own test.
-    const ids = await idsForTier('under_5');
-    expect(ids).not.toContain('o20b');
+    const ids = await idsForTier('under_50');
+    expect(ids).not.toContain('o200b');
   });
 
   it('the four tiers partition the catalogue', async () => {
     const tiers = await Promise.all([
       idsForTier('free'),
-      idsForTier('under_5'),
-      idsForTier('under_20'),
-      idsForTier('over_20'),
+      idsForTier('under_50'),
+      idsForTier('under_200'),
+      idsForTier('over_200'),
     ]);
-    const [free, under5, under20, over20] = tiers;
+    const [free, under50, under200, over200] = tiers;
 
     // Every row lands in exactly one tier.
-    const union = new Set([...free, ...under5, ...under20, ...over20]);
+    const union = new Set([...free, ...under50, ...under200, ...over200]);
     expect([...union].sort()).toEqual(ROWS.map((r) => r.id as string).sort());
-    expect(union.size).toBe(free.length + under5.length + under20.length + over20.length);
+    expect(union.size).toBe(
+      free.length + under50.length + under200.length + over200.length,
+    );
 
     // No tier overlaps another.
     for (let i = 0; i < tiers.length; i++) {
@@ -366,8 +376,25 @@ describe('catalog price-tier filter (OOP-6713)', () => {
   });
 
   it('applies the price bounds as AND-ed filters, never through .or()', async () => {
-    await getCatalogFeed({ priceTier: 'under_5' });
+    await getCatalogFeed({ priceTier: 'under_50' });
     // A comma-joined `or()` is exactly the bug that shipped.
     expect(state.orCalls.filter((c) => c.includes('price_cents'))).toEqual([]);
+  });
+});
+
+describe('catalog settlement currency (OOP-6714)', () => {
+  it('reports one currency for every row in the feed', async () => {
+    const result = await getCatalogFeed({});
+    expect(result.gifts.length).toBeGreaterThan(0);
+    expect([...new Set(result.gifts.map((g) => g.currency))]).toEqual(['hkd']);
+  });
+
+  it('reports one currency for every tier', async () => {
+    for (const tier of ['free', 'under_50', 'under_200', 'over_200']) {
+      const result = await getCatalogFeed({ priceTier: tier });
+      for (const gift of result.gifts) {
+        expect(gift.currency).toBe('hkd');
+      }
+    }
   });
 });

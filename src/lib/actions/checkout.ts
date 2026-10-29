@@ -3,6 +3,12 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
+import {
+  PLATFORM_FEE_BPS_DEFAULT,
+  SETTLEMENT_CURRENCY,
+  SETTLEMENT_CURRENCY_DB,
+  platformFeeCents,
+} from '@/lib/money';
 
 /**
  * Checkout + Connect onboarding server actions (M-E, OOP-4277).
@@ -17,10 +23,19 @@ import { stripe } from '@/lib/stripe';
  *     The account id is persisted to `profiles.stripe_account_id`
  *     immediately so subsequent calls dedupe to the same account.
  *
- * Money math:
+ * Money math (OOP-6714):
+ *   The marketplace settles in ONE currency — HKD. `price_cents` is HKD
+ *   cents and the Stripe `price_data.currency` is the settlement
+ *   currency; there is no FX conversion at checkout and no per-listing
+ *   currency to read from the row.
+ *
  *   application_fee_amount = floor(amount_cents * platform_fee_bps / 10000)
- *   `gifts.platform_fee_bps` is in basis points (500–5000). Default
- *   1000 = 10%.
+ *   `gifts.platform_fee_bps` is in basis points (500–10000). Default
+ *   1000 = 10%. The fee is computed on the settlement amount and
+ *   rounded DOWN to the nearest cent, so the creator keeps the
+ *   remainder — see `platformFeeCents` in `src/lib/money.ts`, which is
+ *   the single definition of that rule and is shared with the Stripe
+ *   webhook.
  *
  * Webhook ownership: the success-side effects (purchase row, share
  * token, recipient email) live in `/api/stripe/webhook`, NOT here. The
@@ -100,6 +115,19 @@ export async function startCheckoutSessionAction(
   if (!gift.price_cents || gift.price_cents <= 0) {
     return { ok: false, error: 'This gift is free — no checkout needed.' };
   }
+  // The price is charged in the settlement currency (HKD). A row that
+  // still carries another currency has a `price_cents` in the wrong
+  // unit, so refuse rather than charge an amount that means something
+  // else (OOP-6714).
+  if ((gift.currency ?? '').trim().toUpperCase() !== SETTLEMENT_CURRENCY_DB) {
+    console.error(
+      `[checkout/start] gift ${gift.id} is not in the settlement currency (${gift.currency})`,
+    );
+    return {
+      ok: false,
+      error: 'This listing is not available for purchase right now.',
+    };
+  }
 
   const owner = Array.isArray(gift.owner) ? gift.owner[0] : gift.owner;
   if (!owner?.stripe_account_id || !owner.stripe_charges_enabled) {
@@ -109,7 +137,10 @@ export async function startCheckoutSessionAction(
     };
   }
 
-  const feeCents = Math.floor((gift.price_cents * gift.platform_fee_bps) / 10000);
+  const feeCents = platformFeeCents(
+    gift.price_cents,
+    gift.platform_fee_bps ?? PLATFORM_FEE_BPS_DEFAULT,
+  );
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const recipient = recipientContact?.trim() || undefined;
 
@@ -119,7 +150,10 @@ export async function startCheckoutSessionAction(
       line_items: [
         {
           price_data: {
-            currency: gift.currency.toLowerCase(),
+            // The settlement currency. `price_cents` is already HKD
+            // cents — there is no per-listing currency and no FX step
+            // here (OOP-6714).
+            currency: SETTLEMENT_CURRENCY,
             product_data: { name: gift.title },
             unit_amount: gift.price_cents,
           },

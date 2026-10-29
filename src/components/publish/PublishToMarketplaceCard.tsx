@@ -4,19 +4,11 @@ import { useState, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { publishToMarketplaceAction } from '@/lib/actions/publish';
 import { BRAND } from '@/lib/brand';
-
-const LOVEBYTE_MIN_FEE_BPS = 500;
-const LOVEBYTE_DEFAULT_FEE_BPS = 1000;
-
-const CURRENCIES = [
-  { value: 'usd', label: 'USD ($)' },
-  { value: 'hkd', label: 'HKD (HK$)' },
-  { value: 'gbp', label: 'GBP (£)' },
-  { value: 'eur', label: 'EUR (€)' },
-  { value: 'jpy', label: 'JPY (¥)' },
-  { value: 'cad', label: 'CAD (C$)' },
-  { value: 'aud', label: 'AUD (A$)' },
-] as const;
+import {
+  PLATFORM_FEE_BPS_DEFAULT,
+  PLATFORM_FEE_BPS_MIN,
+  SETTLEMENT_CURRENCY_SYMBOL,
+} from '@/lib/money';
 
 export type GiftMediaItem = {
   id: string;
@@ -45,9 +37,14 @@ type Props = {
  *   - Description textarea (max 500 chars, with live counter)
  *   - Cover media picker (thumbnail grid from gift_media rows)
  *   - Price toggle (free / paid)
- *   - Price input + currency selector (shown when paid)
+ *   - Price input (shown when paid), in the settlement currency
  *   - Platform fee display
  *   - Publish button → calls publishToMarketplaceAction
+ *
+ * OOP-6714: there is no currency selector. The marketplace settles in one
+ * currency (HKD), so a creator prices in HK$ and the platform does the
+ * rest — a per-listing currency is what let the catalogue end up with
+ * three of them behind dollar-denominated filters.
  *
  * Stripe gating: if price > 0 and the creator has no stripe_charges_enabled,
  * the server returns needsStripe=true and we redirect to the onboarding URL.
@@ -57,7 +54,7 @@ export function PublishToMarketplaceCard({
   giftId,
   defaultTitle,
   mediaItems,
-  platformFeeBps = LOVEBYTE_DEFAULT_FEE_BPS,
+  platformFeeBps = PLATFORM_FEE_BPS_DEFAULT,
   onSaveDraft,
 }: Props) {
   const router = useRouter();
@@ -69,7 +66,6 @@ export function PublishToMarketplaceCard({
   const [coverMediaId, setCoverMediaId] = useState<string | null>(null);
   const [isFree, setIsFree] = useState(true);
   const [priceCents, setPriceCents] = useState('');
-  const [currency, setCurrency] = useState<string>('usd');
   const [error, setError] = useState<string | null>(null);
 
   // Derived
@@ -87,7 +83,6 @@ export function PublishToMarketplaceCard({
         description: description || null,
         coverMediaId,
         priceCents: isFree ? null : effectivePriceCents,
-        currency,
         platformFeeBps,
       });
 
@@ -101,7 +96,7 @@ export function PublishToMarketplaceCard({
         setError(result.error);
       }
     });
-  }, [giftId, title, description, coverMediaId, isFree, effectivePriceCents, currency, platformFeeBps, router]);
+  }, [giftId, title, description, coverMediaId, isFree, effectivePriceCents, platformFeeBps, router]);
 
   const canPublish =
     title.trim().length > 0 &&
@@ -195,11 +190,12 @@ export function PublishToMarketplaceCard({
         </div>
       </div>
 
-      {/* Price input (shown when paid) */}
+      {/* Price input (shown when paid). The amount is in the settlement
+          currency — HK$ — and there is no currency picker (OOP-6714). */}
       {!isFree && (
         <div className="lb-publish-price-row">
           <div className="lb-field" style={{ flex: 1 }}>
-            <span>Amount</span>
+            <span>Amount ({SETTLEMENT_CURRENCY_SYMBOL})</span>
             <input
               type="number"
               className="lb-input"
@@ -210,20 +206,6 @@ export function PublishToMarketplaceCard({
               placeholder="0.00"
             />
           </div>
-          <div className="lb-field" style={{ width: 140 }}>
-            <span>Currency</span>
-            <select
-              className="lb-select"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
-              {CURRENCIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       )}
 
@@ -231,8 +213,8 @@ export function PublishToMarketplaceCard({
       <div className="lb-publish-fee-note">
         <span>Platform fee: </span>
         <strong>{feePercent}%</strong>
-        {platformFeeBps < LOVEBYTE_DEFAULT_FEE_BPS && (
-          <span> (minimum {LOVEBYTE_MIN_FEE_BPS / 100}%)</span>
+        {platformFeeBps < PLATFORM_FEE_BPS_DEFAULT && (
+          <span> (minimum {PLATFORM_FEE_BPS_MIN / 100}%)</span>
         )}
       </div>
 

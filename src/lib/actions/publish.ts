@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { startConnectOnboardingAction } from '@/lib/actions/checkout';
+import { SETTLEMENT_CURRENCY_DB } from '@/lib/money';
 
 /**
  * PublishToMarketplaceResult — returned by publishToMarketplaceAction.
@@ -31,7 +32,6 @@ const publishInputSchema = z.object({
     .transform((v) => (v === '' ? null : v)),
   coverMediaId: z.string().uuid().nullable().optional(),
   priceCents: z.number().int().min(0).nullable().optional(),
-  currency: z.enum(['usd', 'hkd', 'gbp', 'eur', 'jpy', 'cad', 'aud']).default('usd'),
   platformFeeBps: z.number().int().min(500).max(10000).default(1000),
   /** Set to true when re-calling after completing Stripe onboarding. */
   publishAfterStripe: z.boolean().optional().default(false),
@@ -47,7 +47,8 @@ const publishInputSchema = z.object({
  *      client redirects to onboarding, then re-calls with publishAfterStripe.
  *   4. Update gifts: is_listed=true, published_at=now(), plus the listing
  *      fields (title, description, cover_media_id, price_cents, currency,
- *      platform_fee_bps).
+ *      platform_fee_bps). `currency` is always the settlement currency
+ *      (HKD) — it is not a creator's choice (OOP-6714).
  *   5. Return { ok: true, giftId } so the client can redirect.
  *
  * Auth: requires authenticated user who owns the gift.
@@ -63,7 +64,7 @@ export async function publishToMarketplaceAction(
       error: parsed.error.issues[0]?.message ?? 'Invalid input.',
     };
   }
-  const { giftId, title, description, coverMediaId, priceCents, currency, platformFeeBps, publishAfterStripe } =
+  const { giftId, title, description, coverMediaId, priceCents, platformFeeBps, publishAfterStripe } =
     parsed.data;
 
   const supabase = await createClient();
@@ -150,7 +151,10 @@ export async function publishToMarketplaceAction(
       description: description ?? null,
       cover_media_id: coverMediaId ?? null,
       price_cents: effectivePriceCents,
-      currency,
+      // The marketplace settles in one currency (OOP-6714). A creator
+      // does not pick one: every listing is priced in HKD, so the
+      // catalogue, the filters and the platform fee all share a unit.
+      currency: SETTLEMENT_CURRENCY_DB,
       platform_fee_bps: platformFeeBps,
     })
     .eq('id', giftId);

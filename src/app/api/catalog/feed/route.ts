@@ -6,7 +6,7 @@ import { getCatalogFeed } from '@/lib/catalog';
  *
  * Anon-readable paginated feed (M-C, OOP-4275). Query params:
  *   ?category=<category>     filter by gift category
- *   ?priceTier=<tier>        free | under_5 | under_20 | over_20
+ *   ?priceTier=<tier>        free | under_50 | under_200 | over_200
  *   ?creator=<handle>        filter to one creator's gifts
  *   ?sort=<sort>             published_desc | most_liked | price_asc
  *   ?cursor=<opaque>         cursor from a previous response
@@ -15,6 +15,10 @@ import { getCatalogFeed } from '@/lib/catalog';
  * `nextCursor` is null when the current page is the last one. RLS is
  * the access boundary — the query is gated by `gifts_select_public_listed`
  * so anon clients get exactly the same view as a logged-in visitor.
+ *
+ * Every gift is priced in the settlement currency, HKD (OOP-6714), so
+ * `gifts[].currency` is always "hkd" and `price_cents` is always HKD
+ * cents. The price-tier bands are HKD cents too.
  *
  * Caching: `cache: 'no-store'` because the feed reflects the user's
  * own listings + interactions in real time. We can add a 5–10s SWR

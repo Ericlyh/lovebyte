@@ -2,6 +2,12 @@ import 'server-only';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
+import {
+  PRICE_TIER_LOWER_CENTS,
+  PRICE_TIER_UPPER_CENTS,
+  SETTLEMENT_CURRENCY,
+  SETTLEMENT_CURRENCY_DB,
+} from '@/lib/money';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -32,6 +38,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * would not change the answer — but reading the session cookie would opt
  * the route out of prerendering. The listing detail / comment reads stay on
  * the cookie client: those pages are per-user and dynamic anyway.
+ *
+ * Currency (OOP-6714): the catalogue settles in ONE currency (HKD). Every
+ * row's `price_cents` is HKD cents and every response reports the
+ * settlement currency — there is no per-listing currency and no runtime FX
+ * conversion. See `src/lib/money.ts`.
  */
 
 // ─── Public types ──────────────────────────────────────────────────────────
@@ -44,7 +55,7 @@ export type GiftCategory =
   | 'animated_letter'
   | 'code';
 
-export type PriceTier = 'free' | 'under_5' | 'under_20' | 'over_20';
+export type PriceTier = 'free' | 'under_50' | 'under_200' | 'over_200';
 
 export type FeedSort = 'published_desc' | 'most_liked' | 'price_asc';
 
@@ -55,7 +66,8 @@ export type CatalogGift = {
   description: string | null;
   category: GiftCategory | null;
   price_cents: number | null;
-  currency: string | null;
+  /** Always the settlement currency (OOP-6714). */
+  currency: string;
   published_at: string;
   like_count: number;
   owner: {
@@ -92,7 +104,8 @@ export type CatalogListing = {
   description: string | null;
   category: GiftCategory | null;
   price_cents: number | null;
-  currency: string | null;
+  /** Always the settlement currency (OOP-6714). */
+  currency: string;
   published_at: string;
   like_count: number;
   payload: unknown;
@@ -116,7 +129,7 @@ const giftCategoryEnum = z.enum([
   'code',
 ]);
 
-const priceTierEnum = z.enum(['free', 'under_5', 'under_20', 'over_20']);
+const priceTierEnum = z.enum(['free', 'under_50', 'under_200', 'over_200']);
 
 const feedSortEnum = z.enum(['published_desc', 'most_liked', 'price_asc']);
 
@@ -126,7 +139,7 @@ const feedSortEnum = z.enum(['published_desc', 'most_liked', 'price_asc']);
  * `sort` picks the ordering; `cursor` is opaque (an encoded
  * `published_at|id` pair).
  *
- * We parse with `.transform` so `?category=memory_cards&priceTier=under_5`
+ * We parse with `.transform` so `?category=memory_cards&priceTier=under_50`
  * from the URL works — zod's default coercion handles the strings.
  */
 export const FeedQuerySchema = z.object({
@@ -196,17 +209,21 @@ type PriceTierRange = {
  * The four bands partition the catalogue: `gifts_price_cents_chk`
  * constrains `price_cents` to NULL or a positive integer, so a listed
  * gift is either free (NULL) or lands in exactly one paid band.
+ *
+ * The edges are HKD cents (OOP-6714): HK$50 and HK$200. They used to be
+ * 500 / 2000 cents read as US dollars, which meant a HK$48 item and a
+ * €25 item were filed under the same label as a US$120 item.
  */
 function priceTierRange(tier: PriceTier): PriceTierRange {
   switch (tier) {
     case 'free':
       return { isNull: true };
-    case 'under_5':
-      return { gte: 1, lt: 500 };
-    case 'under_20':
-      return { gte: 500, lt: 2000 };
-    case 'over_20':
-      return { gte: 2000 };
+    case 'under_50':
+      return { gte: 1, lt: PRICE_TIER_LOWER_CENTS };
+    case 'under_200':
+      return { gte: PRICE_TIER_LOWER_CENTS, lt: PRICE_TIER_UPPER_CENTS };
+    case 'over_200':
+      return { gte: PRICE_TIER_UPPER_CENTS };
   }
 }
 
@@ -296,6 +313,7 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
   }
 
   let rows = data ?? [];
+  assertSettlementCurrency(rows);
 
   // Compute like counts via the SQL function so the projection is a single
   // round-trip per gift. The function is `security definer` so anon can call it.
@@ -324,6 +342,27 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
   }
 
   return { gifts, nextCursor };
+}
+
+/**
+ * The catalogue settles in one currency (OOP-6714). Rows are stored with
+ * `gifts.currency = 'HKD'` and every response reports the settlement
+ * currency, so a client never has to branch on it.
+ *
+ * If a row still carries a different currency, the data migration
+ * (`0012_settlement_currency_hkd.sql`) has not been applied and its
+ * `price_cents` are in the wrong unit. Say so loudly rather than
+ * quietly showing a converted-looking price that is not one.
+ */
+function assertSettlementCurrency(rows: { currency?: string | null }[]): void {
+  const offenders = rows.filter(
+    (r) => (r.currency ?? '').trim().toUpperCase() !== SETTLEMENT_CURRENCY_DB,
+  );
+  if (offenders.length > 0) {
+    console.error(
+      `[catalog] ${offenders.length} row(s) are not in the settlement currency (${SETTLEMENT_CURRENCY_DB}) — apply migration 0012_settlement_currency_hkd.sql`,
+    );
+  }
 }
 
 /**
@@ -356,7 +395,7 @@ async function hydrateFeedRow(
     description: row.description,
     category: row.category,
     price_cents: row.price_cents,
-    currency: row.currency,
+    currency: SETTLEMENT_CURRENCY,
     published_at: row.published_at,
     like_count: likeCount,
     owner: {
@@ -414,6 +453,7 @@ export async function searchCatalog(rawParams: unknown): Promise<CatalogSearchRe
   }
 
   const gifts = await Promise.all((data ?? []).map((r) => hydrateFeedRow(supabase, r)));
+  assertSettlementCurrency(data ?? []);
   return { gifts };
 }
 
@@ -446,6 +486,7 @@ export async function getListingDetail(giftId: string): Promise<CatalogListing |
   if (!data) return null;
 
   const owner = Array.isArray(data.owner) ? data.owner[0] : data.owner;
+  assertSettlementCurrency([data]);
 
   // Like count.
   let likeCount = 0;
@@ -490,7 +531,7 @@ export async function getListingDetail(giftId: string): Promise<CatalogListing |
     description: data.description,
     category: data.category,
     price_cents: data.price_cents,
-    currency: data.currency,
+    currency: SETTLEMENT_CURRENCY,
     published_at: data.published_at,
     like_count: likeCount,
     payload: data.payload,

@@ -441,9 +441,9 @@
       },
       "priceTier": {
         "free": "Free",
-        "under_5": "Under $5",
-        "under_20": "Under $20",
-        "over_20": "$20 and up"
+        "under_50": "Under HK$50",
+        "under_200": "HK$50 – HK$200",
+        "over_200": "HK$200 and up"
       },
       "creatorLabel": "Creator handle",
       "creatorPlaceholder": "@handle",

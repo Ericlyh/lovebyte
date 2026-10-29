@@ -53,7 +53,7 @@ export function GiftCardView({ gift, byText, likesLabel, freeLabel }: Props) {
         <h3 className="lb-gift-card__title">{gift.title}</h3>
         <p className="lb-gift-card__creator">{byText}</p>
         <div className="lb-gift-card__meta">
-          <PriceBadgeView priceCents={gift.price_cents} currency={gift.currency} freeLabel={freeLabel} />
+          <PriceBadgeView priceCents={gift.price_cents} freeLabel={freeLabel} />
           <span className="lb-gift-card__likes" aria-label={likesLabel}>
             ♥ {gift.like_count}
           </span>

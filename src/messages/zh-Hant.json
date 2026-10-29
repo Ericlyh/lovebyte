@@ -441,9 +441,9 @@
       },
       "priceTier": {
         "free": "免費",
-        "under_5": "$5 以下",
-        "under_20": "$20 以下",
-        "over_20": "$20 或以上"
+        "under_50": "HK$50 以下",
+        "under_200": "HK$50 – HK$200",
+        "over_200": "HK$200 或以上"
       },
       "creatorLabel": "創作人 handle",
       "creatorPlaceholder": "@handle",

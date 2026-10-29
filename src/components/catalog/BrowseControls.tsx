@@ -13,7 +13,7 @@ import {
  * Browse controls — search input + sort + category pills (M-C, OOP-4275).
  *
  * Client component because the search box debounces and pushes to the URL.
- * Filters are URL-driven so `/browse?category=quiz&priceTier=under_5` is
+ * Filters are URL-driven so `/browse?category=quiz&priceTier=under_50` is
  * shareable.
  *
  * The debounce window is 300ms — fast enough that the URL updates while
@@ -34,7 +34,7 @@ const CATEGORIES = [
   'code',
 ] as const;
 
-const PRICE_TIERS = ['free', 'under_5', 'under_20', 'over_20'] as const;
+const PRICE_TIERS = ['free', 'under_50', 'under_200', 'over_200'] as const;
 
 const SORTS = ['published_desc', 'most_liked', 'price_asc'] as const;
 

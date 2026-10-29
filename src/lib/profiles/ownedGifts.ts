@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { SETTLEMENT_CURRENCY } from '@/lib/money';
 
 /**
  * Owner-only "my gifts" collection for /u/[handle] (OOP-5685).
@@ -30,6 +31,9 @@ import { createClient } from '@/lib/supabase/server';
  *   holds and the grid never renders a blank tile.
  * • `published_at` falls back to `created_at` for drafts + unlisted.
  *   The visual card doesn't render the timestamp either way.
+ * • `currency` is always the settlement currency (OOP-6714) — the
+ *   marketplace settles in one currency, so there is no per-gift
+ *   currency to report.
  */
 export type OwnedGift = {
   id: string;
@@ -38,7 +42,7 @@ export type OwnedGift = {
   description: string | null;
   category: 'memory_cards' | 'dragdrop_puzzle' | 'quiz' | 'multimedia_collage' | 'animated_letter' | null;
   price_cents: number | null;
-  currency: string | null;
+  currency: string;
   published_at: string;
   like_count: number;
   is_listed: boolean;
@@ -124,7 +128,7 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
         description: r.description,
         category: r.category,
         price_cents: r.price_cents,
-        currency: r.currency,
+        currency: SETTLEMENT_CURRENCY,
         published_at: r.published_at ?? r.created_at,
         like_count: likeCount,
         is_listed: r.is_listed,

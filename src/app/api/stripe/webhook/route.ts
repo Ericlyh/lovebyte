@@ -4,6 +4,12 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
 import { sendShareEmail } from '@/lib/email';
+import {
+  PLATFORM_FEE_BPS_DEFAULT,
+  SETTLEMENT_CURRENCY,
+  SETTLEMENT_CURRENCY_DB,
+  platformFeeCents,
+} from '@/lib/money';
 
 /**
  * POST /api/stripe/webhook — Stripe Connect destination-charge receiver
@@ -154,7 +160,16 @@ async function handleCheckoutCompleted(
   const recipientContact = (meta.recipient_contact ?? '').trim() || null;
   const piId = typeof session.payment_intent === 'string' ? session.payment_intent : null;
   const amount = session.amount_total ?? 0;
-  const currency = (session.currency ?? 'hkd').toUpperCase();
+  // The marketplace settles in one currency (OOP-6714), so the session
+  // currency is the settlement currency. We read it off the session
+  // rather than assuming it, so a session created elsewhere shows up as
+  // a mismatch instead of a silently mis-recorded purchase.
+  const currency = (session.currency ?? SETTLEMENT_CURRENCY).toUpperCase();
+  if (currency !== SETTLEMENT_CURRENCY_DB) {
+    console.error(
+      `[stripe/webhook] session ${session.id} settled in ${currency}, not ${SETTLEMENT_CURRENCY_DB}`,
+    );
+  }
 
   if (!giftId || !buyerId || !piId) {
     console.error('[stripe/webhook] checkout.session.completed missing metadata', session.id);
@@ -187,10 +202,10 @@ async function handleCheckoutCompleted(
         .select('platform_fee_bps')
         .eq('id', giftId)
         .maybeSingle();
-      const bps = giftRow?.platform_fee_bps ?? 1000;
-      fee = Math.floor((amount * bps) / 10000);
+      const bps = giftRow?.platform_fee_bps ?? PLATFORM_FEE_BPS_DEFAULT;
+      fee = platformFeeCents(amount, bps);
     } catch {
-      fee = Math.floor((amount * 1000) / 10000); // default 10%
+      fee = platformFeeCents(amount, PLATFORM_FEE_BPS_DEFAULT); // default 10%
     }
   }
   const creatorPayout = Math.max(0, amount - fee);

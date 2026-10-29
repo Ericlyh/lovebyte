@@ -80,7 +80,7 @@ export default async function CheckoutPage({ params }: Props) {
         <article className="lb-checkout-summary">
           <h2>{gift.title}</h2>
           {gift.description ? <p>{gift.description}</p> : null}
-          <PriceBadge priceCents={gift.price_cents} currency={gift.currency} />
+          <PriceBadge priceCents={gift.price_cents} />
         </article>
 
         {creatorReady ? (

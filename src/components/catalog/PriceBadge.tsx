@@ -1,4 +1,5 @@
 import { getTranslations } from 'next-intl/server';
+import { PriceBadgeView } from './PriceBadgeView';
 
 /**
  * Price badge for /browse cards + /l/[giftId] hero (M-C, OOP-4275).
@@ -8,38 +9,17 @@ import { getTranslations } from 'next-intl/server';
  *   • Paid (cents > 0)   → currency-formatted amount
  *
  * `priceCents=null` is "Free / contact creator" per the M-A constants.
- * `priceCents > 0` formats with `Intl.NumberFormat` using the gift's own
- * currency (HKD/USD/EUR show up in the seed).
+ * `priceCents > 0` formats with `Intl.NumberFormat` — always in the
+ * settlement currency, HKD (OOP-6714). The marketplace used to format in
+ * each gift's own currency, so the same browse page could show HK$48, €25
+ * and US$120 side by side behind filters written in dollars.
  */
 type Props = {
   priceCents: number | null;
-  currency: string | null;
 };
 
-export async function PriceBadge({ priceCents, currency }: Props) {
+export async function PriceBadge({ priceCents }: Props) {
   const t = await getTranslations('Catalog.price');
 
-  if (priceCents == null) {
-    return (
-      <span className="lb-price-badge lb-price-badge--free">
-        {t('free')}
-      </span>
-    );
-  }
-
-  // Defensive: if currency is missing or unknown, fall back to plain cents.
-  let formatted: string;
-  try {
-    formatted = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency ?? 'USD',
-      maximumFractionDigits: 0,
-    }).format(priceCents / 100);
-  } catch {
-    formatted = `${priceCents / 100}`;
-  }
-
-  return (
-    <span className="lb-price-badge lb-price-badge--paid">{formatted}</span>
-  );
+  return <PriceBadgeView priceCents={priceCents} freeLabel={t('free')} />;
 }

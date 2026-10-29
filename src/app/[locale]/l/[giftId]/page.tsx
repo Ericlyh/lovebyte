@@ -100,7 +100,7 @@ export default async function ListingPage({ params }: Props) {
           </p>
 
           <div className="lb-listing-hero__meta">
-            <PriceBadge priceCents={listing.price_cents} currency={listing.currency} />
+            <PriceBadge priceCents={listing.price_cents} />
             <LikeButton
               giftId={listing.id}
               initialLiked={initialLiked}
