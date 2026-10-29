@@ -83,6 +83,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('Common.notFound');
   return {
     title: `${t('title')} · ${BRAND.NAME}`,
+    /**
+     * A 404 document must never be indexed.
+     *
+     * Next emits this tag itself, but only when it knows the response
+     * status at render time — and on Vercel the 404 is applied AFTER
+     * the render, so the tag was missing in production while a local
+     * `next start` had it. Declaring it here makes it the same on every
+     * platform.
+     */
+    robots: { index: false },
   };
 }
 
