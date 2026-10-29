@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
@@ -8,10 +9,16 @@ import { ListingComments } from '@/components/catalog/ListingComments';
 import { ListingPreview } from '@/components/catalog/ListingPreview';
 import { ListingReplies } from '@/components/catalog/ListingReplies';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
+import { CommonLoading } from '@/components/PageState';
 import { TrackView } from '@/components/analytics/TrackView';
 import { TrackedLink } from '@/components/analytics/TrackedLink';
 import { createClient } from '@/lib/supabase/server';
-import { getListingDetail, getListingComments, getListingReplies } from '@/lib/catalog';
+import {
+  getListingDetail,
+  getListingComments,
+  getListingReplies,
+  type CatalogListing,
+} from '@/lib/catalog';
 import { BRAND } from '@/lib/brand';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { listingUrl, productJsonLd } from '@/lib/seo/jsonld';
@@ -27,7 +34,28 @@ import { listingOgImage } from '@/lib/seo/metadata';
  *
  * Self-liking: not blocked at the server level — a creator can like
  * their own listing (gifting yourself a heart is fine, and it makes the
- * UI feel less broken in preview). M-D can revisit this if needed.
+ * UI feel less broken in preview). M-D can revisit it if needed.
+ *
+ * ## Why there is no `loading.tsx` here (OOP-6729)
+ *
+ * This route used to carry a segment-level `loading.tsx`. That file is
+ * not a cosmetic choice — it is a `<Suspense>` boundary AROUND this
+ * page, and a Suspense boundary lets Next.js flush the response shell
+ * (the loading skeleton, HTTP 200) BEFORE this page's `notFound()`
+ * ever runs. The 404 was therefore rendered *inside* an
+ * already-committed 200 response: a "Gift not found" page that
+ * crawlers read as a real, indexable page — an infinite URL space of
+ * soft-404s, on URLs that are gift UUIDs.
+ *
+ * The fix is the order of operations: the existence check has to
+ * happen BEFORE anything is flushed, so it happens here, at the top of
+ * the page, and it throws `notFound()`. The streaming skeleton is kept
+ * — it just moved INSIDE the page (the `<Suspense>` below), so it
+ * still covers the comment/reply reads while the listing itself is
+ * already known to exist.
+ *
+ * The same pattern is used by /u/[handle], which has always returned
+ * a real 404.
  */
 type Props = {
   params: Promise<{ locale: string; giftId: string }>;
@@ -36,9 +64,11 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { giftId } = await params;
   const listing = await getListingDetail(giftId);
-  if (!listing) {
-    return { title: `Gift not found — ${BRAND.NAME}` };
-  }
+  // OOP-6729 — a listing that does not exist is a 404, not a page
+  // with a sad title. `notFound()` in generateMetadata keeps the
+  // metadata from describing a page that does not exist (and stops a
+  // "Gift not found — Lovorithm" title from being served with a 200).
+  if (!listing) notFound();
   const creatorLabel = listing.owner.display_name ?? `@${listing.owner.handle}`;
   const title = `${listing.title} by ${creatorLabel} — ${BRAND.NAME}`;
   const description =
@@ -86,6 +116,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/**
+ * The streaming skeleton, kept from the old `loading.tsx` (OOP-6729).
+ * It now renders as the `<Suspense>` fallback inside the page instead
+ * of as a segment-level loading boundary.
+ */
+function ListingSkeleton() {
+  return (
+    <main className="lb-listing-page">
+      <CommonLoading />
+    </main>
+  );
+}
+
 export default async function ListingPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -95,8 +138,25 @@ export default async function ListingPage({ params }: Props) {
   // pass share ONE read of the listing (OOP-6722). It used to be read
   // twice, each read being three queries.
   const listing = await getListingDetail(giftId);
+  // OOP-6729 — the guard that makes this route return a real 404. It
+  // has to run BEFORE the response is flushed, which is why the
+  // segment no longer has a `loading.tsx` boundary (see the note
+  // above).
   if (!listing) notFound();
 
+  return (
+    <Suspense fallback={<ListingSkeleton />}>
+      <ListingView listing={listing} />
+    </Suspense>
+  );
+}
+
+/**
+ * Everything that is not the existence check. Split out of the page so
+ * it can sit behind a `<Suspense>`: the comment and reply reads are
+ * slow, and the visitor should see the listing while they land.
+ */
+async function ListingView({ listing }: { listing: CatalogListing }) {
   const t = await getTranslations('Catalog.listing');
   const creatorLabel = listing.owner.display_name ?? `@${listing.owner.handle}`;
 
@@ -166,7 +226,7 @@ export default async function ListingPage({ params }: Props) {
         props={{ gift_type: listing.type, gift_id: listing.id }}
       />
 
-      <article className="lb-container lb-listing">
+      <article className="lb-listing">
         <header className="lb-listing-hero">
           <p className="lb-listing-hero__category">
             {t(`category.${listing.category ?? 'unknown'}`)}

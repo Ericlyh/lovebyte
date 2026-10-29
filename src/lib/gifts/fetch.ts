@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { getMockEnvelope } from './mock';
 import {
@@ -44,14 +45,21 @@ const PAYLOAD_SCHEMAS: Record<string, { safeParse: (v: unknown) => { success: bo
  * appropriate for Server Components and Route Handlers. It does NOT
  * require the user to be authenticated (anon SELECT on `shares` is
  * granted by the RLS policy `shares_select_public_by_token`).
+ *
+ * Memoised with React `cache()` (OOP-6729): the page resolves the
+ * envelope twice — once for the metadata, once for the body — and both
+ * passes are in the same request, so without the memo every visit to a
+ * share link cost two PostgREST round trips.
  */
-export async function getEnvelopeByToken(
+async function getEnvelopeByTokenUncached(
   token: string,
 ): Promise<RecipientEnvelope | null> {
   const liveEnvelope = await fetchFromSupabase(token);
   if (liveEnvelope) return liveEnvelope;
   return getMockEnvelope(token);
 }
+
+export const getEnvelopeByToken = cache(getEnvelopeByTokenUncached);
 
 async function fetchFromSupabase(
   token: string,

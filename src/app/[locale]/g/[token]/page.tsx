@@ -33,6 +33,27 @@ import { BRAND } from '@/lib/brand';
  *
  * Reverting: put `export const runtime = 'edge'` back. The cost is
  * that a sick data layer takes this page down with it again.
+ *
+ * ## Why there is no `loading.tsx` here (OOP-6729)
+ *
+ * The segment used to carry a `loading.tsx`. That file is not a
+ * cosmetic choice — it is a `<Suspense>` boundary AROUND this page,
+ * and a Suspense boundary lets Next.js flush the response shell (the
+ * loading skeleton, HTTP 200) before this page's `notFound()` ever
+ * runs. So an unknown share token was served as a real page with a
+ * 200: the "Gift not found" page, indexable, on an endless URL space
+ * of share tokens.
+ *
+ * The fix is the order of operations: the existence check has to
+ * happen BEFORE anything is flushed, so it happens at the top of the
+ * page and throws `notFound()`. The check was already here — it just
+ * had no way of reaching the status code.
+ *
+ * The cost is the streaming skeleton. The envelope read IS the
+ * existence check, so there is nothing left to stream behind a
+ * boundary once the check has passed: the recipient waits for the
+ * envelope and then sees it. `/u/[handle]`, which has always returned
+ * a real 404, behaves the same way.
  */
 
 export const runtime = 'nodejs';
