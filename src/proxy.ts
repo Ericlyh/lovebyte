@@ -25,11 +25,16 @@ import {
  * NOTE: Next's app-router runtime owns the `Vary` header of a page
  * response — it does `res.setHeader('Vary', varyHeader)` (see
  * next/dist/build/templates/app-page-runtime.js) with its own list, so
- * whatever we set here is overwritten before the response is sent. That
- * is why `vercel.json` carries the same declaration: it is applied by
- * the platform after Next has finished, so it is the one that actually
- * reaches the client. Keep the two in step — `src/proxy.test.ts` checks
- * that they agree.
+ * whatever we set here is overwritten before the response is sent. The
+ * same is true of next.config's `headers()`, and of `vercel.json`'s:
+ * the platform copy lands on the routes Vercel serves itself
+ * (`/favicon.ico`, `/robots.txt`), not on the pages Next renders.
+ *
+ * `vercel.json` still carries the declaration, because it is the layer
+ * that CAN set it, and because `Vary: Cookie` is the only thing that
+ * tells a cache in front of this site that the response depends on the
+ * cookie at all. Keep the two in step — `src/proxy.test.ts` checks that
+ * they agree.
  */
 const VARY_LOCALE = 'Cookie, Accept-Language';
 
