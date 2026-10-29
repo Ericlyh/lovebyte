@@ -30,7 +30,14 @@
       "line2": "不只一份禮物。",
       "lede": "Lovorithm 將你嘅相片、錄音同文字變成獨一無二嘅數碼禮物——一場配對遊戲、一封情信、一個只有對方先識答嘅小測驗。",
       "ctaPrimary": "開始整禮物 →",
-      "ctaSecondary": "睇下例子"
+      "ctaSecondary": "瀏覽禮物目錄 →"
+    },
+    "catalogue": {
+      "tag": "禮物目錄已經開放",
+      "heading": "其他人整嘅禮物。",
+      "lede": "獨立創作者上架嘅現貨——撳入去就見到係咩。有啲免費，有啲由整嘅人自己定價。",
+      "cta": "瀏覽全部禮物 →",
+      "demoCta": "睇一個例子 →"
     },
     "features": {
       "heading": "六種禮物格式",
@@ -85,9 +92,9 @@
       "status": "狀態"
     },
     "waitlist": {
-      "tag": "封測 · 邀請制",
-      "heading": "加入 Lovorithm 封測。",
-      "lede": "我哋邀請咗一班香港創作者同送禮嘅人率先試用 Lovorithm。留低你嘅 email，位置開咗就會即刻通知你。",
+      "tag": "保持聯繫",
+      "heading": "新格式，第一時間知。",
+      "lede": "有新禮物格式，或者有創作者上架咗值得睇嘅禮物，我哋會第一時間通知呢份名單。禮物目錄而家已經開放，你可以先瀏覽吓。",
       "emailLabel": "Email",
       "emailPlaceholder": "you@example.com",
       "intentLabel": "我打算用佢嚟（可選）",
@@ -95,14 +102,14 @@
       "intentPersonal": "自用 — 送畀我愛嘅人",
       "intentHkSme": "我嘅香港小生意 — 送畀客戶",
       "intentCreator": "我係創作者 — 想賣嘢",
-      "submit": "加入候補名單",
-      "submitting": "加入緊…",
+      "submit": "發送更新畀我",
+      "submitting": "加緊加入…",
       "successTitle": "你已經喺名單上面。",
-      "successInserted": "邀請準備好我哋會 email 你。期間歡迎你推介 Lovorithm 畀你身邊鍾意嘅人。",
-      "successAlready": "你已經喺名單上面喇，邀請準備好就會通知你。",
-      "fineprint": "唔會濫發 email。淨係喺你嘅邀請開通時寄一封，加你隨時可以退訂嘅上架消息。",
+      "successInserted": "有新嘢我哋會 email 你。期間可以先瀏覽下禮物目錄——入面總有一份禮物你鍾意嘅人會鍾意。",
+      "successAlready": "你已經喺名單上面喇。有新嘢我哋會 email 你。",
+      "fineprint": "唔會濫發 email。有新嘢 launch 嗰陣寄一封，加你隨時可以退訂嘅產品消息。",
       "errorRateLimit": "你一個鐘頭內已經加入過，遲少少先再試。",
-      "errorGeneric": "加入候補名單時出咗問題，請再試多次。"
+      "errorGeneric": "加入名單時出咗問題，請再試多次。"
     }
   },
   "Recipient": {

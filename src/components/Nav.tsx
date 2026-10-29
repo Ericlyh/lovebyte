@@ -10,8 +10,11 @@ import { type NavMenuItem } from '@/components/NavMenuMobile';
  * Server component. Reads auth state once per render and picks the
  * link set accordingly:
  *
- *   Anon   → brand · lang toggle · "Sign in" · "Start free" CTA
+ *   Anon   → brand · lang toggle · "Browse" · "Sign in" · "Start free" CTA
  *   Authed → brand · lang toggle · "Browse" · "Create" · "View profile" · Sign-out form
+ *
+ * "Browse" is not in either list: the catalogue is public, so that link
+ * is rendered for every visitor by <NavAuthLinks /> (OOP-6712).
  *
  * Desktop renders the items in a single horizontal row. Below 640px
  * the row is hidden by CSS and a hamburger pops out a side drawer
@@ -56,7 +59,6 @@ export async function Nav({ deferAuth = false }: { deferAuth?: boolean } = {}) {
 
     items = user
       ? [
-          { kind: 'link', href: '/browse', label: t('browse') },
           { kind: 'link', href: '/create', label: t('create') },
           ...(handle
             ? [{ kind: 'link' as const, href: `/u/${handle}`, label: t('viewProfile') }]

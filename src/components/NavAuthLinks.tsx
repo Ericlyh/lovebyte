@@ -8,7 +8,7 @@ import { LanguageToggle } from '@/components/LanguageToggle';
 import { NavMenuMobile, type NavMenuItem } from '@/components/NavMenuMobile';
 
 /**
- * The auth-dependent half of the top nav.
+ * The nav's link set — the auth-dependent half, plus the public "Browse".
  *
  * OOP-6710 — the landing page is prerendered once per locale, so nothing in
  * its tree may read a cookie. That rules out the server-side `auth.getUser()`
@@ -23,6 +23,11 @@ import { NavMenuMobile, type NavMenuItem } from '@/components/NavMenuMobile';
  *     from `/api/me` and fills the slot in. The nav is briefly empty rather
  *     than briefly WRONG — a signed-in visitor never sees "Sign in" on a page
  *     they are already signed in to.
+ *
+ * OOP-6712 — "Browse" is NOT auth-dependent. The catalogue is public, so
+ * that link is rendered for every visitor, and because the session lookup
+ * above is client-side it is the one link that reaches a crawler (and a
+ * visitor without JS) in the server HTML.
  *
  * "View profile" points at `/u/me` (the redirect shim that resolves to
  * `/u/<handle>`, or to `/onboarding` when the profile has no handle yet)
@@ -55,12 +60,11 @@ export function NavAuthLinks({ items }: { items: NavMenuItem[] | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
-  const resolved: NavMenuItem[] | null =
+  const resolved: NavMenuItem[] =
     items ??
     (session
       ? session.authed
         ? [
-            { kind: 'link', href: '/browse', label: t('browse') },
             { kind: 'link', href: '/create', label: t('create') },
             { kind: 'link', href: '/u/me', label: t('viewProfile') },
             { kind: 'signout', label: t('signOut') },
@@ -69,12 +73,23 @@ export function NavAuthLinks({ items }: { items: NavMenuItem[] | null }) {
             { kind: 'link', href: '/login', label: tLanding('signin') },
             { kind: 'link', href: '/signup', label: tLanding('startFree'), primary: true },
           ]
-      : null);
+      : []);
+
+  // OOP-6712 — "Browse" is public: the catalogue is readable by anyone,
+  // so the link belongs to every visitor, signed in or not. It is also
+  // the one link that is NOT auth-dependent, so it is rendered here for
+  // everyone — including in the server HTML, which is what a crawler
+  // (or a visitor without JS) sees. The session lookup above is
+  // client-side, so the links it decides on only arrive after hydration.
+  const navItems: NavMenuItem[] = [
+    { kind: 'link', href: '/browse', label: t('browse') },
+    ...resolved,
+  ];
 
   return (
     <>
       <div className="lb-nav__links lb-nav__links--desktop">
-        {(resolved ?? []).map((item, i) => {
+        {navItems.map((item, i) => {
           if (item.kind === 'link') {
             return (
               <Link
@@ -97,7 +112,7 @@ export function NavAuthLinks({ items }: { items: NavMenuItem[] | null }) {
         <LanguageToggle />
       </div>
       <div className="lb-nav__links--mobile">
-        <NavMenuMobile items={resolved ?? []} />
+        <NavMenuMobile items={navItems} />
       </div>
     </>
   );

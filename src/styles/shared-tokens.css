@@ -354,6 +354,37 @@ a:hover { color: var(--lb-primary); }
 }
 .lb-landing-cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
+/* OOP-6712 — the live catalogue preview. It sits between the hero and
+ * the format list: the point of the section is that the marketplace is
+ * open, so it goes where a visitor first meets the product. */
+.lb-landing-catalogue {
+  background: var(--lb-surface);
+  padding: 80px 0;
+  text-align: center;
+}
+.lb-landing-catalogue h2 {
+  font-family: var(--lb-font-display);
+  font-size: 48px;
+  color: var(--lb-primary-deep);
+  margin: var(--lb-space-4) 0 var(--lb-space-3);
+}
+.lb-landing-catalogue p.lede {
+  font-size: 18px;
+  color: var(--lb-ink-soft);
+  max-width: 620px;
+  margin: 0 auto var(--lb-space-6);
+}
+/* The cards read left-to-right even though the heading is centred. */
+.lb-landing-catalogue__grid { text-align: left; }
+.lb-landing-catalogue__more {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--lb-space-6);
+}
+
 .lb-features {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -450,6 +481,11 @@ a:hover { color: var(--lb-primary); }
   .lb-landing-hero { padding: 64px 20px 48px; }
   .lb-landing-hero h1 { font-size: clamp(36px, 11vw, 72px); }
   .lb-landing-hero p.lede { font-size: 16px; }
+
+  /* Catalogue preview — tighter padding, smaller heading */
+  .lb-landing-catalogue { padding: 48px 0; }
+  .lb-landing-catalogue h2 { font-size: 32px; }
+  .lb-landing-catalogue p.lede { font-size: 16px; }
 
   /* Features — force single column on phones, even though auto-fit already
    * collapses at 260px min — defense in depth */

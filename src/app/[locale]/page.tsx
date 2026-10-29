@@ -1,8 +1,29 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import Link from 'next/link';
 import { Nav } from '@/components/Nav';
+import { GiftCard } from '@/components/catalog/GiftCard';
 import { WaitlistForm } from '@/components/WaitlistForm';
+import { getCatalogFeed } from '@/lib/catalog';
 import { turnstileEnabled } from '@/lib/turnstile';
+
+/**
+ * OOP-6712 — how many live listings the landing page previews.
+ *
+ * Six is what fits the 3-up grid in two rows without pushing the rest
+ * of the page too far down.
+ */
+const CATALOGUE_PREVIEW_COUNT = 6;
+
+/**
+ * OOP-6712 — the catalogue preview is live data, but the landing page is
+ * prerendered once per locale (OOP-6710), so it cannot be re-rendered on
+ * every request. ISR re-renders it every 5 minutes instead: the page
+ * stays static (and therefore fast to serve), and a listing that appears
+ * or changes price shows up within that window. The feed is read with the
+ * cookie-free public client, so the read never opts the route back into
+ * dynamic rendering.
+ */
+export const revalidate = 300;
 
 /**
  * Landing page — Phase 2 (architecture.md §12).
@@ -27,12 +48,25 @@ import { turnstileEnabled } from '@/lib/turnstile';
  * authed link set (Browse / Create / View profile / Sign out) instead
  * of the "Sign in / Start free" CTA. The shared Nav already handles
  * anon rendering, so no separate anon path is needed.
+ *
+ * OOP-6712 — the catalogue preview. The catalogue had 9 live listings and
+ * no route into it from `/`: the nav only offered "Browse" to signed-in
+ * users, so every anonymous visitor and every crawler bounced off the
+ * marketplace. This section renders the real listings (title, creator,
+ * price) straight from the catalogue feed, and the nav now links
+ * `/browse` for everyone.
  */
 export default async function Home({ params }: PageProps<'/[locale]'>) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   const t = await getTranslations('Landing');
+
+  // Live catalogue listings. The feed swallows its own errors and returns
+  // an empty list, so a data-layer hiccup degrades this section to a link
+  // to /browse rather than taking the landing page down.
+  const { gifts } = await getCatalogFeed({ sort: 'published_desc' });
+  const previewGifts = gifts.slice(0, CATALOGUE_PREVIEW_COUNT);
 
   const features = [
     { id: 'cards', emoji: '🎴' },
@@ -63,9 +97,39 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           <Link href="/create" className="lb-btn lb-btn--primary">
             {t('hero.ctaPrimary')}
           </Link>
-          <Link href="/g/demo" className="lb-btn lb-btn--ghost">
+          <Link href="/browse" className="lb-btn lb-btn--ghost">
             {t('hero.ctaSecondary')}
           </Link>
+        </div>
+      </section>
+
+      {/*
+        OOP-6712 — the live catalogue. Before this, `/` had no route into
+        the marketplace at all for an anonymous visitor: the nav's "Browse"
+        was authed-only and the only gift on the page was the `/g/demo`
+        mock. These are the real listings, read from the catalogue feed.
+      */}
+      <section className="lb-landing-catalogue" aria-labelledby="catalogue-heading">
+        <div className="lb-container">
+          <span className="lb-tag">{t('catalogue.tag')}</span>
+          <h2 id="catalogue-heading">{t('catalogue.heading')}</h2>
+          <p className="lede">{t('catalogue.lede')}</p>
+          <ul className="lb-gift-grid lb-landing-catalogue__grid">
+            {previewGifts.map((gift) => (
+              <li key={gift.id}>
+                <GiftCard gift={gift} />
+              </li>
+            ))}
+          </ul>
+          <p className="lb-landing-catalogue__more">
+            <Link href="/browse" className="lb-btn lb-btn--ghost">
+              {t('catalogue.cta')}
+            </Link>
+            {' · '}
+            <Link href="/g/demo" className="lb-link">
+              {t('catalogue.demoCta')}
+            </Link>
+          </p>
         </div>
       </section>
 
@@ -93,10 +157,15 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
       </section>
 
       {/*
-        Phase 10 closed-beta waitlist — the marketing-funnel capture for
-        visitors who aren't ready to sign up today. Server Component, so
-        the form is hydrated as a child; the action path is the only
-        insert into `public.waitlist`.
+        Phase 10 waitlist capture — the list of people who want to hear
+        when something new lands. Server Component, so the form is
+        hydrated as a child; the action path is the only insert into
+        `public.waitlist`.
+
+        OOP-6712: the copy no longer frames the product as an invite-only
+        closed beta. That claim contradicted the live, priced catalogue
+        above — the site was asking crawlers to index a shop it told them
+        they could not enter.
       */}
       <section className="lb-waitlist-section" aria-labelledby="waitlist-heading">
         <div className="lb-waitlist-card">
