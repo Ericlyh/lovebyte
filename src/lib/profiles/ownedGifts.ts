@@ -38,10 +38,10 @@ import { resolveCoverUrl } from '@/lib/catalog';
  */
 export type OwnedGift = {
   id: string;
-  type: 'memory_cards' | 'dragdrop_puzzle' | 'quiz' | 'multimedia_collage' | 'animated_letter';
+  type: 'memory_cards' | 'dragdrop_puzzle' | 'quiz' | 'multimedia_collage' | 'animated_letter' | 'code';
   title: string;
   description: string | null;
-  category: 'memory_cards' | 'dragdrop_puzzle' | 'quiz' | 'multimedia_collage' | 'animated_letter' | null;
+  category: 'memory_cards' | 'dragdrop_puzzle' | 'quiz' | 'multimedia_collage' | 'animated_letter' | 'code' | null;
   price_cents: number | null;
   currency: string;
   published_at: string;
@@ -70,6 +70,7 @@ const TYPE_LABEL: Record<OwnedGift['type'], string> = {
   quiz: 'Quiz draft',
   multimedia_collage: 'Collage draft',
   animated_letter: 'Letter draft',
+  code: 'Code draft',
 };
 
 const OWNED_PAGE_SIZE = 20;

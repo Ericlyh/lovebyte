@@ -83,8 +83,17 @@ try {
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
   const featureTitles = await page.locator('.lb-features .lb-feature h3').allTextContents();
   check('landing page lists the code gift', featureTitles.includes('Code'), featureTitles.join(', '));
-  const featureHeading = await page.locator('.lb-features').getAttribute('aria-label');
-  check('landing page counts six formats', /six/i.test(featureHeading ?? ''), featureHeading ?? '');
+  // The section names itself with `aria-labelledby` pointing at a
+  // screen-reader-only <h2> ("Six gift formats") — it used to carry an
+  // `aria-label` instead, until the heading-outline fix (OOP-6738) gave
+  // the page a real heading. Read whichever the markup actually uses,
+  // so this check keeps testing the copy rather than one attribute.
+  const featuresSection = page.locator('.lb-features');
+  const labelledBy = await featuresSection.getAttribute('aria-labelledby');
+  const featureHeading = labelledBy
+    ? ((await page.locator(`#${labelledBy}`).innerText().catch(() => '')) ?? '')
+    : ((await featuresSection.getAttribute('aria-label')) ?? '');
+  check('landing page counts six formats', /six/i.test(featureHeading), featureHeading);
 
   // 1. The recipient view. `/g/demo-code` is the seeded mock envelope,
   //    so this works before any code gift can be saved.

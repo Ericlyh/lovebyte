@@ -127,16 +127,29 @@ export async function saveCodeGiftAction(
       title: input.title,
       payload,
       status: 'sent',
+      // The category is what /browse's filter and the card accents read,
+      // and it is denormalised from the type (migration 0002). Without it
+      // a listed code gift sits in the catalogue but under no filter.
+      category: 'code',
     })
     .select('id')
     .single();
 
   if (giftErr || !gift) {
     console.error('[code] gift insert failed', giftErr?.message);
-    // The `code` gift type is a Postgres enum value. Until migration 0011
-    // has been applied, the insert is rejected by the database — tell the
+    // The `code` gift type is a Postgres enum value, and `category` is
+    // CHECK-constrained to the known categories. Until migration 0011 has
+    // been applied the insert is rejected by the database — tell the
     // sender that rather than "try again", because retrying cannot help.
-    if (giftErr?.message?.includes('gift_type')) {
+    //
+    // The enum is coerced before the CHECK is evaluated, so a missing
+    // 0011 surfaces as the `gift_type` error. The CHECK is matched too,
+    // for the half-migrated case where the enum landed but the category
+    // constraint did not.
+    if (
+      giftErr?.message?.includes('gift_type') ||
+      giftErr?.message?.includes('gifts_category_chk')
+    ) {
       return {
         ok: false,
         error:

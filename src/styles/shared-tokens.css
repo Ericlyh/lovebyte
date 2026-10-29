@@ -1429,6 +1429,7 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-gift-card__cover[data-category="quiz"]              { background: linear-gradient(135deg, #fff1d6, #f5e3b8); }
 .lb-gift-card__cover[data-category="multimedia_collage"]{ background: linear-gradient(135deg, #e6f4ea, #cfe6d5); }
 .lb-gift-card__cover[data-category="animated_letter"]   { background: linear-gradient(135deg, #f5e9d4, #e8d8c8); }
+.lb-gift-card__cover[data-category="code"]              { background: linear-gradient(135deg, #ece9fb, #d5d1f0); }
 .lb-gift-card__emoji { font-size: 56px; line-height: 1; }
 /* The cover photo fills the tile; the category gradient shows through
    only while the image loads (OOP-6717). */
@@ -1645,6 +1646,7 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-listing-preview[data-category="quiz"]              { border-left: 4px solid #f5e3b8; }
 .lb-listing-preview[data-category="multimedia_collage"]{ border-left: 4px solid #cfe6d5; }
 .lb-listing-preview[data-category="animated_letter"]   { border-left: 4px solid #e8d8c8; }
+.lb-listing-preview[data-category="code"]              { border-left: 4px solid #d5d1f0; }
 .lb-listing-preview__tag {
   font-size: 11px;
   font-weight: 700;
