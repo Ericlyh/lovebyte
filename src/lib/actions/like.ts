@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { trackEvent } from '@/lib/analytics/track';
 
 /**
  * Like toggle action (M-C, OOP-4275).
@@ -99,6 +100,13 @@ export async function toggleLikeAction(rawInput: unknown): Promise<ToggleLikeRes
   // The client's optimistic update handles the in-flight display; this
   // catches the case where the user reloads after liking.
   revalidatePath(`/l/${giftId}`);
+
+  // OOP-6716 — a like. Only the like itself is recorded, never the
+  // unlike: the funnel counts people who showed interest, and an
+  // un-like is the absence of something, not a step.
+  if (liked) {
+    await trackEvent('liked', { gift_id: giftId });
+  }
 
   return { ok: true, liked, likeCount };
 }

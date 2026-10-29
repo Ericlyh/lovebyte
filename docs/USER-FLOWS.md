@@ -246,7 +246,45 @@ Source files: `src/app/g/[token]/`, `src/lib/actions/giftReplies.ts`, `src/app/a
 - **If you want a private reply** (the original `share_replies` table), the migration is still there but the MVP UI ships the public-style reply only.
 
 ### 5.4 Receipt analytics
-- Sender's `/u/me` → collection tab shows the gift with an "Opened" badge and view count.
+- **Open counting (OOP-6716).** `shares.view_count`, `shares.last_opened_at` and `shares.unique_opened_at` are written when the recipient opens `/g/[token]/open`. The `unique_opened_at` stamp is the "first open" marker, so it is set once and never moved. Prefetch requests are excluded — a link preview is not an open.
+- **Still not shipped.** The sender-facing surface — `/u/me` → collection tab with an "Opened" badge and a view count — does not exist. The counters are written and queryable in the database, but nothing renders them for the creator yet.
+
+---
+
+## 5A. Funnel analytics (OOP-6716)
+
+The site had **no instrumentation at all** before this: no third-party analytics, no event table, and a `shares.view_count` column that nothing ever wrote or read. Every optimisation on the OOP-5816 board was therefore unfalsifiable — "9 people looked at the homepage" and "9 people bought" were the same number.
+
+### 5A.1 The funnel
+
+| Step | Event | Recorded by |
+|---|---|---|
+| 1 | `landing_view` | browser, on `/` |
+| 2 | `browse_view` | browser, on `/browse` |
+| 3 | `listing_view` | browser, on `/l/[giftId]` |
+| 4 | `checkout_start` | server, when the Stripe session is created (or a free share is minted) |
+| 5 | `purchase` | server, in the Stripe webhook (or a free share is minted) |
+
+Side events: `cta_click`, `filter_used`, `search`, `listing_cta_click`, `waitlist_signup`, `gift_opened`, `reply_posted`, `liked`.
+
+### 5A.2 Where the events live
+
+- **Bucket** `lovorithm-analytics` (private, created over the Storage REST API — this host has no DDL path, see `src/lib/analytics/store.ts`).
+- **Layout** `events/<event>/<date>__<sessionId>__<eventId>.json`. The name carries the event, the date and the session, so the report counts names and never downloads a body.
+- **Session** an anonymous uuid in the httpOnly `lb-sid` cookie, minted by the proxy and forwarded as `x-lb-sid` so the first request of a session joins up. The browser never sees it.
+
+### 5A.3 Reading the report
+
+```bash
+curl -H "Authorization: Bearer $INCIDENT_ADMIN_TOKEN" \
+  "https://lovorithm.vercel.app/api/analytics/funnel?days=7"
+```
+
+Returns per-step event and session counts, the step-to-step conversion, a per-day breakdown, and the totals. No third-party dashboard.
+
+### 5A.4 What is deliberately NOT recorded
+
+No gift content, no email addresses, no share tokens, no user ids. Each event's props are described by a Zod schema that strips unknown keys, so the schema is the allowlist — a crafted request cannot smuggle a field past it. A search term is redacted server-side (emails and token-shaped strings are replaced) before it is stored.
 
 ---
 

@@ -1,7 +1,10 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import { getEnvelopeByToken } from '@/lib/gifts/fetch';
+import { recordShareOpen } from '@/lib/gifts/record-open';
+import { isPrefetchRequest, trackEvent } from '@/lib/analytics/track';
 import { BRAND } from '@/lib/brand';
 import {
   AnimatedLetterPayloadSchema,
@@ -68,6 +71,27 @@ export default async function GiftOpenPage({ params }: Props) {
   const { token } = await params;
   const envelope = await getEnvelopeByToken(token);
   if (!envelope) notFound();
+
+  // OOP-6716 — count the open.
+  //
+  // `shares.view_count`, `shares.last_opened_at` and
+  // `shares.unique_opened_at` have existed since migration 0001 and
+  // nothing ever wrote them: dead schema that `docs/USER-FLOWS.md`
+  // described as a shipped "Opened 🎉" badge.
+  //
+  // A prefetch is not an open, so the request is checked first —
+  // otherwise a crawler or a prefetching link would inflate the count.
+  // The counter and the event are recorded together, and only for a
+  // share that actually exists (a demo or mock token has no row, and
+  // must not show up as a real open).
+  if (!isPrefetchRequest(await headers())) {
+    const opened = await recordShareOpen(token);
+    if (opened.counted) {
+      await trackEvent('gift_opened', { gift_type: envelope.giftType });
+    } else if (opened.error) {
+      console.error('[gift-open] share counter failed', opened.error);
+    }
+  }
 
   if (envelope.giftType === 'memory_cards') {
     const parsed = MemoryCardsPayloadSchema.safeParse(envelope.payload);

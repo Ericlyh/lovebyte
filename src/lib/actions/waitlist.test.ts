@@ -19,6 +19,7 @@ const state = vi.hoisted(() => ({
   recent: [] as unknown[],
   rateLimitError: null as { message: string } | null,
   emails: [] as { to: string; locale: string }[],
+  events: [] as { event: string; props: Record<string, unknown> }[],
 }));
 
 vi.mock('next/headers', () => ({
@@ -55,6 +56,18 @@ vi.mock('@/lib/email', () => ({
   },
 }));
 
+// OOP-6716 — the waitlist signup is recorded as an analytics event
+// (this replaced the bare console.log). The analytics writer talks to
+// Supabase Storage over `fetch`, so it is stubbed here: these tests
+// assert that Cloudflare is NOT contacted, and a real write would call
+// the same mocked `fetch`.
+vi.mock('@/lib/analytics/track', () => ({
+  trackEvent: async (event: string, props: Record<string, unknown>) => {
+    state.events.push({ event, props });
+    return true;
+  },
+}));
+
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -63,6 +76,7 @@ beforeEach(() => {
   state.recent = [];
   state.rateLimitError = null;
   state.emails = [];
+  state.events = [];
   fetchMock.mockReset();
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -107,6 +121,16 @@ describe('joinWaitlistAction — CAPTCHA gate off (no TURNSTILE_SECRET_KEY)', ()
     await joinWaitlistAction({ email: 'a@example.com' });
 
     expect(state.emails).toEqual([{ to: 'a@example.com', locale: 'en' }]);
+  });
+
+  it('records the signup as an event that carries no PII (OOP-6716)', async () => {
+    await joinWaitlistAction({ email: 'a@example.com', intent: 'a gift for my mum' });
+
+    expect(state.events).toHaveLength(1);
+    expect(state.events[0]?.event).toBe('waitlist_signup');
+    // Neither the email address nor the free-text intent may appear.
+    expect(JSON.stringify(state.events[0])).not.toContain('example.com');
+    expect(JSON.stringify(state.events[0])).not.toContain('mum');
   });
 });
 

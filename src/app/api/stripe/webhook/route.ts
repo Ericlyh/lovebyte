@@ -4,6 +4,7 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
 import { sendShareEmail } from '@/lib/email';
+import { trackEvent } from '@/lib/analytics/track';
 import {
   PLATFORM_FEE_BPS_DEFAULT,
   SETTLEMENT_CURRENCY,
@@ -252,6 +253,24 @@ async function handleCheckoutCompleted(
     console.error('[stripe/webhook] purchases insert failed', purchaseErr.message);
     return;
   }
+
+  // OOP-6716 — the last step of the funnel.
+  //
+  // The webhook request carries no browser cookie, so the session id
+  // comes from the Stripe metadata: `startCheckoutSessionAction` stamped
+  // the analytics session onto the Checkout Session, and the same value
+  // lands here — which is what makes this purchase join the same
+  // visitor's earlier steps instead of standing alone.
+  await trackEvent(
+    'purchase',
+    {
+      gift_id: giftId,
+      amount_cents: amount,
+      currency,
+      free: false,
+    },
+    { sessionId: meta.session_id },
+  );
 
   // Recipient flow: email the share link. Buyer-share path leaves the
   // buyer to grab the link from /purchases.

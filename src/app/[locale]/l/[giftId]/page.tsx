@@ -8,6 +8,8 @@ import { ListingComments } from '@/components/catalog/ListingComments';
 import { ListingPreview } from '@/components/catalog/ListingPreview';
 import { ListingReplies } from '@/components/catalog/ListingReplies';
 import { PriceBadge } from '@/components/catalog/PriceBadge';
+import { TrackView } from '@/components/analytics/TrackView';
+import { TrackedLink } from '@/components/analytics/TrackedLink';
 import { createClient } from '@/lib/supabase/server';
 import { getListingDetail, getListingComments, getListingReplies } from '@/lib/catalog';
 import { BRAND } from '@/lib/brand';
@@ -86,6 +88,15 @@ export default async function ListingPage({ params }: Props) {
     <main className="min-h-screen flex flex-col">
       <Nav />
 
+      {/* OOP-6716 — the listing step of the funnel, and the step the
+          purchase is attributed to. Reported from the browser: this
+          page is rendered per request, but a `<Link>` prefetch is a
+          request too, and a prefetched listing is not a view. */}
+      <TrackView
+        event="listing_view"
+        props={{ gift_type: listing.type, gift_id: listing.id }}
+      />
+
       <article className="lb-container lb-listing">
         <header className="lb-listing-hero">
           <p className="lb-listing-hero__category">
@@ -137,9 +148,14 @@ export default async function ListingPage({ params }: Props) {
         />
 
         <footer className="lb-listing-cta">
-          <Link href={`/checkout/${listing.id}`} className="lb-btn lb-btn--primary lb-cta-primary">
+          <TrackedLink
+            event="listing_cta_click"
+            props={{ gift_type: listing.type, gift_id: listing.id }}
+            href={`/checkout/${listing.id}`}
+            className="lb-btn lb-btn--primary lb-cta-primary"
+          >
             {t('sendThisGift')}
-          </Link>
+          </TrackedLink>
         </footer>
       </article>
     </main>

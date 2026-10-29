@@ -52,6 +52,8 @@ const { state, fakeFrom } = vi.hoisted(() => {
     },
     /** How many Stripe Checkout Sessions were created. */
     stripeSessionsCreated: 0,
+    /** Every analytics event the action recorded (OOP-6716). */
+    events: [] as { event: string; props: Record<string, unknown> }[],
   };
 
   /**
@@ -115,6 +117,20 @@ vi.mock('@/lib/stripe', () => ({
   },
 }));
 
+// OOP-6716 — the funnel events. The real writer talks to Supabase
+// Storage over `fetch`, so it is stubbed: these tests are about the
+// checkout behaviour, not about the analytics transport.
+vi.mock('@/lib/analytics/track', () => ({
+  trackEvent: async (event: string, props: Record<string, unknown>) => {
+    state.events.push({ event, props });
+    return true;
+  },
+}));
+
+vi.mock('@/lib/analytics/session', () => ({
+  resolveSessionId: async () => '11111111-2222-4333-8444-555555555555',
+}));
+
 const FREE_GIFT = {
   id: 'aaaa2222-0000-0000-0000-000000000001',
   title: 'Bangkok street photo puzzle',
@@ -144,6 +160,7 @@ beforeEach(() => {
   state.emails = [];
   state.emailResult = { ok: true, id: 'stub-1' };
   state.stripeSessionsCreated = 0;
+  state.events = [];
 });
 
 describe('startFreeGiftAction (OOP-6715)', () => {
@@ -178,6 +195,28 @@ describe('startFreeGiftAction (OOP-6715)', () => {
 
     expect(result.ok).toBe(false);
     expect(state.insertedShares).toHaveLength(0);
+  });
+
+  it('records the free send as both a checkout and a purchase (OOP-6716)', async () => {
+    // A free listing completes the funnel in one click, so both steps
+    // are recorded — otherwise the free half of the catalogue would
+    // show up as a checkout with no matching purchase.
+    await startFreeGiftAction({
+      giftId: FREE_GIFT.id,
+      deliveryMode: 'buyer_shares',
+    });
+
+    expect(state.events.map((e) => e.event)).toEqual(['checkout_start', 'purchase']);
+    expect(state.events[0]?.props).toMatchObject({
+      gift_id: FREE_GIFT.id,
+      free: true,
+      amount_cents: 0,
+    });
+    expect(state.events[1]?.props).toMatchObject({
+      gift_id: FREE_GIFT.id,
+      free: true,
+      amount_cents: 0,
+    });
   });
 
   it('refuses an unauthenticated caller', async () => {

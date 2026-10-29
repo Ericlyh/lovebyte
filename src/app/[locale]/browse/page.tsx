@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Nav } from '@/components/Nav';
 import { BrowseControls } from '@/components/catalog/BrowseControls';
 import { BrowseGrid } from '@/components/catalog/BrowseGrid';
+import { TrackView } from '@/components/analytics/TrackView';
 
 /**
  * /browse — public catalog (M-C, OOP-4275).
@@ -49,6 +50,10 @@ export default async function BrowsePage({ params }: Props) {
       {/* `deferAuth` keeps the auth cookie out of this tree so the page
           can be prerendered — same trade the landing page makes. */}
       <Nav deferAuth />
+
+      {/* OOP-6716 — the browse step of the funnel. Reported from the
+          browser because this page is prerendered once per locale. */}
+      <TrackView event="browse_view" />
 
       <section className="lb-browse-hero">
         <div className="lb-container">

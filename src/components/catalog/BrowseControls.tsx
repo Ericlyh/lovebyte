@@ -8,6 +8,7 @@ import {
   writeBrowseParams,
   type BrowseParams,
 } from './browseParams';
+import { trackClientEvent } from '@/lib/analytics/client';
 
 /**
  * Browse controls — search input + sort + category pills (M-C, OOP-4275).
@@ -37,6 +38,41 @@ const CATEGORIES = [
 const PRICE_TIERS = ['free', 'under_50', 'under_200', 'over_200'] as const;
 
 const SORTS = ['published_desc', 'most_liked', 'price_asc'] as const;
+
+/**
+ * OOP-6716 — the filters that are worth recording as `filter_used`.
+ *
+ * `creator` is included as a filter NAME but never as a value: a handle
+ * identifies a person, so the report learns that the creator filter was
+ * used without learning whose handle was typed.
+ */
+const FILTER_NAMES = ['category', 'priceTier', 'creator', 'sort'] as const;
+type FilterName = (typeof FILTER_NAMES)[number];
+
+function isFilterName(value: string): value is FilterName {
+  return (FILTER_NAMES as readonly string[]).includes(value);
+}
+
+/**
+ * Report a filter change (OOP-6716).
+ *
+ * `pushParams` is the single place every filter goes through, so this
+ * is the single place a filter is recorded. The search term is
+ * redacted SERVER-side before it is stored — the browser sends what
+ * was typed and the server decides what may be kept.
+ */
+function reportFilterChange(next: Record<string, string | null>) {
+  for (const [key, value] of Object.entries(next)) {
+    if (key === 'q') {
+      const term = (value ?? '').trim();
+      if (term) void trackClientEvent('search', { term });
+      continue;
+    }
+    if (!isFilterName(key)) continue;
+    const recordValue = key === 'creator' ? undefined : (value ?? undefined);
+    void trackClientEvent('filter_used', { filter: key, value: recordValue });
+  }
+}
 
 export function BrowseControls() {
   const t = useTranslations('Catalog.controls');
@@ -72,6 +108,7 @@ export function BrowseControls() {
   // debounced separately below so it doesn't fight the other controls.
   function pushParams(next: Record<string, string | null>) {
     writeBrowseParams(next);
+    reportFilterChange(next);
   }
 
   function setCategory(cat: string | null) {

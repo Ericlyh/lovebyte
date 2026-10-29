@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { Nav } from '@/components/Nav';
 import { GiftCard } from '@/components/catalog/GiftCard';
 import { WaitlistForm } from '@/components/WaitlistForm';
+import { TrackView } from '@/components/analytics/TrackView';
+import { TrackedLink } from '@/components/analytics/TrackedLink';
 import { getCatalogFeed } from '@/lib/catalog';
 import { turnstileEnabled } from '@/lib/turnstile';
 
@@ -92,6 +94,12 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           the landing page can be prerendered once per locale. */}
       <Nav deferAuth />
 
+      {/* OOP-6716 — the landing view is the top of the funnel. It is
+          reported from the browser because this page is prerendered once
+          per locale: a server-side hook would fire once per build
+          window instead of once per visitor. */}
+      <TrackView event="landing_view" />
+
       <section className="lb-landing-hero">
         <span className="lb-tag">{t('hero.tag')}</span>
         <h1>
@@ -101,12 +109,22 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
         </h1>
         <p className="lede">{t('hero.lede')}</p>
         <div className="lb-landing-cta-row">
-          <Link href="/create" className="lb-btn lb-btn--primary">
+          <TrackedLink
+            event="cta_click"
+            props={{ cta: 'create' }}
+            href="/create"
+            className="lb-btn lb-btn--primary"
+          >
             {t('hero.ctaPrimary')}
-          </Link>
-          <Link href="/browse" className="lb-btn lb-btn--ghost">
+          </TrackedLink>
+          <TrackedLink
+            event="cta_click"
+            props={{ cta: 'browse' }}
+            href="/browse"
+            className="lb-btn lb-btn--ghost"
+          >
             {t('hero.ctaSecondary')}
-          </Link>
+          </TrackedLink>
         </div>
       </section>
 
@@ -129,13 +147,23 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
             ))}
           </ul>
           <p className="lb-landing-catalogue__more">
-            <Link href="/browse" className="lb-btn lb-btn--ghost">
+            <TrackedLink
+              event="cta_click"
+              props={{ cta: 'browse' }}
+              href="/browse"
+              className="lb-btn lb-btn--ghost"
+            >
               {t('catalogue.cta')}
-            </Link>
+            </TrackedLink>
             {' · '}
-            <Link href="/g/demo" className="lb-link">
+            <TrackedLink
+              event="cta_click"
+              props={{ cta: 'demo' }}
+              href="/g/demo"
+              className="lb-link"
+            >
               {t('catalogue.demoCta')}
-            </Link>
+            </TrackedLink>
           </p>
         </div>
       </section>

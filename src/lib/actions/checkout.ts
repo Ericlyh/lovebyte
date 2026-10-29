@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { sendShareEmail } from '@/lib/email';
+import { trackEvent } from '@/lib/analytics/track';
+import { resolveSessionId } from '@/lib/analytics/session';
 import {
   PLATFORM_FEE_BPS_DEFAULT,
   SETTLEMENT_CURRENCY,
@@ -121,7 +123,7 @@ export async function startCheckoutSessionAction(
   const { data: gift, error: giftErr } = await supabase
     .from('gifts')
     .select(
-      'id, title, price_cents, currency, platform_fee_bps, owner_id, owner:profiles!owner_id(stripe_account_id, stripe_charges_enabled)',
+      'id, title, type, price_cents, currency, platform_fee_bps, owner_id, owner:profiles!owner_id(stripe_account_id, stripe_charges_enabled)',
     )
     .eq('id', giftId)
     .eq('is_listed', true)
@@ -171,6 +173,12 @@ export async function startCheckoutSessionAction(
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
   const recipient = recipientContact?.trim() || undefined;
 
+  // OOP-6716 — the analytics session id. It rides along on the Stripe
+  // metadata so the webhook can file the `purchase` under the SAME
+  // session as this `checkout_start`: the webhook request carries no
+  // browser cookie, so the session has to travel with the payment.
+  const sessionId = await resolveSessionId();
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -197,6 +205,7 @@ export async function startCheckoutSessionAction(
           buyer_id: user.id,
           delivery_mode: deliveryMode,
           recipient_contact: recipient ?? '',
+          session_id: sessionId,
         },
       },
       // Also stamped on the session itself so the webhook can read it
@@ -206,6 +215,7 @@ export async function startCheckoutSessionAction(
         buyer_id: user.id,
         delivery_mode: deliveryMode,
         recipient_contact: recipient ?? '',
+        session_id: sessionId,
       },
       success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/checkout/cancel`,
@@ -215,6 +225,26 @@ export async function startCheckoutSessionAction(
     if (!session.url) {
       return { ok: false, error: 'Stripe did not return a checkout URL.' };
     }
+
+    // OOP-6716 — the checkout step of the funnel. Recorded once the
+    // session actually exists, so it counts real checkout attempts and
+    // not clicks that died before Stripe.
+    //
+    // Awaited on purpose: a serverless function can be frozen the
+    // moment the response is sent, so a fire-and-forget write here
+    // would be lost exactly when it matters.
+    await trackEvent(
+      'checkout_start',
+      {
+        gift_id: gift.id,
+        gift_type: gift.type,
+        amount_cents: gift.price_cents,
+        free: false,
+        delivery_mode: deliveryMode,
+      },
+      { sessionId },
+    );
+
     return { ok: true, url: session.url };
   } catch (e) {
     console.error('[checkout/start] stripe error', (e as Error).message);
@@ -288,7 +318,7 @@ export async function startFreeGiftAction(
 
   const { data: gift, error: giftErr } = await supabase
     .from('gifts')
-    .select('id, title, price_cents')
+    .select('id, title, type, price_cents')
     .eq('id', giftId)
     .eq('is_listed', true)
     .is('deleted_at', null)
@@ -325,6 +355,38 @@ export async function startFreeGiftAction(
     console.error('[checkout/free] share insert failed', shareErr.message);
     return { ok: false, error: 'Could not create the share link. Try again.' };
   }
+
+  // OOP-6716 — a free listing completes the funnel in ONE click: there
+  // is no Stripe hop, so the share mint is both the start of the
+  // checkout and its completion. Both steps are recorded (flagged
+  // `free: true`) so the step-to-step ratios in the report stay
+  // meaningful — otherwise the free half of the catalogue would show up
+  // as a checkout_start with no matching purchase, and the funnel would
+  // flatter the paid path.
+  const sessionId = await resolveSessionId();
+  await Promise.all([
+    trackEvent(
+      'checkout_start',
+      {
+        gift_id: gift.id,
+        gift_type: gift.type,
+        amount_cents: 0,
+        free: true,
+        delivery_mode: deliveryMode,
+      },
+      { sessionId },
+    ),
+    trackEvent(
+      'purchase',
+      {
+        gift_id: gift.id,
+        amount_cents: 0,
+        currency: SETTLEMENT_CURRENCY.toUpperCase(),
+        free: true,
+      },
+      { sessionId },
+    ),
+  ]);
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(
     /\/$/,

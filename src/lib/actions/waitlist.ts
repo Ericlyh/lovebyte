@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { z } from 'zod';
 import { sendWaitlistEmail } from '@/lib/email';
 import { createServiceRoleClient } from '@/lib/supabase/service-role';
+import { trackEvent } from '@/lib/analytics/track';
 import { turnstileEnabled, verifyTurnstileToken } from '@/lib/turnstile';
 
 /**
@@ -182,12 +183,14 @@ export async function joinWaitlistAction(
     return { ok: false, error: insertErr.message };
   }
 
-  console.log('[waitlist] new signup', {
-    email,
-    intent: intent ?? null,
-    locale,
-    ipHashPrefix: ipHash ? ipHash.slice(0, 8) : null,
-  });
+  // OOP-6716 — the signup is recorded as an analytics event, which
+  // replaces the bare console.log that used to sit here.
+  //
+  // The event carries NO email address and NO intent: both are
+  // free-text the requester typed, and the row in `public.waitlist` is
+  // already the record of who signed up. The event only says that
+  // someone did — which is the only thing the funnel needs.
+  await trackEvent('waitlist_signup', { locale, source: 'landing' });
 
   // Autoresponder — OOP-6156. Awaited (rather than fire-and-forget)
   // so the serverless function is not frozen mid-request before the

@@ -1,6 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { routing, type Locale } from '@/lib/i18n/routing';
+import {
+  SESSION_COOKIE,
+  SESSION_COOKIE_MAX_AGE,
+  SESSION_HEADER,
+  isSessionId,
+  newSessionId,
+} from '@/lib/analytics/session-id';
 
 /**
  * Lovorithm proxy — locale resolution + Supabase auth cookie refresh.
@@ -46,10 +53,32 @@ import { routing, type Locale } from '@/lib/i18n/routing';
 export async function proxy(request: NextRequest) {
   const locale = resolveLocale(request);
 
+  // OOP-6716 — the anonymous analytics session id.
+  //
+  // Every recorded event carries one, so the funnel can be read as "how
+  // many PEOPLE reached step N" rather than "how many clicks happened".
+  // It is a random uuid: no account, no IP, no device — a correlation
+  // handle and nothing more.
+  //
+  // The id is set as an httpOnly cookie so page scripts cannot read it,
+  // and it is ALSO forwarded as a request header. The header exists for
+  // the first request of a session: the cookie is set on the RESPONSE,
+  // so the request that renders the page does not carry it yet — and
+  // without the header the first server-side event of a session would
+  // be filed under a throwaway id and would not join the visitor's
+  // other steps.
+  //
+  // The header is overwritten on every request, so a client cannot
+  // forge it.
+  const cookieSession = request.cookies.get(SESSION_COOKIE)?.value;
+  const hasSession = isSessionId(cookieSession);
+  const sessionId = hasSession ? cookieSession : newSessionId();
+
   // Build a mutable response we can attach both forwarded headers AND
   // Supabase-refreshed cookies to.
   const forwardedHeaders = new Headers(request.headers);
   forwardedHeaders.set('X-NEXT-INTL-LOCALE', locale);
+  forwardedHeaders.set(SESSION_HEADER, sessionId);
 
   // OOP-6710 — rewrite the public URL to the internal `/{locale}/…` form.
   //
@@ -90,6 +119,18 @@ export async function proxy(request: NextRequest) {
     response.cookies.set('lb-locale', locale, {
       maxAge: 60 * 60 * 24 * 365, // 1 year, matches routing.ts
       sameSite: 'lax',
+      path: '/',
+    });
+  }
+
+  // OOP-6716 — mint the analytics session cookie on the visitor's first
+  // page request. `httpOnly` so no page script can read it; the
+  // browser-side reporter never handles the session id at all.
+  if (!hasSession) {
+    response.cookies.set(SESSION_COOKIE, sessionId, {
+      maxAge: SESSION_COOKIE_MAX_AGE, // 1 year, matches routing.ts
+      sameSite: 'lax',
+      httpOnly: true,
       path: '/',
     });
   }

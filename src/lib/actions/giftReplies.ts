@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { trackEvent } from '@/lib/analytics/track';
 
 /**
  * Gift-reply server actions (M-G, OOP-4890).
@@ -120,6 +121,13 @@ export async function createGiftReplyAction(
   // thread on next navigation. The client also keeps an optimistic
   // copy in its tree.
   revalidatePath(`/l/${giftId}`);
+
+  // OOP-6716 — a posted reply. The body is never recorded: it is free
+  // text the buyer typed about the gift.
+  await trackEvent('reply_posted', {
+    gift_id: giftId,
+    has_parent: !!parentReplyId,
+  });
 
   const row = data as unknown as {
     id: string;
