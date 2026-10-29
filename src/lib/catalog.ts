@@ -1,6 +1,8 @@
 import 'server-only';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Catalog query layer (M-C, OOP-4275).
@@ -22,6 +24,14 @@ import { createClient } from '@/lib/supabase/server';
  * `in(...)` filters for the price tiers, and the `websearch_to_tsquery`
  * operator. Future work could extend postgrest() — for now we lean on the
  * full client. Server-only via the `'server-only'` import.
+ *
+ * Which client reads what (OOP-6710): the two PUBLIC reads —
+ * `getCatalogFeed` and `searchCatalog` — use the cookie-free
+ * `createPublicClient`. They only ever return listed gifts, and the RLS
+ * policy lets an anonymous visitor read exactly those rows, so a session
+ * would not change the answer — but reading the session cookie would opt
+ * the route out of prerendering. The listing detail / comment reads stay on
+ * the cookie client: those pages are per-user and dynamic anyway.
  */
 
 // ─── Public types ──────────────────────────────────────────────────────────
@@ -197,7 +207,8 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
   if (!parsed.success) return { gifts: [], nextCursor: null };
   const params = parsed.data;
 
-  const supabase = await createClient();
+  // Cookie-free: this is public catalog data (see the module note above).
+  const supabase = createPublicClient();
 
   // Resolve handle → uuid (anon-readable via profiles_public).
   let ownerId: string | null = null;
@@ -293,9 +304,13 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
  * Map a raw Supabase row from `gifts` into a `CatalogGift`. Calls the
  * `gift_like_count` RPC for the like count; swallows RPC errors so a
  * missing function (e.g. partial migration) doesn't kill the page.
+ *
+ * Typed against the bare `SupabaseClient` so it accepts either client — the
+ * cookie-free public one the feed uses, or the cookie one the listing
+ * reads use.
  */
 async function hydrateFeedRow(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: SupabaseClient,
   row: any,
 ): Promise<CatalogGift> {
   const owner = Array.isArray(row.owner) ? row.owner[0] : row.owner;
@@ -339,7 +354,8 @@ export async function searchCatalog(rawParams: unknown): Promise<CatalogSearchRe
   if (!parsed.success) return { gifts: [] };
   const { q, limit } = parsed.data;
 
-  const supabase = await createClient();
+  // Cookie-free: same reasoning as the feed.
+  const supabase = createPublicClient();
 
   // PostgREST's FTS operator is `textsearch` (with `tsquery` arg). For
   // websearch syntax we'd need an RPC; the simpler `to_tsquery` rewrite
