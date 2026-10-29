@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
@@ -125,7 +126,6 @@ export type CatalogListing = {
     handle: string;
     display_name: string | null;
   };
-  comments: CatalogListingComment[];
 };
 
 // ─── Query schemas ─────────────────────────────────────────────────────────
@@ -238,7 +238,34 @@ function priceTierRange(tier: PriceTier): PriceTierRange {
 }
 
 const giftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, cover_media_id, payload, cover:gift_media!cover_media_id (id, storage_path), owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, cover_media_id, payload, cover:gift_media!cover_media_id (id, storage_path), owner:profiles_public!owner_id (id, handle, display_name), gift_likes(count)';
+
+/**
+ * The like count carried by PostgREST's aggregate embed (`gift_likes(count)`).
+ *
+ * The embed arrives as `[{ count: 2 }]` — an array holding the single
+ * aggregate row — but the bare object `{ count: 2 }` is also a valid
+ * shape for a PostgREST build that unwraps it, and a gift with no likes
+ * at all can come back as `null`. All three mean the same thing, so all
+ * three are read here. `count` may also arrive as a string (bigint), so
+ * it is coerced and range-checked.
+ *
+ * Why an embed and not the `gift_like_count` RPC (OOP-6722): the RPC is
+ * `security definer` and counts every row in `gift_likes` for one gift,
+ * so calling it once per feed row cost 21 round trips per page render.
+ * The embed folds the same count into the `gifts` select, so the whole
+ * feed costs ONE query. The counts agree: `gift_likes_select_public` is
+ * `using (true)`, so the aggregate sees exactly the rows the
+ * `security definer` function sees. `src/lib/catalog.test.ts` pins that
+ * equality so the rewrite cannot silently change the numbers.
+ */
+function aggregateLikeCount(embed: unknown): number {
+  const row = Array.isArray(embed) ? embed[0] : embed;
+  if (row == null || typeof row !== 'object') return 0;
+  const raw = (row as { count?: unknown }).count;
+  const count = typeof raw === 'number' ? raw : Number(raw ?? 0);
+  return Number.isFinite(count) ? count : 0;
+}
 
 /**
  * Run the feed query. Pagination is via range: we fetch `PAGE_SIZE + 1`
@@ -325,13 +352,10 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
   let rows = data ?? [];
   assertSettlementCurrency(rows);
 
-  // Compute like counts via the SQL function so the projection is a single
-  // round-trip per gift. The function is `security definer` so anon can call it.
-  // For 20+ gifts we'd want a SQL-side aggregate; for M-C a JS loop is fine
-  // and keeps the RLS story clean.
-  let gifts: CatalogGift[] = await Promise.all(
-    rows.map(async (r) => hydrateFeedRow(supabase, r)),
-  );
+  // The like count rides along in the select (`gift_likes(count)`), so
+  // hydrating 20 rows costs no extra round trips (OOP-6722). This used
+  // to fire one `gift_like_count` RPC per row — 21 queries per feed.
+  let gifts: CatalogGift[] = rows.map((r) => hydrateFeedRow(supabase, r));
 
   // Sort fallback for `most_liked` — re-sort by like_count desc, then
   // published_at desc as tiebreaker.
@@ -376,28 +400,18 @@ function assertSettlementCurrency(rows: { currency?: string | null }[]): void {
 }
 
 /**
- * Map a raw Supabase row from `gifts` into a `CatalogGift`. Calls the
- * `gift_like_count` RPC for the like count; swallows RPC errors so a
- * missing function (e.g. partial migration) doesn't kill the page.
+ * Map a raw Supabase row from `gifts` into a `CatalogGift`.
+ *
+ * The like count comes from the `gift_likes(count)` aggregate the select
+ * already asked for — no extra query, no RPC round trip per row.
  *
  * Typed against the bare `SupabaseClient` so it accepts either client — the
  * cookie-free public one the feed uses, or the cookie one the listing
  * reads use.
  */
-async function hydrateFeedRow(
-  supabase: SupabaseClient,
-  row: any,
-): Promise<CatalogGift> {
+function hydrateFeedRow(supabase: SupabaseClient, row: any): CatalogGift {
   const owner = Array.isArray(row.owner) ? row.owner[0] : row.owner;
-  let likeCount = 0;
-  try {
-    const { data } = await supabase.rpc('gift_like_count', {
-      gift_id: row.id,
-    });
-    likeCount = typeof data === 'number' ? data : Number(data ?? 0);
-  } catch {
-    likeCount = 0;
-  }
+  const likeCount = aggregateLikeCount(row.gift_likes);
   const coverUrl = resolveCoverUrl(supabase, row);
   return {
     id: row.id,
@@ -530,7 +544,7 @@ export async function searchCatalog(rawParams: unknown): Promise<CatalogSearchRe
     return { gifts: [] };
   }
 
-  const gifts = await Promise.all((data ?? []).map((r) => hydrateFeedRow(supabase, r)));
+  const gifts = (data ?? []).map((r) => hydrateFeedRow(supabase, r));
   assertSettlementCurrency(data ?? []);
   return { gifts };
 }
@@ -539,11 +553,17 @@ export async function searchCatalog(rawParams: unknown): Promise<CatalogSearchRe
  * Resolve a single gift for /l/[giftId]. Returns null if the gift is
  * missing, soft-deleted, or not listed — the caller turns that into a 404.
  *
- * Joins the creator profile, the like count, and the first 3 live
- * comments. The full comment thread lives in /api/.../comments (M-D);
- * M-C ships the preview only.
+ * Joins the creator profile and the like count, both of which ride along
+ * in one select. The comment thread is NOT fetched here — the page reads
+ * it from `getListingComments`, which returns the same rows plus the
+ * total count. Reading it twice was pure duplicated work (OOP-6722).
+ *
+ * Memoised with React `cache()` so the `generateMetadata` pass and the
+ * page pass share ONE read instead of running it twice.
  */
-export async function getListingDetail(giftId: string): Promise<CatalogListing | null> {
+async function getListingDetailUncached(
+  giftId: string,
+): Promise<CatalogListing | null> {
   if (!giftId || !/^[0-9a-f-]{36}$/i.test(giftId)) return null;
 
   const supabase = await createClient();
@@ -566,41 +586,9 @@ export async function getListingDetail(giftId: string): Promise<CatalogListing |
   const owner = Array.isArray(data.owner) ? data.owner[0] : data.owner;
   assertSettlementCurrency([data]);
 
-  // Like count.
-  let likeCount = 0;
-  try {
-    const { data: likeData } = await supabase.rpc('gift_like_count', {
-      gift_id: data.id,
-    });
-    likeCount = typeof likeData === 'number' ? likeData : Number(likeData ?? 0);
-  } catch {
-    likeCount = 0;
-  }
-
-  // First 3 live comments.
-  const { data: commentRows } = await supabase
-    .from('gift_comments')
-    .select(
-      'id, body, created_at, author:profiles_public!author_id (id, handle, display_name)',
-    )
-    .eq('gift_id', data.id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: true })
-    .limit(3);
-
-  const comments: CatalogListingComment[] = (commentRows ?? []).map((c: any) => {
-    const author = Array.isArray(c.author) ? c.author[0] : c.author;
-    return {
-      id: c.id,
-      body: c.body,
-      created_at: c.created_at,
-      author: {
-        id: author?.id ?? '',
-        handle: author?.handle ?? '',
-        display_name: author?.display_name ?? null,
-      },
-    };
-  });
+  // Like count — the `gift_likes(count)` aggregate the select already
+  // asked for. No RPC round trip (OOP-6722).
+  const likeCount = aggregateLikeCount(data.gift_likes);
 
   return {
     id: data.id,
@@ -619,9 +607,10 @@ export async function getListingDetail(giftId: string): Promise<CatalogListing |
       handle: owner?.handle ?? '',
       display_name: owner?.display_name ?? null,
     },
-    comments,
   };
 }
+
+export const getListingDetail = cache(getListingDetailUncached);
 
 // ─── Paginated comments (M-D, OOP-4276) ────────────────────────────────────
 

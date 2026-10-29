@@ -48,18 +48,38 @@ export default async function ListingPage({ params }: Props) {
   setRequestLocale(locale);
 
   const { giftId } = await params;
+  // Memoised (React `cache()`), so the `generateMetadata` pass and this
+  // pass share ONE read of the listing (OOP-6722). It used to be read
+  // twice, each read being three queries.
   const listing = await getListingDetail(giftId);
   if (!listing) notFound();
 
   const t = await getTranslations('Catalog.listing');
   const creatorLabel = listing.owner.display_name ?? `@${listing.owner.handle}`;
 
+  // Three reads that do not depend on each other, issued together
+  // (OOP-6722). The page used to walk them one at a time.
+  //
+  //  • First page of comments (SSR'd so anon visitors see real comments
+  //    on first paint). The client component takes over from there with
+  //    pagination, optimistic inserts, and soft-delete. We use the same
+  //    helper as `/api/gift-comments/[giftId]` so the SSR + CSR shape
+  //    matches byte-for-byte.
+  //  • First page of threaded replies (M-G, OOP-4890). Same pattern as
+  //    comments above. We pre-fetch so anon visitors see real threads on
+  //    first paint; the client component handles pagination + optimistic
+  //    inserts + per-author / per-creator delete.
+  //  • The viewer's identity. Owner-only copy hinges on it — anon
+  //    visitors shouldn't see "List a gift" as a CTA.
+  const supabase = await createClient();
+  const [firstPage, firstRepliesPage, { data: { user } }] = await Promise.all([
+    getListingComments(listing.id, null),
+    getListingReplies(listing.id, null),
+    supabase.auth.getUser(),
+  ]);
+
   // Pre-fetch the viewer's like state if authed. Used to render the
   // LikeButton with the right initial paint (no client roundtrip).
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   let initialLiked = false;
   if (user) {
     const { data } = await supabase
@@ -70,19 +90,6 @@ export default async function ListingPage({ params }: Props) {
       .maybeSingle();
     initialLiked = !!data;
   }
-
-  // First page of comments (SSR'd so anon visitors see real comments on
-  // first paint). The client component takes over from there with
-  // pagination, optimistic inserts, and soft-delete. We use the same
-  // helper as `/api/gift-comments/[giftId]` so the SSR + CSR shape
-  // matches byte-for-byte.
-  const firstPage = await getListingComments(listing.id, null);
-
-  // First page of threaded replies (M-G, OOP-4890). Same pattern as
-  // comments above. We pre-fetch so anon visitors see real threads on
-  // first paint; the client component handles pagination + optimistic
-  // inserts + per-author / per-creator delete.
-  const firstRepliesPage = await getListingReplies(listing.id, null);
 
   return (
     <main className="min-h-screen flex flex-col">

@@ -78,15 +78,35 @@ const OWNED_PAGE_SIZE = 20;
  * The columns the owner's gift list reads.
  *
  * `like_count` is NOT here on purpose: there is no `gifts.like_count`
- * column — it is a SQL aggregate exposed by the `gift_like_count()`
- * RPC, and the mapper below calls that RPC for each row. Listing the
- * column in the select made PostgREST reject the WHOLE query with
- * `42703 column gifts.like_count does not exist`, so `getOwnedGifts`
- * returned `[]` and the owner's "My Gifts" section always rendered its
- * empty state — the owner's own library was invisible (OOP-6719).
+ * column — it is a SQL aggregate. Listing the column in the select made
+ * PostgREST reject the WHOLE query with `42703 column gifts.like_count
+ * does not exist`, so `getOwnedGifts` returned `[]` and the owner's
+ * "My Gifts" section always rendered its empty state — the owner's own
+ * library was invisible (OOP-6719).
+ *
+ * The aggregate is fetched instead as the `gift_likes(count)` EMBED, so
+ * the count arrives with the row (OOP-6722). The mapper used to call
+ * the `gift_like_count` RPC once per gift — 21 round trips for a full
+ * owner library.
  */
 const ownedGiftSelect =
-  'id, type, title, description, category, price_cents, currency, published_at, is_listed, deleted_at, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name)';
+  'id, type, title, description, category, price_cents, currency, published_at, is_listed, deleted_at, cover_media_id, cover:gift_media!cover_media_id (id, storage_path), payload, created_at, owner:profiles_public!owner_id (id, handle, display_name), gift_likes(count)';
+
+/**
+ * The like count carried by PostgREST's aggregate embed (`gift_likes(count)`).
+ *
+ * The embed arrives as `[{ count: 2 }]` — an array holding the single
+ * aggregate row — but the bare object `{ count: 2 }` is also a valid
+ * shape for a PostgREST build that unwraps it, and a gift with no likes
+ * can come back as `null`. All three mean the same thing.
+ */
+function aggregateLikeCount(embed: unknown): number {
+  const row = Array.isArray(embed) ? embed[0] : embed;
+  if (row == null || typeof row !== 'object') return 0;
+  const raw = (row as { count?: unknown }).count;
+  const count = typeof raw === 'number' ? raw : Number(raw ?? 0);
+  return Number.isFinite(count) ? count : 0;
+}
 
 /**
  * Fetch the creator's own gifts by handle. Returns `[]` if the handle
@@ -123,53 +143,43 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
     return [];
   }
 
-  // `like_count` isn't a column on `gifts` — it's a SQL aggregate.
-  // Re-use `gift_like_count` RPC like the rest of the catalog. For 20
-  // gifts the N+1 is fine; for more we'd compute it server-side.
+  // `like_count` isn't a column on `gifts` — it's a SQL aggregate, and
+  // the select already asked for it as `gift_likes(count)`. No RPC round
+  // trip per gift (OOP-6722).
   const rows = data ?? [];
-  return await Promise.all(
-    rows.map(async (r): Promise<OwnedGift> => {
-      const owner = Array.isArray(r.owner) ? r.owner[0] : r.owner;
-      let likeCount = 0;
-      try {
-        const { data: likeData } = await supabase.rpc('gift_like_count', {
-          gift_id: r.id,
-        });
-        likeCount = typeof likeData === 'number' ? likeData : Number(likeData ?? 0);
-      } catch {
-        likeCount = 0;
-      }
-      // Drafts + unlisted gifts have a NULL `published_at`. Normalise to
-      // `created_at` so the OwnedGift matches the CatalogGift contract
-      // (`published_at: string`) and GiftCard accepts it directly.
-      // Same trick for `title`: drafts may have no name; fall back to
-      // a typed label so the card always has something to render.
-      const giftType = r.type as OwnedGift['type'];
-      const fallbackTitle = TYPE_LABEL[giftType] ?? 'Untitled gift';
-      return {
-        id: r.id,
-        type: r.type,
-        title: r.title ?? fallbackTitle,
-        description: r.description,
-        category: r.category,
-        price_cents: r.price_cents,
-        currency: SETTLEMENT_CURRENCY,
-        published_at: r.published_at ?? r.created_at,
-        like_count: likeCount,
-        is_listed: r.is_listed,
-        is_unpublished: r.deleted_at != null,
-        cover_media_id: r.cover_media_id,
-        // The card renders the cover photo when there is one, and the
-        // category tile when there is not — same resolution as the
-        // catalogue feed (OOP-6717).
-        cover_url: resolveCoverUrl(supabase, r),
-        created_at: r.created_at,
-        owner: {
-          id: owner?.id ?? profile.id,
-          handle: owner?.handle ?? profile.handle,
-          display_name: owner?.display_name ?? profile.display_name ?? null,
-        },
-      };
-    }),
-  );
+  return rows.map((r): OwnedGift => {
+    const owner = Array.isArray(r.owner) ? r.owner[0] : r.owner;
+    const likeCount = aggregateLikeCount(r.gift_likes);
+    // Drafts + unlisted gifts have a NULL `published_at`. Normalise to
+    // `created_at` so the OwnedGift matches the CatalogGift contract
+    // (`published_at: string`) and GiftCard accepts it directly.
+    // Same trick for `title`: drafts may have no name; fall back to
+    // a typed label so the card always has something to render.
+    const giftType = r.type as OwnedGift['type'];
+    const fallbackTitle = TYPE_LABEL[giftType] ?? 'Untitled gift';
+    return {
+      id: r.id,
+      type: r.type,
+      title: r.title ?? fallbackTitle,
+      description: r.description,
+      category: r.category,
+      price_cents: r.price_cents,
+      currency: SETTLEMENT_CURRENCY,
+      published_at: r.published_at ?? r.created_at,
+      like_count: likeCount,
+      is_listed: r.is_listed,
+      is_unpublished: r.deleted_at != null,
+      cover_media_id: r.cover_media_id,
+      // The card renders the cover photo when there is one, and the
+      // category tile when there is not — same resolution as the
+      // catalogue feed (OOP-6717).
+      cover_url: resolveCoverUrl(supabase, r),
+      created_at: r.created_at,
+      owner: {
+        id: owner?.id ?? profile.id,
+        handle: owner?.handle ?? profile.handle,
+        display_name: owner?.display_name ?? profile.display_name ?? null,
+      },
+    };
+  });
 }

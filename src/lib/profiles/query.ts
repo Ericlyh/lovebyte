@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { postgrest } from '@/lib/supabase/anon';
 
 /**
@@ -31,8 +32,14 @@ export type PublicProfile = {
  * Note: this does NOT return collection items. That's M-C's job —
  * `gifts` rows with `is_listed = true` for the creator. The /u/[handle]
  * page renders an empty Collection tab until M-C ships.
+ *
+ * Memoised with React `cache()` (OOP-6722): the page read this twice
+ * per request — once in `generateMetadata`, once in the page body —
+ * and `postgrest()` sends `cache: 'no-store'`, so Next's fetch
+ * memoisation never applied and the profile was fetched twice. React's
+ * request-scoped cache collapses the two calls into one read.
  */
-export async function getProfileByHandle(
+async function getProfileByHandleUncached(
   handle: string,
 ): Promise<PublicProfile | null> {
   const { data, error } = await postgrest<PublicProfile>('profiles_public', {
@@ -52,6 +59,8 @@ export async function getProfileByHandle(
   if (Array.isArray(data)) return data[0] ?? null;
   return data;
 }
+
+export const getProfileByHandle = cache(getProfileByHandleUncached);
 
 /**
  * Look up the *current* handle for a row that used to belong to the

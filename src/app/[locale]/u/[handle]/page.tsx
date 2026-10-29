@@ -111,53 +111,56 @@ export default async function CreatorProfilePage({ params }: Props) {
       )
     : [];
 
-  // Follower count (M-D). Cheap query against `creator_follows` with
-  // `head: true` + `count: 'exact'`; the RLS policy
-  // `creator_follows_select_public` lets anon read it.
-  const followerCount = await getFollowerCount(profile.id);
-
-  // Viewer auth (OOP-4225 Phase 9 polish). Owner-only copy on the
-  // empty-state card hinges on this — anon visitors shouldn't see
-  // "List a gift" as a CTA. Anon-readable via the JWT-less server
-  // client; `auth.getUser()` returns null without error.
+  // Three reads that do not depend on each other, issued together
+  // (OOP-6722). They used to run one after another, and the page's
+  // 2.8s TTFB was mostly this serialisation.
+  //
+  //  • Follower count (M-D) — a cheap `head: true` + `count: 'exact'`
+  //    query against `creator_follows`; the RLS policy
+  //    `creator_follows_select_public` lets anon read it.
+  //  • Viewer auth (OOP-4225 Phase 9 polish). Owner-only copy on the
+  //    empty-state card hinges on this — anon visitors shouldn't see
+  //    "List a gift" as a CTA. Anon-readable via the JWT-less server
+  //    client; `auth.getUser()` returns null without error.
+  //  • The creator's listed gifts (OOP-4225 Phase 9 polish). Reuses the
+  //    same RLS-permitted feed query as /browse so the visual language
+  //    of the cards stays consistent across the app. Capped at
+  //    PAGE_SIZE (20) for the first paint.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [followerCount, user, { gifts: creatorListings }] = await Promise.all([
+    getFollowerCount(profile.id),
+    supabase.auth.getUser().then(({ data }) => data.user),
+    getCatalogFeed({
+      creator: profile.handle,
+      sort: 'published_desc',
+    }),
+  ]);
+
   const viewerIsOwner = !!user && user.id === profile.id;
 
-  // Creator's listed gifts (OOP-4225 Phase 9 polish). Reuses the same
-  // RLS-permitted feed query as /browse so the visual language of the
-  // cards stays consistent across the app. Capped at PAGE_SIZE (20)
-  // for the first paint — full pagination can land when the design
-  // actually needs it (most creators won't list 20+ in the MVP).
-  const { gifts: creatorListings } = await getCatalogFeed({
-    creator: profile.handle,
-    sort: 'published_desc',
-  });
-
-  // Owner's full gift library (OOP-5685). Drafts + unlisted + listed.
-  // Returns [] for non-owners (RLS `gifts_select_own`); we only render
-  // the section when `viewerIsOwner` so the empty-array branch is
-  // purely defensive — keeping the call here means the server does the
-  // single RLS check whether or not the visitor is authed.
-  const ownedGifts = viewerIsOwner
-    ? await getOwnedGifts(profile.handle)
-    : [];
-
-  // The creator's sales figures (OOP-6719). The RLS on `purchases`
-  // (`purchases_select_buyer_or_seller`) already lets a seller read
-  // their own sales rows; this is the first thing in the app that does.
-  // Owner-only, and only fetched for the owner — the section is not part
-  // of a visitor's page at all.
-  const sales = viewerIsOwner ? await getCreatorSales(profile.id) : null;
-
-  // Who actually follows this creator (OOP-6719). The Followers tab
-  // used to render a fixed "No followers yet." whatever the count was.
-  // `creator_follows` is public-readable, so this is safe for anyone.
-  // Skipped entirely when the count is zero — the common case, and the
-  // list would be empty anyway.
-  const followers = followerCount > 0 ? await getFollowers(profile.id) : [];
+  // The owner-only reads and the follower list — also independent of
+  // each other, so they go out together (OOP-6722).
+  //
+  //  • Owner's full gift library (OOP-5685). Drafts + unlisted + listed.
+  //    Returns [] for non-owners (RLS `gifts_select_own`); we only
+  //    render the section when `viewerIsOwner` so the empty-array branch
+  //    is purely defensive — keeping the call here means the server does
+  //    the single RLS check whether or not the visitor is authed.
+  //  • The creator's sales figures (OOP-6719). The RLS on `purchases`
+  //    (`purchases_select_buyer_or_seller`) already lets a seller read
+  //    their own sales rows; this is the first thing in the app that
+  //    does. Owner-only, and only fetched for the owner — the section is
+  //    not part of a visitor's page at all.
+  //  • Who actually follows this creator (OOP-6719). The Followers tab
+  //    used to render a fixed "No followers yet." whatever the count was.
+  //    `creator_follows` is public-readable, so this is safe for anyone.
+  //    Skipped entirely when the count is zero — the common case, and
+  //    the list would be empty anyway.
+  const [ownedGifts, sales, followers] = await Promise.all([
+    viewerIsOwner ? getOwnedGifts(profile.handle) : [],
+    viewerIsOwner ? getCreatorSales(profile.id) : null,
+    followerCount > 0 ? getFollowers(profile.id) : [],
+  ]);
 
   return (
     <main className="min-h-screen flex flex-col">

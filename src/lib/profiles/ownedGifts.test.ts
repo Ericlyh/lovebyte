@@ -27,8 +27,8 @@ const { state, fakeFrom } = vi.hoisted(() => {
     giftRows: [] as Record<string, unknown>[],
     /** The creator's profile row. */
     profile: null as Record<string, unknown> | null,
-    /** What the `gift_like_count` RPC returns. */
-    likeCount: 7,
+    /** Every RPC the code called — OOP-6722 asserts there are none. */
+    rpcCalls: [] as string[],
   };
 
   const fakeFrom = (table: string) => ({
@@ -61,10 +61,10 @@ const { state, fakeFrom } = vi.hoisted(() => {
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
     from: (table: string) => fakeFrom(table),
-    rpc: async (fn: string) => ({
-      data: fn === 'gift_like_count' ? state.likeCount : null,
-      error: null,
-    }),
+    rpc: async (fn: string) => {
+      state.rpcCalls.push(fn);
+      return { data: null, error: null };
+    },
     storage: {
       from: () => ({
         getPublicUrl: () => ({ data: { publicUrl: 'https://media.test/cover.png' } }),
@@ -92,6 +92,12 @@ const LISTED_GIFT = {
   payload: {},
   created_at: '2026-08-01T00:00:00.000Z',
   owner: { id: CREATOR_ID, handle: 'mei', display_name: 'Mei Chen' },
+  /**
+   * PostgREST's aggregate embed. It arrives as an array holding the one
+   * aggregate row — `[{ count: 7 }]` — and it is what the like count is
+   * now read from (OOP-6722).
+   */
+  gift_likes: [{ count: 7 }],
 };
 
 /** The same gift after it has been taken off the marketplace. */
@@ -105,7 +111,7 @@ beforeEach(() => {
   state.selects = [];
   state.giftRows = [];
   state.profile = { id: CREATOR_ID, handle: 'mei', display_name: 'Mei Chen' };
-  state.likeCount = 7;
+  state.rpcCalls = [];
 });
 
 describe('getOwnedGifts', () => {
@@ -121,14 +127,29 @@ describe('getOwnedGifts', () => {
     expect(giftSelect!.cols).not.toMatch(/like_count/);
   });
 
-  it('reads the like count from the gift_like_count RPC', async () => {
+  it('reads the like count from the gift_likes(count) aggregate', async () => {
     state.giftRows = [{ ...LISTED_GIFT }];
 
     const gifts = await getOwnedGifts('mei');
 
     expect(gifts).toHaveLength(1);
-    // `like_count` is an aggregate, not a column — it comes from the RPC.
+    // `like_count` is an aggregate, not a column — it rides along with
+    // the row as the `gift_likes(count)` embed.
     expect(gifts[0].like_count).toBe(7);
+  });
+
+  it('does not call gift_like_count once per gift (OOP-6722)', async () => {
+    // The owner library used to fire one RPC per gift — 21 round trips
+    // for a full library. The aggregate embed replaces all of them.
+    state.giftRows = [
+      { ...LISTED_GIFT },
+      { ...LISTED_GIFT, id: 'aaaa2222-0000-0000-0000-000000000002' },
+      { ...LISTED_GIFT, id: 'aaaa3333-0000-0000-0000-000000000003' },
+    ];
+
+    await getOwnedGifts('mei');
+
+    expect(state.rpcCalls).toEqual([]);
   });
 
   it('returns the creator’s own gifts', async () => {

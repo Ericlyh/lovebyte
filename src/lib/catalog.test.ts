@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getCatalogFeed } from './catalog';
+import { getCatalogFeed, getListingDetail } from './catalog';
 
 /**
  * Regression tests for the catalogue price-tier filter (OOP-6713) and
@@ -62,6 +62,14 @@ function toRow(partial: Row): Row {
     is_listed: true,
     published_at: '2026-10-01T00:00:00.000Z',
     owner: { id: 'p1', handle: 'ada', display_name: 'Ada' },
+    /**
+     * The rows `gift_likes` holds for this gift. The fake PostgREST
+     * engine turns this into the `gift_likes(count)` aggregate embed,
+     * and the fake `gift_like_count` RPC counts the same array — so the
+     * two paths are compared against one source of truth, the way the
+     * real database compares them (OOP-6722).
+     */
+    likes: [] as number[],
     ...partial,
   };
 }
@@ -283,7 +291,14 @@ class FakeQueryBuilder {
       });
     }
     if (this.limitCount !== null) rows = rows.slice(0, this.limitCount);
-    return rows;
+    // PostgREST's aggregate embed: `gift_likes(count)` arrives as an
+    // array holding the single aggregate row — `[{ count: N }]` — and the
+    // count is the number of child rows, exactly as the database
+    // computes it (OOP-6722).
+    return rows.map((r) => ({
+      ...r,
+      gift_likes: [{ count: (r.likes as number[] | undefined)?.length ?? 0 }],
+    }));
   }
 }
 
@@ -291,6 +306,8 @@ class FakeQueryBuilder {
 
 const state = vi.hoisted(() => ({
   orCalls: [] as string[],
+  /** Every RPC the code called — OOP-6722 asserts the feed calls none. */
+  rpcCalls: [] as string[],
 }));
 
 function createFakeClient() {
@@ -298,9 +315,20 @@ function createFakeClient() {
     from(table: string) {
       return new FakeQueryBuilder(table === 'profiles_public' ? PROFILES : ROWS, state.orCalls);
     },
-    /** `gift_like_count` — the fake reports no likes. */
-    rpc() {
-      return Promise.resolve({ data: 0, error: null });
+    /**
+     * The `gift_like_count` SQL function — `security definer`, so it
+     * counts every like on the gift. The fake counts the row's `likes`
+     * array, which is the same source the aggregate embed is computed
+     * from (OOP-6722).
+     */
+    rpc(fn: string, args?: { gift_id?: string }) {
+      state.rpcCalls.push(fn);
+      if (fn === 'gift_like_count') {
+        const row = ROWS.find((r) => r.id === args?.gift_id);
+        const count = (row?.likes as number[] | undefined)?.length ?? 0;
+        return Promise.resolve({ data: count, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
     },
     /** The media bucket is public, so the public URL is a plain path. */
     storage: {
@@ -507,5 +535,77 @@ describe('catalog cover images (OOP-6717)', () => {
       payload: { questions: [{ q: 'Where did we meet?', options: ['a', 'b'] }] },
     });
     expect(url).toBeNull();
+  });
+});
+
+// ─── Like counts (OOP-6722) ────────────────────────────────────────────────
+
+describe('like counts (OOP-6722)', () => {
+  beforeEach(() => {
+    state.rpcCalls.length = 0;
+  });
+
+  /**
+   * Rows with a known number of likes: three, one, and none. The zero
+   * case matters — it is the one where the aggregate embed and the RPC
+   * could disagree about what "no likes" looks like.
+   */
+  const LIKED_ROWS: Row[] = [
+    toRow({ id: 'liked-3', likes: [1, 2, 3] }),
+    toRow({ id: 'liked-1', likes: [1] }),
+    toRow({ id: 'liked-0', likes: [] }),
+  ];
+
+  /** Push the liked rows, run `body`, and take them out again. */
+  async function withLikedRows<T>(body: () => Promise<T>): Promise<T> {
+    ROWS.push(...LIKED_ROWS);
+    try {
+      return await body();
+    } finally {
+      ROWS.splice(ROWS.length - LIKED_ROWS.length, LIKED_ROWS.length);
+    }
+  }
+
+  it('reads the like count from the aggregate embed, with no RPC per row', async () => {
+    await withLikedRows(async () => {
+      const result = await getCatalogFeed({});
+      const liked = result.gifts.find((g) => g.id === 'liked-3');
+      expect(liked?.like_count).toBe(3);
+
+      // The whole feed used to cost 21 round trips — one `gift_like_count`
+      // RPC per row. The aggregate embed replaces every one of them.
+      expect(state.rpcCalls).toEqual([]);
+    });
+  });
+
+  it('the aggregate like_count matches gift_like_count for the same gift', async () => {
+    // The aggregate is a rewrite of the RPC, not a different number. This
+    // is the guard that stops the rewrite silently changing the counts.
+    await withLikedRows(async () => {
+      const result = await getCatalogFeed({});
+      const client = createFakeClient();
+      expect(result.gifts.length).toBeGreaterThan(0);
+
+      for (const gift of result.gifts) {
+        const { data: rpcCount } = await client.rpc('gift_like_count', {
+          gift_id: gift.id,
+        });
+        expect(gift.like_count).toBe(rpcCount);
+      }
+    });
+  });
+
+  it('the listing detail reads its like count from the aggregate too', async () => {
+    const id = 'aaaa9999-0000-0000-0000-000000000001';
+    await withLikedRows(async () => {
+      ROWS.push(toRow({ id, likes: [1, 2] }));
+      try {
+        const listing = await getListingDetail(id);
+        expect(listing?.like_count).toBe(2);
+        expect(state.rpcCalls).toEqual([]);
+      } finally {
+        ROWS.splice(ROWS.length - 1, 1);
+      }
+    });
   });
 });
