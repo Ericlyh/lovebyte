@@ -539,6 +539,7 @@
     "title": "送出呢份禮物",
     "ledePrefix": "送畀 {creator}",
     "creatorNotReady": "呢個創作人仲未設定收款。請遲啲再試。",
+    "payoutStateUnknown": "付款結帳暫時未能使用。請幾分鐘後再試。",
     "backToListing": "返回禮物",
     "deliveryModeLabel": "你想點樣分享呢份禮物？",
     "deliverySendToRecipient": {

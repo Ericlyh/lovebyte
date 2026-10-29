@@ -539,6 +539,7 @@
     "title": "Send this gift",
     "ledePrefix": "for {creator}",
     "creatorNotReady": "This creator is not set up to receive payouts yet. Please check back later.",
+    "payoutStateUnknown": "Paid checkout is temporarily unavailable. Please try again in a few minutes.",
     "backToListing": "Back to listing",
     "deliveryModeLabel": "How would you like to share this gift?",
     "deliverySendToRecipient": {

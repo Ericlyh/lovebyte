@@ -53,7 +53,7 @@ export default async function CheckoutPage({ params }: Props) {
   const { data: gift, error } = await supabase
     .from('gifts')
     .select(
-      'id, title, description, price_cents, currency, owner_id, owner:profiles!owner_id(handle, display_name, stripe_charges_enabled)',
+      'id, title, description, price_cents, currency, owner_id, owner:profiles!owner_id(handle, display_name)',
     )
     .eq('id', giftId)
     .eq('is_listed', true)
@@ -65,7 +65,6 @@ export default async function CheckoutPage({ params }: Props) {
   const owner = Array.isArray(gift.owner) ? gift.owner[0] : gift.owner;
   const creatorLabel =
     owner?.display_name ?? (owner?.handle ? `@${owner.handle}` : 'a creator');
-  const creatorReady = !!owner?.stripe_charges_enabled;
 
   // A free listing has no money to move, so it never opens a Stripe
   // session — and it must not be gated on the creator's Stripe
@@ -73,6 +72,32 @@ export default async function CheckoutPage({ params }: Props) {
   // `gifts_price_cents_chk` constrains `price_cents` to NULL or a
   // positive integer, so a listed gift is either free or paid.
   const isFree = gift.price_cents == null || gift.price_cents <= 0;
+
+  // The payout state lives on `profiles` (migration 0006), and that
+  // migration has NOT been applied to the production project. PostgREST
+  // rejects the WHOLE request when a selected column does not exist, so
+  // asking for `stripe_charges_enabled` alongside the gift made this
+  // page 404 for every listing — free and paid alike.
+  //
+  // A free listing moves no money and needs no payout state, so the
+  // read happens only for a paid listing. `unknown` means we could not
+  // determine the state at all (the column is missing), which is a
+  // different problem from "this creator cannot take payouts yet" and
+  // gets its own message.
+  let payoutState: 'ready' | 'not-ready' | 'unknown' = 'not-ready';
+  if (!isFree) {
+    const { data: profile, error: payoutErr } = await supabase
+      .from('profiles')
+      .select('stripe_account_id, stripe_charges_enabled')
+      .eq('id', gift.owner_id)
+      .maybeSingle();
+    if (payoutErr) {
+      console.error('[checkout] payout state read failed', payoutErr.message);
+      payoutState = 'unknown';
+    } else {
+      payoutState = profile?.stripe_charges_enabled ? 'ready' : 'not-ready';
+    }
+  }
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -94,11 +119,15 @@ export default async function CheckoutPage({ params }: Props) {
 
         {isFree ? (
           <CheckoutForm giftId={gift.id} variant="free" />
-        ) : creatorReady ? (
+        ) : payoutState === 'ready' ? (
           <CheckoutForm giftId={gift.id} />
         ) : (
           <div className="lb-form__error" role="alert">
-            <p>{t('creatorNotReady')}</p>
+            <p>
+              {payoutState === 'unknown'
+                ? t('payoutStateUnknown')
+                : t('creatorNotReady')}
+            </p>
             <p>
               <Link href={`/l/${gift.id}`} className="lb-link">
                 ← {t('backToListing')}
