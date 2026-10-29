@@ -1,10 +1,67 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
+import withBundleAnalyzer from '@next/bundle-analyzer';
 import { MEDIA_HOST } from './src/lib/media';
 
 const withNextIntl = createNextIntlPlugin('./src/lib/i18n/request.ts');
 
+/**
+ * OOP-6725 — the bundle analyzer.
+ *
+ * `@next/bundle-analyzer` is a webpack plugin and this app builds with
+ * Turbopack, so the wrapper is a no-op for the production build (the
+ * package detects `process.env.TURBOPACK` and returns the config
+ * untouched). It is wired here rather than left out so the webpack path
+ * exists: `pnpm analyze:webpack` builds with `--webpack` and the plugin
+ * writes `analyze/client.html`.
+ *
+ * The analysis that matches *production* is Turbopack's own — see the
+ * `analyze` script in package.json. Two bundlers produce two different
+ * chunk graphs, so only the Turbopack numbers can be compared against a
+ * Lighthouse run against the deployed site.
+ *
+ * `enabled` is opt-in through the environment, so a normal `pnpm build`
+ * never carries the plugin.
+ */
+const withBundleAnalyzerEnabled = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 const nextConfig: NextConfig = {
+  /**
+   * OOP-6725 — `x-powered-by: Next.js` was on every response.
+   *
+   * It advertises the framework to anyone who asks, which is free
+   * reconnaissance for someone looking up a Next.js version's advisories.
+   * Turning it off costs nothing.
+   */
+  poweredByHeader: false,
+
+  /**
+   * OOP-6725 — Next's blanket browser polyfills, replaced with ours.
+   *
+   * Next installs nine feature-detected shims with its client entry.
+   * Eight of them are redundant at the browser floor this app supports
+   * (see `browserslist` in package.json); only `URL.canParse` is still
+   * missing in safari 16.4. `scripts/turbopack-polyfill-loader.mjs`
+   * installs just that one, and this rule points Next's polyfill module
+   * at it.
+   *
+   * The payoff is not the 1.3 KiB the shims weigh — it is that
+   * Lighthouse's `legacy-javascript` audit stops matching polyfill
+   * patterns in the bundle. It reported ~14 KiB of "legacy JavaScript"
+   * against a page whose polyfill code was 1.4 KiB, because the audit
+   * matches the shims' *signatures*, not their size.
+   */
+  turbopack: {
+    rules: {
+      '**/next/dist/build/polyfills/polyfill-module.js': {
+        loaders: ['./scripts/turbopack-polyfill-loader.mjs'],
+        as: '*.js',
+      },
+    },
+  },
+
   /**
    * The responsive image pipeline (OOP-6723).
    *
@@ -60,4 +117,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withBundleAnalyzerEnabled(withNextIntl(nextConfig));
