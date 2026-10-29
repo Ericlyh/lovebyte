@@ -45,6 +45,11 @@
 // RESOLVE is reported loudly but does not fail the run — see the verdict
 // block at the bottom for why, and for what covers that gap instead.
 // Findings in other rules are printed for a human to triage.
+//
+// OOP-6738 — axe has no rule for heading levels, so the audit measures
+// the heading outline of every route it reaches as well (WCAG 1.3.1):
+// a level that is skipped, or a page that does not have exactly one
+// h1, fails the run.
 
 import AxeBuilder from '@axe-core/playwright';
 import {
@@ -55,6 +60,7 @@ import {
   resolveRouteParams,
   signInAsAuditUser,
 } from './lib/audit-routes.mjs';
+import { findHeadingProblems, readHeadingOutline } from './lib/heading-outline.mjs';
 
 const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
 
@@ -94,6 +100,51 @@ function isExcepted(rule, label) {
   return KNOWN_EXCEPTIONS.some((e) => e.rule === rule && e.routes.includes(label));
 }
 
+/**
+ * OOP-6738 — the heading outline, which axe does not test.
+ *
+ * WCAG 1.3.1 says a heading level must not be skipped: a document that
+ * goes h1 → h3 tells a screen-reader user that the h3 is a child of a
+ * section that does not exist. axe has no rule for it, so the audit
+ * read "0 violations" on pages whose outline was broken — /browse was
+ * an h1 followed by ten h3s.
+ *
+ * The outline is measured on every route the audit reaches, and a
+ * skipped level or a page without exactly one h1 fails the run.
+ *
+ * These are the routes that were already broken and are NOT fixed yet.
+ * They are still MEASURED — the outline is printed with the rest of
+ * the route's results — they just do not fail the run until they are
+ * fixed. The entry must be deleted in the same commit as the fix.
+ */
+const KNOWN_HEADING_EXCEPTIONS = [
+  {
+    route: 'builder-quiz',
+    issue: 'OOP-6766',
+    why: 'The per-question heading is an h3 directly under the page h1. It needs to be an h2.',
+  },
+  {
+    route: 'builder-code',
+    issue: 'OOP-6766',
+    why: 'The four section headings are h3s directly under the page h1. They need to be h2s.',
+  },
+  {
+    route: 'recipient-open',
+    issue: 'OOP-6766',
+    why: 'The in-experience gift view has no h1 at all: the write-back card heads itself with an h2.',
+  },
+  {
+    route: 'create-finish',
+    issue: 'OOP-6766',
+    why: "The typed 404 it renders has no h1 — PageState's title is an h2. The route renders that 404 because the audit resolves a gift id the throwaway audit user does not own.",
+  },
+];
+
+/** Is this route's heading outline a documented exception? */
+function isHeadingExcepted(label) {
+  return KNOWN_HEADING_EXCEPTIONS.some((e) => e.route === label);
+}
+
 const env = readEnvLocal();
 const params = await resolveRouteParams({ base: BASE, env });
 const routes = expandRoutes(AUDIT_ROUTES, params);
@@ -120,7 +171,7 @@ try {
 
 const results = [];
 
-for (const { path, label, auth } of routes) {
+for (const { path, label, auth, waitFor } of routes) {
   if (auth && !session) {
     results.push({ label, path, skipped: 'no session' });
     continue;
@@ -131,10 +182,21 @@ for (const { path, label, auth } of routes) {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForTimeout(800); // let streaming settle
 
+    // OOP-6738 — a route that renders its content in the browser needs
+    // that content to be there before the outline is read, or the
+    // measurement is taken on a page that is still missing its
+    // headings.
+    if (waitFor) {
+      await page.waitForSelector(waitFor, { timeout: 10000 }).catch(() => {});
+    }
+
     const audit = await new AxeBuilder({ page })
       .options(AXE_OPTIONS)
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
+
+    // OOP-6738 — the heading outline. axe has no rule for it.
+    const outline = await readHeadingOutline(page);
 
     results.push({
       label,
@@ -169,6 +231,12 @@ for (const { path, label, auth } of routes) {
           failureSummary: n.failureSummary,
         })),
       })),
+      // OOP-6738 — the heading outline and what is wrong with it.
+      heading: {
+        levels: outline.levels,
+        labels: outline.labels,
+        problems: findHeadingProblems(outline.levels),
+      },
     });
   } catch (err) {
     results.push({ label, path, error: err.message.slice(0, 100) });
@@ -241,6 +309,22 @@ for (const r of results) {
       }
     }
   }
+  // OOP-6738 — the heading outline of every measured route. It is
+  // printed for every route, not only the broken ones, so that a route
+  // with a correct outline is visibly checked rather than silently
+  // assumed.
+  if (r.heading) {
+    const outline = r.heading.levels.map((l) => `h${l}`).join(',') || '(no headings)';
+    const excepted = isHeadingExcepted(r.label);
+    const mark = r.heading.problems.length === 0 ? '✓' : excepted ? '·' : '✗';
+    console.log(`     ${mark} heading outline: ${outline}`);
+    for (const p of r.heading.problems) {
+      const issue = KNOWN_HEADING_EXCEPTIONS.find((e) => e.route === r.label);
+      const tag = issue ? `[known exception ${issue.issue}]` : '';
+      console.log(`       ${tag} ${p.kind}: ${p.detail}`);
+      if (issue) console.log(`       why it is still open: ${issue.why}`);
+    }
+  }
 }
 
 console.log(
@@ -256,7 +340,9 @@ if (totalExcepted > 0) {
 // The verdict.
 //
 //   FAIL   — a critical or serious violation, or a colour-contrast
-//            violation. These are MEASURED failures.
+//            violation, or a heading outline that skips a level or
+//            does not have exactly one h1 (OOP-6738). These are
+//            MEASURED failures.
 //   REPORT — a colour-contrast result axe could not RESOLVE. There are
 //            three of those on this site and none of them is a measured
 //            failure: a gradient the element itself carries, an
@@ -269,7 +355,8 @@ if (totalExcepted > 0) {
 //
 // A documented exception (KNOWN_EXCEPTIONS) is measured but not failed:
 // it names the rule, the route, the reason and the tracking issue, and
-// it must be deleted when the defect is fixed.
+// it must be deleted when the defect is fixed. The same is true of a
+// route in KNOWN_HEADING_EXCEPTIONS.
 const contrastProblems = results.flatMap((r) =>
   (r.violations ?? [])
     .filter((v) => v.id === 'color-contrast' && !isExcepted(v.id, r.label))
@@ -288,6 +375,14 @@ const unresolvedContrast = results.flatMap((r) =>
     .filter((v) => v.id === 'color-contrast')
     .map((v) => `${r.path} (${v.id} incomplete)`)
 );
+const headingProblems = results.flatMap((r) =>
+  (r.heading?.problems ?? [])
+    .filter(() => !isHeadingExcepted(r.label))
+    .map((p) => `${r.path} (${p.kind}: ${p.detail})`)
+);
+const headingExceptions = results.filter(
+  (r) => (r.heading?.problems ?? []).length > 0 && isHeadingExcepted(r.label),
+).length;
 if (unresolvedContrast.length) {
   console.log(
     `\nnote: ${unresolvedContrast.length} colour-contrast result(s) axe could not resolve — ` +
@@ -296,13 +391,20 @@ if (unresolvedContrast.length) {
   );
 }
 
-if (totalCritical > 0 || totalSerious > 0 || contrastProblems.length > 0) {
+if (totalCritical > 0 || totalSerious > 0 || contrastProblems.length > 0 || headingProblems.length > 0) {
   console.error(
-    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ${contrastProblems.length} color-contrast problem(s)` +
+    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ${contrastProblems.length} color-contrast problem(s), ${headingProblems.length} heading-outline problem(s)` +
       (contrastProblems.length ? `: ${contrastProblems.join(', ')}` : '') +
-      (seriousProblems.length ? `; serious: ${seriousProblems.join(', ')}` : ''),
+      (seriousProblems.length ? `; serious: ${seriousProblems.join(', ')}` : '') +
+      (headingProblems.length ? `; headings: ${headingProblems.join(', ')}` : ''),
   );
   process.exit(1);
+}
+
+if (headingExceptions > 0) {
+  console.log(
+    `=== ${headingExceptions} route(s) with a known heading-outline exception, tracked: ${KNOWN_HEADING_EXCEPTIONS.map((e) => e.issue).join(', ')} ===`,
+  );
 }
 
 console.log('\n✓ PASS — no critical, no serious, no colour-contrast violation.');

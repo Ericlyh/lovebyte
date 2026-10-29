@@ -46,20 +46,24 @@ export default async function SupportPage({ params }: PageProps<'/[locale]/suppo
         <h1>{t('title')}</h1>
         <p className="lede">{t('lede')}</p>
 
+        {/*
+          OOP-6738 — the three cards sit directly under the page's h1,
+          so their headings are h2s. As h3s they skipped a level.
+        */}
         <article className="lb-support-card">
-          <h3>{t('emailHeading')}</h3>
+          <h2>{t('emailHeading')}</h2>
           <p>{t('emailBody')}</p>
           <a href="mailto:support@lovorithm.app">{t('emailCta')}</a>
         </article>
 
         <article className="lb-support-card">
-          <h3>{t('reportHeading')}</h3>
+          <h2>{t('reportHeading')}</h2>
           <p>{t('reportBody')}</p>
           <a href="mailto:bugs@lovorithm.app">{t('reportCta')}</a>
         </article>
 
         <article className="lb-support-card">
-          <h3>{t('billingHeading')}</h3>
+          <h2>{t('billingHeading')}</h2>
           <p>{t('billingBody')}</p>
           <a href="mailto:billing@lovorithm.app">{t('billingCta')}</a>
         </article>

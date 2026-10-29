@@ -258,7 +258,7 @@ export default async function CreatorProfilePage({ params }: Props) {
         {creatorListings.length > 0 ? (
           <div className="lb-profile-collection-grid">
             {creatorListings.map((gift) => (
-              <GiftCard key={gift.id} gift={gift} />
+              <GiftCard key={gift.id} gift={gift} headingLevel="h3" />
             ))}
           </div>
         ) : (
@@ -297,6 +297,7 @@ export default async function CreatorProfilePage({ params }: Props) {
                   <GiftCard
                     gift={gift}
                     href={gift.is_listed && !gift.is_unpublished ? `/l/${gift.id}` : null}
+                    headingLevel="h3"
                   />
                   <OwnedGiftActions
                     giftId={gift.id}

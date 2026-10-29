@@ -160,7 +160,10 @@ export function BrowseGrid() {
       <ul className="lb-gift-grid">
         {state.gifts.map((gift) => (
           <li key={gift.id}>
-            <GiftCardClient gift={gift} />
+            {/* OOP-6738 — the grid is the top-level content of /browse,
+                so a card title is an h2 under the page's h1. As an h3
+                it skipped a level, which breaks the heading rotor. */}
+            <GiftCardClient gift={gift} headingLevel="h2" />
           </li>
         ))}
       </ul>

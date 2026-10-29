@@ -37,6 +37,21 @@ type Props = {
    * (OOP-6719).
    */
   href?: string | null;
+  /**
+   * The heading level the card title is rendered at (OOP-6738).
+   *
+   * The level says what the card is a child of, and it is not the same
+   * on every page: on /browse the cards sit directly under the page
+   * h1, so they are h2; on the landing page's catalogue preview they sit
+   * under the section's h2, so they are h3. A page whose h1 is followed
+   * by h3s skips a level, which breaks the heading rotor a
+   * screen-reader user navigates by (WCAG 1.3.1) — and axe does not
+   * test heading levels, so nothing else catches it.
+   *
+   * Required, not defaulted: the level is a property of the page the
+   * card is rendered on, so every call site has to say which one it is.
+   */
+  headingLevel: 'h2' | 'h3';
 };
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -57,8 +72,19 @@ const CATEGORY_EMOJI: Record<string, string> = {
  */
 const COVER_SIZES = '(max-width: 540px) 100vw, (max-width: 900px) 50vw, 33vw';
 
-export function GiftCardView({ gift, byText, likesLabel, freeLabel, href }: Props) {
+export function GiftCardView({
+  gift,
+  byText,
+  likesLabel,
+  freeLabel,
+  href,
+  headingLevel,
+}: Props) {
   const emoji = gift.category ? CATEGORY_EMOJI[gift.category] ?? '🎁' : '🎁';
+
+  // OOP-6738 — the card title is a heading, and its level depends on
+  // the page it is rendered on (see the `headingLevel` prop).
+  const Heading = headingLevel;
 
   const target = href === undefined ? `/l/${gift.id}` : href;
 
@@ -83,7 +109,7 @@ export function GiftCardView({ gift, byText, likesLabel, freeLabel, href }: Prop
         )}
       </div>
       <div className="lb-gift-card__body">
-        <h3 className="lb-gift-card__title">{gift.title}</h3>
+        <Heading className="lb-gift-card__title">{gift.title}</Heading>
         <p className="lb-gift-card__creator">{byText}</p>
         <div className="lb-gift-card__meta">
           <PriceBadgeView priceCents={gift.price_cents} freeLabel={freeLabel} />

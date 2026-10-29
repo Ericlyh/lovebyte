@@ -31,7 +31,11 @@ import { chromium } from 'playwright';
 export const AUDIT_ROUTES = [
   // --- public, no session needed -------------------------------------
   { path: '/', label: 'landing' },
-  { path: '/browse', label: 'browse' },
+  // OOP-6738 — the /browse grid is fetched in the browser, so its card
+  // headings only exist once the feed lands. The audits wait for the
+  // first card before they measure the page, or the measurement is
+  // taken on a half-loaded page that has no card headings yet.
+  { path: '/browse', label: 'browse', waitFor: '.lb-gift-card' },
   { path: '/gifts', label: 'gift-guides' },
   { path: '/gifts/birthday-ideas', label: 'gift-guide-detail' },
   { path: '/g/demo', label: 'recipient-demo' },

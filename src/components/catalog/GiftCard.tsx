@@ -18,9 +18,15 @@ type Props = {
    * pass `null` for a listing that has no public page (OOP-6719).
    */
   href?: string | null;
+  /**
+   * The heading level the card title is rendered at (OOP-6738) — `h3`
+   * when the card sits under a section heading, `h2` when it sits
+   * directly under the page heading. See `GiftCardView`.
+   */
+  headingLevel: 'h2' | 'h3';
 };
 
-export async function GiftCard({ gift, href }: Props) {
+export async function GiftCard({ gift, href, headingLevel }: Props) {
   const t = await getTranslations('Catalog.card');
   const tp = await getTranslations('Catalog.price');
   const creatorLabel = gift.owner.display_name ?? `@${gift.owner.handle}`;
@@ -32,6 +38,7 @@ export async function GiftCard({ gift, href }: Props) {
       likesLabel={t('likesLabel', { count: gift.like_count })}
       freeLabel={tp('free')}
       href={href}
+      headingLevel={headingLevel}
     />
   );
 }

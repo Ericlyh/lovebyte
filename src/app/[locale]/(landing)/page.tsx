@@ -163,7 +163,9 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           <ul className="lb-gift-grid lb-landing-catalogue__grid">
             {previewGifts.map((gift) => (
               <li key={gift.id}>
-                <GiftCard gift={gift} />
+                {/* OOP-6738 — the preview sits under this section's h2,
+                    so a card title is an h3, not an h2. */}
+                <GiftCard gift={gift} headingLevel="h3" />
               </li>
             ))}
           </ul>
@@ -189,7 +191,25 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
         </div>
       </section>
 
-      <section className="lb-features" aria-label={t('features.heading')}>
+      {/*
+        OOP-6738 — the section's own heading.
+
+        The six format cards are h3s, and they sat directly under the
+        page's h1 with no h2 in between: a screen-reader user rotating
+        through the headings heard six h3s with nothing to say what they
+        were (WCAG 1.3.1). The h2 they belong to did not exist — the
+        section only carried an aria-label.
+
+        The heading is rendered for screen readers only (`.lb-sr-only`,
+        which is out of the grid flow) so the landing page's visual
+        design is untouched: the six cards have always been a bare
+        grid, and a visible section title is a design change rather
+        than an accessibility fix.
+      */}
+      <section className="lb-features" aria-labelledby="lb-features-heading">
+        <h2 id="lb-features-heading" className="lb-sr-only">
+          {t('features.heading')}
+        </h2>
         {features.map((f) => (
           <article key={f.id} className="lb-feature">
             <div className="lb-feature__emoji" aria-hidden="true">{f.emoji}</div>
@@ -205,7 +225,9 @@ export default async function Home({ params }: PageProps<'/[locale]'>) {
           {steps.map((n) => (
             <article key={n} className="lb-step">
               <div className="lb-step__num" aria-hidden="true">{n}</div>
-              <h4>{t(`how.steps.${n}.title`)}</h4>
+              {/* OOP-6738 — an h3 under this section's h2. As an h4 it
+                  skipped a level. */}
+              <h3>{t(`how.steps.${n}.title`)}</h3>
               <p>{t(`how.steps.${n}.body`)}</p>
             </article>
           ))}

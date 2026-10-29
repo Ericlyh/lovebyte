@@ -15,9 +15,15 @@ import { GiftCardView } from './GiftCardView';
  */
 type Props = {
   gift: CatalogGift;
+  /**
+   * The heading level the card title is rendered at (OOP-6738). The
+   * /browse grid passes `h2`: the cards are the top-level content of
+   * the page, under its `h1`.
+   */
+  headingLevel: 'h2' | 'h3';
 };
 
-export function GiftCardClient({ gift }: Props) {
+export function GiftCardClient({ gift, headingLevel }: Props) {
   const t = useTranslations('Catalog.card');
   const tp = useTranslations('Catalog.price');
   const creatorLabel = gift.owner.display_name ?? `@${gift.owner.handle}`;
@@ -28,6 +34,7 @@ export function GiftCardClient({ gift }: Props) {
       byText={t('by', { creator: creatorLabel })}
       likesLabel={t('likesLabel', { count: gift.like_count })}
       freeLabel={tp('free')}
+      headingLevel={headingLevel}
     />
   );
 }

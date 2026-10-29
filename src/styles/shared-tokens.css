@@ -479,7 +479,10 @@ a.lb-btn:hover { text-decoration: none; }
   font-size: 24px;
   margin-bottom: var(--lb-space-3);
 }
-.lb-step h4 { font-size: 18px; margin-bottom: var(--lb-space-2); color: var(--lb-ink); }
+/* OOP-6738 — the step titles are h3s under the section's h2 (they were
+ * h4s, which skipped a level). The selector follows the element so the
+ * rendered size does not change. */
+.lb-step h3 { font-size: 18px; margin-bottom: var(--lb-space-2); color: var(--lb-ink); }
 .lb-step p { color: var(--lb-ink-soft); font-size: 14px; line-height: 1.55; }
 
 .lb-landing-foot {
@@ -1444,11 +1447,15 @@ a.lb-btn:hover { text-decoration: none; }
   flex: 1;
 }
 .lb-gift-card__title {
-  font-family: var(--lb-font-body);
-  font-size: 17px;
+  /* OOP-6738 — the title is an h2 on /browse and an h3 on the landing
+   * page's catalogue preview, so the element can no longer be what
+   * styles it. These are the values the element rule gave it before:
+   * the same display face and size the /gifts cards use. */
+  font-family: var(--lb-font-display);
+  font-size: 19px;
   font-weight: 700;
-  color: var(--lb-ink);
-  margin: 0;
+  color: var(--lb-ink, #2a1a1a);
+  margin: 0 0 6px;
 }
 .lb-gift-card__creator {
   font-size: 13px;
@@ -3990,7 +3997,10 @@ a.lb-btn:hover { text-decoration: none; }
   border-radius: var(--lb-radius-md, 8px);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
-.lb-support-card h3 {
+/* OOP-6738 — the card headings are h2s under the page's h1 (they were
+ * h3s, which skipped a level). The selector follows the element so the
+ * rendered size does not change. */
+.lb-support-card h2 {
   font-family: var(--lb-font-display, 'Cormorant Garamond', serif);
   font-size: 18px;
   color: var(--lb-ink, #2a1a1a);
