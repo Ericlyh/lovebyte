@@ -172,21 +172,41 @@ function decodeCursor(cursor: string): { publishedAt: string; id: string } | nul
 }
 
 /**
- * Map a `priceTier` filter to a PostgREST-style predicate on `price_cents`.
- * The check `price_cents is null` is included in `free` because a gift
- * without a price is treated as free (per M-A constants, `NULL price_cents`
- * means free, not 0).
+ * The `price_cents` band a price tier selects, as separate bounds.
+ *
+ * `isNull` covers the `free` tier: a gift without a price is treated as
+ * free (per M-A constants, `NULL price_cents` means free, not 0).
  */
-function priceTierPredicate(tier: PriceTier): string {
+type PriceTierRange = {
+  isNull?: boolean;
+  gte?: number;
+  lt?: number;
+};
+
+/**
+ * Map a `priceTier` filter to the band of `price_cents` it selects.
+ *
+ * The bounds are separate fields, NOT one comma-joined PostgREST string.
+ * `or=(price_cents.gte.1,price_cents.lt.500)` means
+ * `(price >= 1) OR (price < 500)` — true for every paid row, so all
+ * three paid tiers returned the whole catalogue (OOP-6713). A band
+ * needs both bounds AND'd, which is what separate filters do; the
+ * caller applies each bound as its own filter.
+ *
+ * The four bands partition the catalogue: `gifts_price_cents_chk`
+ * constrains `price_cents` to NULL or a positive integer, so a listed
+ * gift is either free (NULL) or lands in exactly one paid band.
+ */
+function priceTierRange(tier: PriceTier): PriceTierRange {
   switch (tier) {
     case 'free':
-      return 'price_cents.is.null';
+      return { isNull: true };
     case 'under_5':
-      return 'price_cents.gte.1,price_cents.lt.500';
+      return { gte: 1, lt: 500 };
     case 'under_20':
-      return 'price_cents.gte.500,price_cents.lt.2000';
+      return { gte: 500, lt: 2000 };
     case 'over_20':
-      return 'price_cents.gte.2000';
+      return { gte: 2000 };
   }
 }
 
@@ -198,9 +218,9 @@ const giftSelect =
  * rows; if we got more than `PAGE_SIZE`, the extra row becomes the
  * next-cursor anchor.
  *
- * Filters translate to the `or=(...)` PostgREST operator. `creator=<handle>`
- * is resolved server-side: we look up the profile id via profiles_public
- * first, then add `owner_id=eq.<uuid>` to the filter chain.
+ * Filters translate to plain PostgREST filters, which are AND'd together.
+ * `creator=<handle>` is resolved server-side: we look up the profile id via
+ * profiles_public first, then add `owner_id=eq.<uuid>` to the filter chain.
  */
 export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedResult> {
   const parsed = FeedQuerySchema.safeParse(rawParams);
@@ -234,7 +254,13 @@ export async function getCatalogFeed(rawParams: unknown): Promise<CatalogFeedRes
     .limit(PAGE_SIZE + 1);
 
   if (params.category) query = query.eq('category', params.category);
-  if (params.priceTier) query = query.or(priceTierPredicate(params.priceTier));
+  if (params.priceTier) {
+    // Separate filters — PostgREST ANDs them together. See priceTierRange.
+    const band = priceTierRange(params.priceTier);
+    if (band.isNull) query = query.is('price_cents', null);
+    if (band.gte !== undefined) query = query.gte('price_cents', band.gte);
+    if (band.lt !== undefined) query = query.lt('price_cents', band.lt);
+  }
   if (ownerId) query = query.eq('owner_id', ownerId);
 
   // Sort + cursor. `published_desc` is the only sort with stable cursor
