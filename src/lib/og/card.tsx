@@ -23,6 +23,39 @@ export type OgCardProps = {
   detail?: string;
 };
 
+/**
+ * The title's size, from its length.
+ *
+ * A guide title ("Birthday gift ideas that are not another thing in a
+ * box") and a listing title (whatever the creator typed) are both
+ * unbounded, and satori does not shrink text to fit — it overflows the
+ * card and the bottom of it is simply gone. Three steps is enough.
+ */
+function titleSize(title: string): number {
+  if (title.length <= 34) return 60;
+  if (title.length <= 52) return 50;
+  return 42;
+}
+
+/**
+ * The subtitle is trimmed rather than shrunk — it is supporting text.
+ *
+ * The cut prefers a SENTENCE boundary: a card that ends mid-clause
+ * ("…gets opened twice — once for") reads as broken, while one that
+ * ends on a full stop reads as a summary. A word boundary is the
+ * fallback for text with no usable punctuation.
+ */
+function trim(text: string, max: number): string {
+  if (text.length <= max) return text;
+
+  const window = text.slice(0, max);
+  const stop = window.lastIndexOf('. ');
+  if (stop > 0) return window.slice(0, stop + 1);
+
+  const space = window.lastIndexOf(' ');
+  return `${window.slice(0, space > 0 ? space : max).trimEnd()}…`;
+}
+
 export function OgCard({ eyebrow, title, subtitle, detail }: OgCardProps): ReactElement {
   return (
     <div
@@ -38,6 +71,10 @@ export function OgCard({ eyebrow, title, subtitle, detail }: OgCardProps): React
         fontFamily: 'serif',
         padding: 80,
         boxSizing: 'border-box',
+        // Satori honours `position: absolute` against the nearest
+        // positioned ancestor. Without this, the wordmark lands
+        // wherever the flow puts it instead of at the foot of the card.
+        position: 'relative',
       }}
     >
       {eyebrow ? (
@@ -58,7 +95,7 @@ export function OgCard({ eyebrow, title, subtitle, detail }: OgCardProps): React
       <div
         style={{
           display: 'flex',
-          fontSize: 60,
+          fontSize: titleSize(title),
           color: '#2a1a1a',
           fontWeight: 700,
           textAlign: 'center',
@@ -81,7 +118,7 @@ export function OgCard({ eyebrow, title, subtitle, detail }: OgCardProps): React
             marginTop: 20,
           }}
         >
-          {subtitle}
+          {trim(subtitle, 160)}
         </div>
       ) : null}
 

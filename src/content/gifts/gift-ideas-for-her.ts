@@ -15,8 +15,8 @@ export const giftIdeasForHer: GiftPage = {
     zhHant: '送給她的私人禮物',
   },
   metaDescription: {
-    en: 'Not flowers, not a necklace. A memory card game, a letter that opens like an envelope, or a quiz made of the two of you — built in twenty minutes from photographs you already have.',
-    zhHant: '不是花，不是項鍊。是一個記憶卡遊戲、一封像信封般打開的信，或一場由你們兩個組成的問答——用你手上現有的相片，二十分鐘就能做好。',
+    en: 'Not flowers, not a necklace — a memory card game, a letter that opens like an envelope, or a quiz made of the two of you. Built in twenty minutes from photographs you already have.',
+    zhHant: '不是花，不是項鍊——而是一個記憶卡遊戲、一封像信封般打開的信，或一場由你們兩個組成的問答。用你手上現有的相片，二十分鐘就能做好。',
   },
   heading: {
     en: 'Personalised gift ideas for her',
