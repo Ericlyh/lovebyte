@@ -184,12 +184,17 @@ export async function joinWaitlistAction(
   }
 
   // OOP-6716 — the signup is recorded as an analytics event, which
-  // replaces the bare console.log that used to sit here.
+  // replaces the bare stdout log that used to sit here.
   //
   // The event carries NO email address and NO intent: both are
   // free-text the requester typed, and the row in `public.waitlist` is
   // already the record of who signed up. The event only says that
   // someone did — which is the only thing the funnel needs.
+  //
+  // OOP-6739 — nothing on this path writes the requester's email
+  // address to the log any more: the IP is hashed and truncated to a
+  // prefix, and the email is simply not logged. The row in
+  // `public.waitlist` is the record of who signed up.
   await trackEvent('waitlist_signup', { locale, source: 'landing' });
 
   // Autoresponder — OOP-6156. Awaited (rather than fire-and-forget)

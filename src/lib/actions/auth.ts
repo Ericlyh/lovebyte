@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { postgrest } from '@/lib/supabase/anon';
@@ -78,6 +79,28 @@ function parseLinks(input: string): { ok: true; links: string[] } | { ok: false;
     }
   }
   return { ok: true, links: lines };
+}
+
+/**
+ * A stable, non-reversible stand-in for an email address (OOP-6739).
+ *
+ * The sign-up path used to log the raw address on every duplicate
+ * attempt — three separate `console.warn` calls — so a plaintext email
+ * address landed in Vercel's log retention on every signup that
+ * collided with an existing account.
+ *
+ * This is the SAME treatment the waitlist already applies to the
+ * requester's IP: a SHA-256 digest, truncated to a short prefix. The
+ * address is lowercased first so two spellings of the same mailbox
+ * hash alike, and the digest lets an operator match a log line against
+ * an address they already hold by hashing it the same way — without
+ * the address itself ever being written down.
+ */
+function emailFingerprint(email: string): string {
+  return createHash('sha256')
+    .update(email.trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 8);
 }
 
 // ---- signUp ------------------------------------------------------------------
@@ -158,7 +181,9 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
     // post-signUp detection below still catches the verified case.
     console.warn('[auth/signUp] admin lookup failed, falling through', lookup.error.message);
   } else if (lookup.data.state === 'verified') {
-    console.warn('[auth/signUp] email already verified', parsed.data.email);
+    console.warn('[auth/signUp] email already verified', {
+      emailHashPrefix: emailFingerprint(parsed.data.email),
+    });
     return { ok: false, error: 'EMAIL_VERIFIED', field: 'email' };
   } else if (lookup.data.state === 'pending') {
     // Resend the confirmation email. This calls GoTrue's /auth/v1/resend
@@ -199,7 +224,9 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
   // concurrent signUp. Both shapes mean the same thing to the user: no
   // new email will arrive.
   if (error && (error.code === 'user_already_exists' || /already.*registered/i.test(error.message))) {
-    console.warn('[auth/signUp] duplicate email (post-check)', parsed.data.email);
+    console.warn('[auth/signUp] duplicate email (post-check)', {
+      emailHashPrefix: emailFingerprint(parsed.data.email),
+    });
     return { ok: false, error: 'EMAIL_EXISTS', field: 'email' };
   }
   if (error) {
@@ -210,7 +237,9 @@ export async function signUpAction(formData: FormData): Promise<AuthActionResult
   if (data.session == null && data.user?.email_confirmed_at) {
     // Silent no-op against an already-confirmed account. The pre-check
     // should have caught this; if we got here, treat the same way.
-    console.warn('[auth/signUp] silent duplicate (already confirmed)', parsed.data.email);
+    console.warn('[auth/signUp] silent duplicate (already confirmed)', {
+      emailHashPrefix: emailFingerprint(parsed.data.email),
+    });
     return { ok: false, error: 'EMAIL_VERIFIED', field: 'email' };
   }
 

@@ -48,7 +48,11 @@ export async function trackEvent(
     return false;
   }
 
-  console.log(`[analytics] ${event}`, { sessionId, props: parsed.props });
+  // OOP-6739 — a trace, not a fault, so it goes to `console.info`.
+  // The props are safe to print: `parseEventProps` strips every key
+  // the event's schema does not name, so no email address or share
+  // token can reach this line (see the PII rule in ./events.ts).
+  console.info(`[analytics] ${event}`, { sessionId, props: parsed.props });
   return true;
 }
 

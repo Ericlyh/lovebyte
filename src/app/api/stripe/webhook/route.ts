@@ -131,7 +131,15 @@ export async function POST(request: Request) {
         break;
       default:
         // Unhandled event types: log + 200 so Stripe doesn't retry.
-        console.log('[stripe/webhook] unhandled event type', event.type);
+        //
+        // OOP-6739 — this was a plain stdout log, which Vercel files
+        // with no severity: an event type the route does not implement
+        // (`invoice.paid`, `customer.created`, …) landed in the log
+        // tail where no alert would ever look. `console.warn` raises it
+        // to a severity an error alert can be built on, and the
+        // structured `event` key says WHICH type went unhandled
+        // instead of leaving it to a log reader to spot.
+        console.warn('[stripe/webhook] unhandled event type', { event: event.type });
     }
   } catch (e) {
     console.error('[stripe/webhook] handler error', event.type, (e as Error).message);
@@ -260,7 +268,12 @@ async function handleCheckoutCompleted(
       // for a gift they already received, and the funnel would record a
       // second purchase for one payment. Returning here is what makes
       // the purchases insert idempotent (OOP-6736).
-      console.log(
+      // OOP-6739 — informational, not a fault: the duplicate was
+      // detected and handled (the purchase stands, the side effects
+      // are skipped), so this is a trace of an expected idempotency
+      // path rather than a problem. `console.info` keeps it out of the
+      // error stream while leaving it greppable in the log.
+      console.info(
         '[stripe/webhook] purchase already recorded for this payment intent, skipping side effects',
       );
       return;
