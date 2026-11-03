@@ -115,19 +115,21 @@ The gate checks, against `https://lovorithm.vercel.app`:
   `GATE_LH_RETRY_SAMPLES=0` to disable it. A route that recovered is
   recorded in the run's notes, not as a gap.
 - **The gate records the host's load average** next to the Lighthouse
-  scores (`hostLoad` in the verdict JSON). Lighthouse's perf score is
-  CPU-sensitive — the simulated 4x throttle is driven by the timings the
-  browser actually observes — so a busy host inflates them and the score
-  falls even when the site is unchanged. On 2026-11-04 the same commit
-  measured `/browse` at 98, 99, 99, 98, 98 on a quiet host and 83, 87, 92
-  on a contended one, minutes apart. When a Lighthouse gap is recorded
-  while the load is above `GATE_HOST_LOAD_MAX` (default 2), the run
-  carries a note saying so. The score is still reported as measured —
-  the gate does not second-guess its own threshold — but the observer
-  should treat a gap recorded under contention as a measurement to
-  re-check, not a site regression to file. The route's own HTTP serve
-  time in the same run is the corroborating signal: if the site was also
-  slow to serve, the contention was real.
+  scores (`hostLoad` in the verdict JSON) and notes a gap recorded
+  above `GATE_HOST_LOAD_MAX` (default 8). The threshold is high on
+  purpose: a load of 5–6 is **normal** on this host and scores cleanly,
+  so a low threshold would flag most runs as suspect and suppress real
+  regressions. The score itself is still reported exactly as measured —
+  the gate does not second-guess its own threshold.
+
+  The bigger lesson from 2026-11-04: the same commit measured `/browse`
+  at **83, 87, 92, 93** in four launchd runs and **98, 99, 99, 99** in
+  four direct runs, and the cause was **not** the host load. The launchd
+  job carried `ProcessType=Background`, which makes macOS deprioritise
+  it — so the instrument's own Chrome was starved and the scores it
+  produced were depressed. With the QoS removed the launchd runs score
+  98, 99, 99 *at a higher load average* (5.6–5.8) than the depressed
+  ones (3.9). A measurement instrument must not be deprioritised.
 - `og:title`, `og:description`, `twitter:card` present on `/`
 
 `og:image` is currently a **warning**, not a failure — no static OG

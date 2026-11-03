@@ -24,9 +24,11 @@
 //                                 They are pooled with the first ones and the
 //                                 verdict is re-scored; only a still-missing
 //                                 median is a gap. 0 disables the retry.
-//   GATE_HOST_LOAD_MAX default 2  load average above which a Lighthouse gap
+//   GATE_HOST_LOAD_MAX default 8  load average above which a Lighthouse gap
 //                                 is noted as possibly contention-affected.
 //                                 The score itself is still reported as measured.
+//                                 8 is high on purpose: a load of 5-6 is
+//                                 normal on this host and scores cleanly.
 
 import { probeRoute } from './lib/http-probe.mjs';
 import { scoreLighthouse } from './lib/lighthouse-score.mjs';
@@ -392,16 +394,21 @@ let lighthouseResults = [];
 let lighthouseRan = false;
 // The host's load average during the Lighthouse pass. Lighthouse's perf
 // score is CPU-sensitive: the simulated 4x CPU throttle is driven by the
-// timings the browser actually observes, so a busy host inflates them and
-// the score falls even when the site is unchanged (OOP-6548: the same
-// page measured perf=99 unthrottled). On 2026-11-04 the same commit
-// measured /browse at 98,99,99,98,98 on a quiet host and 83,87,92 on a
-// contended one, minutes apart.
+// timings the browser actually observes, so a busy host can inflate them
+// and the score can fall even when the site is unchanged (OOP-6548: the
+// same page measured perf=99 unthrottled).
 //
-// The score is still reported as measured — the gate does not second-guess
-// its own threshold. But it records the load next to the score, and notes
-// it when a gap was recorded under contention, so the observer can tell
-// "the site regressed" from "the instrument was busy".
+// On 2026-11-04 the SAME commit measured /browse at 83,87,92,93 in four
+// launchd runs and 98,99,99,99 in four direct runs. The cause was NOT the
+// host load: the launchd job carried ProcessType=Background, which makes
+// macOS deprioritise it, so the instrument's own Chrome was starved. With
+// the QoS removed the launchd runs score 98,99,99 — at a HIGHER load
+// average (5.6-5.8) than the depressed ones (3.9).
+//
+// The load is still recorded: it is context for an anomalous score, and
+// the threshold is set high (8) because a load of 5-6 is NORMAL on this
+// host and produces clean scores. A low threshold here would flag most
+// runs as suspect and suppress real regressions.
 let hostLoad = null;
 try {
   const os = await import('node:os');
@@ -409,7 +416,7 @@ try {
 } catch {
   hostLoad = null;
 }
-const HOST_LOAD_MAX = Number(process.env.GATE_HOST_LOAD_MAX ?? 2);
+const HOST_LOAD_MAX = Number(process.env.GATE_HOST_LOAD_MAX ?? 8);
 
 try {
   const { default: lighthouse } = await import('lighthouse');
@@ -484,7 +491,9 @@ try {
           `lighthouse ${path}: perf=${scored.perf} a11y=${scored.a11y} was measured while the host load ` +
             `average was ${hostLoad} (> ${HOST_LOAD_MAX}). Lighthouse's perf score is CPU-sensitive, so ` +
             `this gap may be the instrument rather than the site — re-measure before filing it as a ` +
-            `site regression. The route's own HTTP serve time in the same run is the corroborating signal.`,
+            `site regression. The route's own HTTP serve time in the same run is the corroborating signal. ` +
+            `Note: a load of 5-6 is normal on this host and scores cleanly; only a load above ` +
+            `${HOST_LOAD_MAX} is flagged here.`,
         );
       }
     }
