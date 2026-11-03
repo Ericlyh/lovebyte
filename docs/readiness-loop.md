@@ -8,6 +8,26 @@ The companion runbook for humans is `docs/launch-checklist.md`. The
 difference: the checklist is run *before a deploy by a human*, this
 loop is run *daily by an agent with no human present*.
 
+**Who runs the gate.** As of 2026-11-04 (OOP-7167) the gate is
+*executed by launchd*, not by the agent:
+
+- LaunchAgent `com.molt.paperclip.readiness-gate` fires
+  `/Users/molt/.paperclip/bin/readiness-gate-launchd.sh` at 02:20 HKT
+  daily, which runs `node scripts/readiness-gate.mjs --json-file
+  /Users/molt/.paperclip/state/readiness-gate/<date>.json`.
+- The launchd audit log `/Users/molt/.paperclip/logs/readiness-gate-launchd.log`
+  records every trigger with its exit code.
+- The routine is the **observer**: it reads the verdict and triages the
+  gap ids. It does not re-run the gate.
+
+This split exists because the gate needs no LLM, but it used to be
+invoked from inside a Paperclip routine — so when the model provider's
+token plan was exhausted the ACP turn died and the gate silently never
+ran. Five consecutive daily firings (2026-10-30 .. 2026-11-03) left the
+site **unverified**, and the only board trace was an issue auto-parked
+`blocked` with "no live execution path", which names neither the cause
+nor the skipped check.
+
 ---
 
 ## 0. Preflight
@@ -22,10 +42,14 @@ top of it — pull first (`git pull --ff-only origin main`). Never build
 from a tree that is not committed; the Vercel deploy ships the pushed
 commit, so an uncommitted fix is invisible to production.
 
-## 1. Run the objective gate
+## 1. Read the objective gate's verdict
+
+The gate has already run — launchd did it at 02:20 HKT, before this
+firing wakes. Read its verdict:
 
 ```bash
-node scripts/readiness-gate.mjs
+python3 /Users/molt/.paperclip/bin/check-readiness-gate-window.py \
+  --date "$(TZ=Asia/Hong_Kong date +%F)"
 ```
 
 Exit codes:
@@ -35,6 +59,11 @@ Exit codes:
 | 0 | ready to serve | go to step 5 (publish the clean result) |
 | 1 | gaps found | go to step 2 (fix the top gap) |
 | 2 | probe could not run (no Chrome / no network) | file a `priority=medium` issue; stop |
+| 3 | the gate did not run at all | file a `priority=high` issue; if no verdict exists for today, run `node scripts/readiness-gate.mjs` inline once as a fallback so the day is not skipped |
+
+Codes 0–2 mirror the gate's own exit code, so the verdict is the same
+number either way. Code 3 is the launchd-health signal: it means the
+timer never fired, or the gate died before writing a verdict.
 
 The gate checks, against `https://lovorithm.vercel.app`:
 
@@ -81,8 +110,9 @@ asset ships yet. It is tracked as its own issue.
 ## 2. Triage the gaps against the board
 
 ```bash
-node scripts/readiness-gate.mjs --json-file /tmp/gate.json
-node scripts/loop-triage.mjs /tmp/gate.json
+DATE="$(TZ=Asia/Hong_Kong date +%F)"
+node scripts/loop-triage.mjs \
+  /Users/molt/.paperclip/state/readiness-gate/$DATE.json
 ```
 
 The gate is honest, which means a gap that is caused by something you
@@ -140,6 +170,10 @@ node scripts/readiness-gate.mjs
 The deploy is verified, never assumed: check `readyState === 'READY'`
 and `aliasAssigned` on the deployment object before re-running the gate.
 
+This inline re-run is deliberate and is the one place the agent runs the
+gate itself: it verifies a fix that was just deployed, not the daily
+check.
+
 ## 6. Publish the result
 
 Post the run summary as a comment on the triage target (OOP-5816):
@@ -161,6 +195,11 @@ so the tracker issue carries the current state of its gap.
 
 - **One gap per firing.** If two gaps appear, file the second as an
   issue instead of fixing both.
+- **The daily gate runs in launchd, not in the agent.** When the
+  verdict is present, read it — do not re-run the gate. A second run in
+  the same window measures a warmer site than a cold visitor sees, and
+  the gate's cold-start retry exists precisely because the first hit
+  after a sleep is the slow one.
 - **Never set `SKIP_BUILD_GATE=1`.** The build gate is the thing that
   catches a broken bundle before it reaches users.
 - **Never deploy from an uncommitted tree.** Push, then verify the
