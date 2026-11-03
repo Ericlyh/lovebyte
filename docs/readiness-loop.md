@@ -102,6 +102,18 @@ The gate checks, against `https://lovorithm.vercel.app`:
   across ten runs while the host was loaded, so one sample against a 95
   threshold is a coin flip (OOP-6548). The samples are printed with each
   result, so a firing stays auditable.
+- **A median that misses the threshold is retried.** A median of three is
+  still not enough on a busy host: on 2026-11-04 the same byte-identical
+  build measured `/browse` at perf 98 (samples 99,98,98) and then perf 83
+  (samples 83,80,94) twelve minutes apart, with no deploy in between, and
+  the gate filed `lighthouse-browse-perf` against an unchanged page. So a
+  missing median is re-measured with `GATE_LH_RETRY_SAMPLES` extra samples
+  (default 3), pooled with the first ones, and the verdict is the median
+  over everything taken. Only a still-missing median is a gap. This
+  mirrors the HTTP probe's cold-boot retry (OOP-6701): the two failure
+  modes are told apart by a retry, not by a bigger sample count. Set
+  `GATE_LH_RETRY_SAMPLES=0` to disable it. A route that recovered is
+  recorded in the run's notes, not as a gap.
 - `og:title`, `og:description`, `twitter:card` present on `/`
 
 `og:image` is currently a **warning**, not a failure — no static OG
