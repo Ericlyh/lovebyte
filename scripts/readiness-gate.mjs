@@ -24,6 +24,9 @@
 //                                 They are pooled with the first ones and the
 //                                 verdict is re-scored; only a still-missing
 //                                 median is a gap. 0 disables the retry.
+//   GATE_HOST_LOAD_MAX default 2  load average above which a Lighthouse gap
+//                                 is noted as possibly contention-affected.
+//                                 The score itself is still reported as measured.
 
 import { probeRoute } from './lib/http-probe.mjs';
 import { scoreLighthouse } from './lib/lighthouse-score.mjs';
@@ -387,6 +390,27 @@ const LIGHTHOUSE_RETRY_SAMPLES = Math.max(
 
 let lighthouseResults = [];
 let lighthouseRan = false;
+// The host's load average during the Lighthouse pass. Lighthouse's perf
+// score is CPU-sensitive: the simulated 4x CPU throttle is driven by the
+// timings the browser actually observes, so a busy host inflates them and
+// the score falls even when the site is unchanged (OOP-6548: the same
+// page measured perf=99 unthrottled). On 2026-11-04 the same commit
+// measured /browse at 98,99,99,98,98 on a quiet host and 83,87,92 on a
+// contended one, minutes apart.
+//
+// The score is still reported as measured — the gate does not second-guess
+// its own threshold. But it records the load next to the score, and notes
+// it when a gap was recorded under contention, so the observer can tell
+// "the site regressed" from "the instrument was busy".
+let hostLoad = null;
+try {
+  const os = await import('node:os');
+  hostLoad = Math.round((os.loadavg()[0] ?? 0) * 100) / 100;
+} catch {
+  hostLoad = null;
+}
+const HOST_LOAD_MAX = Number(process.env.GATE_HOST_LOAD_MAX ?? 2);
+
 try {
   const { default: lighthouse } = await import('lighthouse');
   // chrome-launcher is CJS: its `launch` lives on the namespace object, not
@@ -449,6 +473,18 @@ try {
         notes.push(
           `lighthouse ${path}: the first median of ${LIGHTHOUSE_SAMPLES} samples missed the threshold and ` +
             `recovered over ${scored.samples} samples (${spread}) — host contention, not a regression`,
+        );
+      }
+      if (
+        hostLoad !== null &&
+        hostLoad > HOST_LOAD_MAX &&
+        (scored.perf < PERF_MIN || scored.a11y < A11Y_MIN)
+      ) {
+        notes.push(
+          `lighthouse ${path}: perf=${scored.perf} a11y=${scored.a11y} was measured while the host load ` +
+            `average was ${hostLoad} (> ${HOST_LOAD_MAX}). Lighthouse's perf score is CPU-sensitive, so ` +
+            `this gap may be the instrument rather than the site — re-measure before filing it as a ` +
+            `site regression. The route's own HTTP serve time in the same run is the corroborating signal.`,
         );
       }
     }
@@ -523,6 +559,7 @@ if (process.argv.includes('--json')) {
         base: BASE,
         verdict,
         exitCode: verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2,
+        hostLoad,
         gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
         http: httpResults,
         lighthouse: lighthouseResults,
@@ -551,6 +588,7 @@ if (jsonFileIndex !== -1) {
         base: BASE,
         verdict,
         exitCode: verdict === 'PASS' ? 0 : verdict === 'FAIL' ? 1 : 2,
+        hostLoad,
         gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
         http: httpResults,
         lighthouse: lighthouseResults,

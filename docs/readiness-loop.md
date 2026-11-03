@@ -114,6 +114,20 @@ The gate checks, against `https://lovorithm.vercel.app`:
   modes are told apart by a retry, not by a bigger sample count. Set
   `GATE_LH_RETRY_SAMPLES=0` to disable it. A route that recovered is
   recorded in the run's notes, not as a gap.
+- **The gate records the host's load average** next to the Lighthouse
+  scores (`hostLoad` in the verdict JSON). Lighthouse's perf score is
+  CPU-sensitive — the simulated 4x throttle is driven by the timings the
+  browser actually observes — so a busy host inflates them and the score
+  falls even when the site is unchanged. On 2026-11-04 the same commit
+  measured `/browse` at 98, 99, 99, 98, 98 on a quiet host and 83, 87, 92
+  on a contended one, minutes apart. When a Lighthouse gap is recorded
+  while the load is above `GATE_HOST_LOAD_MAX` (default 2), the run
+  carries a note saying so. The score is still reported as measured —
+  the gate does not second-guess its own threshold — but the observer
+  should treat a gap recorded under contention as a measurement to
+  re-check, not a site regression to file. The route's own HTTP serve
+  time in the same run is the corroborating signal: if the site was also
+  slow to serve, the contention was real.
 - `og:title`, `og:description`, `twitter:card` present on `/`
 
 `og:image` is currently a **warning**, not a failure — no static OG
