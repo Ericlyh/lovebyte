@@ -275,9 +275,24 @@ export async function probeSharedCache(baseUrl) {
   };
 
   try {
+    // Two reads of the same route, and — if the landing page re-rendered
+    // between them — a third. The landing page is ISR (`revalidate = 300`),
+    // so a re-render changes the etag and the body. That is the page
+    // refreshing, not the cache breaking, and a probe that reads it as a
+    // break would file a gap against a healthy site every time it fired
+    // inside a re-render window.
+    const readPair = async () => {
+      const a = await get('/');
+      const b = await get('/');
+      if (a.etag && a.etag === b.etag) return { a, b };
+      const c = await get('/');
+      if (b.etag === c.etag) return { a: b, b: c };
+      if (a.etag === c.etag) return { a, b: c };
+      return { a: b, b: c };
+    };
+
     // 1 + 2. The same shared entry, and a session id nobody else gets.
-    const first = await get('/');
-    const second = await get('/');
+    const { a: first, b: second } = await readPair();
 
     add(
       'shared-entry',
@@ -286,7 +301,9 @@ export async function probeSharedCache(baseUrl) {
     );
     add(
       'cache-hit',
-      second.vercelCache === 'HIT' || second.vercelCache === 'PRERENDER',
+      second.vercelCache === 'HIT' ||
+        second.vercelCache === 'STALE' ||
+        second.vercelCache === 'PRERENDER',
       `second request x-vercel-cache: ${second.vercelCache ?? 'none'}`,
     );
     add(
@@ -323,10 +340,20 @@ export async function probeSharedCache(baseUrl) {
         (signedIn.cacheControl ?? '').includes('no-store'),
       `cache-control: ${signedIn.cacheControl ?? 'none'}`,
     );
+
+    // The body a signed-in requester gets must be the body an anonymous
+    // one gets — that identity is what makes sharing the entry safe. If
+    // the artifact re-rendered between the two reads, take another read
+    // rather than call it a break.
+    let independent = signedIn.body === second.body;
+    if (!independent && signedIn.etag && signedIn.etag !== second.etag) {
+      const third = await get('/');
+      independent = third.body === signedIn.body;
+    }
     add(
       'route-is-requester-independent',
-      signedIn.body === first.body,
-      signedIn.body === first.body
+      independent,
+      independent
         ? 'the body is identical for a signed-in and an anonymous requester'
         : 'the body differs between a signed-in and an anonymous requester — this route may not be shared-cached',
     );
