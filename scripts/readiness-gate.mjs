@@ -361,6 +361,50 @@ try {
   fail('media', `/api/readiness/media unreachable — ${err.message}`, 'media-probe-unreachable');
 }
 
+// ----------------------------------------------------------- Cache-policy probe
+//
+// A shared cache stores one response and replays it to every visitor whose
+// request resolves to the same cache key. That is safe only when the
+// response does not depend on the requester — and the way it stops being
+// safe is INVISIBLE to every other probe here: the page returns 200, the
+// Lighthouse scores are perfect, and the site quietly serves one visitor's
+// HTML (and one visitor's analytics session id) to everybody.
+//
+// Three things are checked, and they are the three acceptance criteria of
+// OOP-6757:
+//
+//   1. the edge really does serve ONE shared entry to every visitor, and
+//      the entry is not polluted: two visitors get two different analytics
+//      session ids, and a visitor who already has one gets no Set-Cookie
+//      (which is the proof that the stored copy carries none);
+//   2. the shared entry is the same for a signed-in and an anonymous
+//      requester — a byte-identical body — so what is shared carries
+//      nobody's private state;
+//   3. a request that carries a session cookie is NOT answered from a
+//      shared entry, and a per-request route is served `private, no-store`.
+//
+// The probe lives in scripts/check-cache-policy.mjs so the same code can be
+// run by hand; the static half of that script (which fails the build when
+// the app tree and the policy disagree) runs in `pnpm test`.
+try {
+  const { probeSharedCache } = await import('./check-cache-policy.mjs');
+  const result = await probeSharedCache(BASE);
+
+  for (const check of result.checks) {
+    if (check.ok) {
+      pass('cache', `${check.name}: ${check.detail}`);
+    } else {
+      fail(
+        'cache',
+        `the shared-cache policy is broken — ${check.name}: ${check.detail}. A cached entry must be the same for every visitor and must carry nobody's session id; a signed-in request must never be answered from a shared entry.`,
+        `cache-${check.name}-broken`,
+      );
+    }
+  }
+} catch (err) {
+  fail('cache', `the cache-policy probe could not run — ${err.message}`, 'cache-probe-unreachable');
+}
+
 // ------------------------------------------------------------ Lighthouse probe
 //
 // Lighthouse is a noisy instrument, and the gate's verdict is a threshold

@@ -39,6 +39,30 @@ import {
 const VARY_LOCALE = 'Cookie, Accept-Language';
 
 /**
+ * The Supabase session cookie (OOP-6757).
+ *
+ * `@supabase/ssr` stores the session under `sb-<project-ref>-auth-token`,
+ * and splits it into numbered chunks when it is too large for one cookie
+ * (`sb-<project-ref>-auth-token.0`, `.1`, …). The default name comes from
+ * the Supabase URL's host (`sb-${hostname.split('.')[0]}-auth-token`), and
+ * a project can override it with `cookieOptions.name`, so the pattern
+ * matches the shape rather than one literal name.
+ *
+ * The proxy only needs to know that a session IS present — not whether it
+ * is valid. The page-level `getUser()` decides that; the proxy's job is
+ * to make sure a request that carries a session is never answered from a
+ * shared cache.
+ */
+const AUTH_COOKIE = /^sb-[a-z0-9-]+-auth-token(\.\d+)?$/i;
+
+/**
+ * True when the request carries a Supabase session cookie.
+ */
+function hasAuthCookie(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => AUTH_COOKIE.test(cookie.name));
+}
+
+/**
  * Lovorithm proxy — locale resolution + Supabase auth cookie refresh.
  *
  * Next.js 16 renamed `middleware.ts` → `proxy.ts`. Functionality is the
@@ -167,9 +191,41 @@ export async function proxy(request: NextRequest) {
   // itself (src/app/actions.ts → `setLocale`). We keep READING it here.
   response.headers.set('Vary', VARY_LOCALE);
 
+  // OOP-6757 — a signed-in request is never answered from a shared cache.
+  //
+  // The rule the site runs on: a page whose HTML depends on the requester
+  // reads the auth cookie, which makes the route dynamic, and Next serves
+  // a dynamic route `private, no-cache, no-store, max-age=0,
+  // must-revalidate` — it never enters a shared cache. A page that
+  // resolves auth on the client (`<Nav deferAuth />`) renders
+  // byte-identical HTML for everybody, so sharing it is safe.
+  //
+  // This is the belt to that pair of braces. If a route were ever made
+  // static by mistake, Next would share it at the edge for a year and one
+  // visitor's page would be replayed to the next. So a request that
+  // carries a session cookie is marked `private, no-store` on BOTH
+  // channels: `Cache-Control` for the browser, and `CDN-Cache-Control`
+  // for the platform — the second one because Next owns `Cache-Control`
+  // on a page response (it overwrites whatever is set here, the same way
+  // it overwrites `Vary` above) and would silently drop the browser
+  // channel's instruction.
+  if (hasAuthCookie(request)) {
+    response.headers.set('Cache-Control', 'private, no-store');
+    response.headers.set('CDN-Cache-Control', 'private, no-store');
+  }
+
   // OOP-6716 — mint the analytics session cookie on the visitor's first
   // page request. `httpOnly` so no page script can read it; the
   // browser-side reporter never handles the session id at all.
+  //
+  // OOP-6757 — this is safe on a route the edge caches, because the
+  // cached copy is the PRERENDERED ARTIFACT: it was rendered without a
+  // visitor request, so it carries no session id, and the `Set-Cookie`
+  // below is applied to that one visitor. A route that is rendered PER
+  // REQUEST is never stored by the edge at all — Next serves it
+  // `private, no-cache, no-store` — so its response carries this cookie
+  // alone. The rule that keeps the two apart, and the gate that enforces
+  // it, are in src/lib/cache-policy.ts.
   if (!hasSession) {
     response.cookies.set(SESSION_COOKIE, sessionId, {
       maxAge: SESSION_COOKIE_MAX_AGE, // 1 year, matches routing.ts
