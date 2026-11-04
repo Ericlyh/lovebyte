@@ -239,9 +239,10 @@ export function findCachePolicyViolations({ routes } = {}) {
  *   2. the shared entry carries nobody's analytics session id — two
  *      visitors get two different session ids, and a visitor who already
  *      has one gets no `Set-Cookie` at all;
- *   3. a request that carries a session cookie is not answered from a
- *      shared entry, and a per-request route is served `private,
- *      no-store`.
+ *   3. a signed-in response is marked `private, no-store`, the shared
+ *      entry is the same for a signed-in and an anonymous requester (a
+ *      byte-identical body — which is WHY sharing it is safe), and a
+ *      per-request route is served `private, no-store`.
  *
  * Returns `{ ok, checks }` — `checks` is what the readiness gate reports.
  */
@@ -311,13 +312,13 @@ export async function probeSharedCache(baseUrl) {
         : 'no Set-Cookie on the response',
     );
 
-    // 3. A signed-in request is not answered from a shared entry, and the
-    // route it lands on does not depend on who asked.
+    // 3. A signed-in response is marked private, and the route it lands on
+    // does not depend on who asked.
     const signedIn = await get('/', {
       cookie: 'sb-xsfbfqzmvjfxppvoxbze-auth-token=probe.probe',
     });
     add(
-      'signed-in-not-shared',
+      'signed-in-marked-private',
       (signedIn.cacheControl ?? '').includes('private') &&
         (signedIn.cacheControl ?? '').includes('no-store'),
       `cache-control: ${signedIn.cacheControl ?? 'none'}`,

@@ -45,6 +45,18 @@
  * request that already carried a cookie received no `Set-Cookie` at all
  * — which is the proof that the stored entry holds none.
  *
+ * ── A signed-in request ───────────────────────────────────────────────
+ *
+ * `src/proxy.ts` marks any request that carries a Supabase session cookie
+ * `private, no-store` on both the browser channel (`Cache-Control`) and
+ * the platform channel (`CDN-Cache-Control`), so no cache may STORE that
+ * response. Vercel still answers such a request from the shared entry —
+ * the header is an instruction, not the mechanism, and the lookup has
+ * already happened — and that is safe, because the shared copy is the
+ * prerendered artifact, which is byte-identical for every requester. The
+ * live probe checks that identity, and the static gate below keeps a
+ * per-request route from ever becoming shared-cached.
+ *
  * ── The rule ──────────────────────────────────────────────────────────
  *
  * A per-request route must never be given an explicit shared-cache
