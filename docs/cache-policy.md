@@ -32,9 +32,16 @@ to everyone. That is what a prerender is for.
 headers or the search params): the HTML is produced *for* one visitor, and
 the response carries that visitor's cookies. Next serves such a route
 `private, no-cache, no-store, max-age=0, must-revalidate`, so it never enters
-a shared cache. Next also refuses to *build* a route that mixes the two: a
-route with `revalidate` that reads cookies is a build error, not a runtime
-surprise.
+a shared cache.
+
+A route that mixes the two — `export const revalidate` **and** a read of
+`cookies()` — is **not** a build error. Measured on Next 16.3.2, 2026-11-04:
+the build succeeds, prints nothing about the mix, and the route is quietly
+downgraded to per-request rendering (it appears as `ƒ (Dynamic)` in the route
+table). So mixing is *safe* — a downgraded route is served
+`private, no-cache, no-store` and never enters a shared cache — but it is
+*silent*: nothing warns you, and the route simply stops being a shared-cache
+candidate. The static gate is what surfaces that at review time.
 
 ### 2. The analytics session cookie is written on every page response, and that is safe
 

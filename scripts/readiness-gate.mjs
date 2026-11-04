@@ -380,8 +380,20 @@ try {
 //   2. the shared entry is the same for a signed-in and an anonymous
 //      requester — a byte-identical body — so what is shared carries
 //      nobody's private state;
-//   3. a request that carries a session cookie is NOT answered from a
-//      shared entry, and a per-request route is served `private, no-store`.
+//   3. a per-request route is served `private, no-store` and is not
+//      answered from a shared entry.
+//
+// Note what criterion 2 says, and what it does NOT say. A signed-in
+// requester is served the SAME shared entry as an anonymous one — that is
+// the design, not a gap. What makes that safe is that the shared copy is
+// the PRERENDERED ARTIFACT (rendered without a visitor request, so it holds
+// no session id and no auth state) and that the auth state is resolved on
+// the client. An earlier version of this policy instead marked a signed-in
+// RESPONSE `private, no-store` in the proxy; that was wrong, and this probe
+// is what showed it — the header cannot keep a response out of the cache
+// (the platform serves the shared entry anyway), and the middleware's
+// response headers are what the edge STORES, so the entry picked up
+// `private, no-store` and every later visitor got it.
 //
 // The probe lives in scripts/check-cache-policy.mjs so the same code can be
 // run by hand; the static half of that script (which fails the build when
@@ -396,7 +408,7 @@ try {
     } else {
       fail(
         'cache',
-        `the shared-cache policy is broken — ${check.name}: ${check.detail}. A cached entry must be the same for every visitor and must carry nobody's session id; a signed-in request must never be answered from a shared entry.`,
+        `the shared-cache policy is broken — ${check.name}: ${check.detail}. A cached entry must be the same for every visitor and must carry nobody's session id; what is shared must be requester-independent (a signed-in requester gets the same entry and the same bytes as an anonymous one), and a per-request route must be private.`,
         `cache-${check.name}-broken`,
       );
     }
