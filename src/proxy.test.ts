@@ -184,42 +184,40 @@ describe('the platform layer carries the same declaration (OOP-6721)', () => {
 /**
  * The shared-cache contract (OOP-6757).
  *
- * Two rules, both about what a shared cache may store:
+ * One rule, and it is about the PAGE, not about a header: the edge may
+ * cache a page's HTML only when the HTML does not depend on the requester.
  *
- *   1. A request that carries a Supabase session is never answered from a
- *      shared entry. The response says so on BOTH channels — `Cache-Control`
- *      for the browser, `CDN-Cache-Control` for the platform — because Next
- *      owns `Cache-Control` on a page response and would drop the first one.
+ * The proxy writes the analytics session cookie on every page response,
+ * and that is safe — the cached copy is the PRERENDERED ARTIFACT, rendered
+ * without a visitor request, so it carries no session id, and the
+ * `Set-Cookie` is applied to one visitor alone.
  *
- *   2. A route the edge may cache with an explicit TTL gets NO analytics
- *      cookie from the proxy: a stored response must never carry one
- *      visitor's session id.
+ * An earlier version of this file asserted that a request carrying a
+ * Supabase session was answered `private, no-store`. It was wrong, and the
+ * live probe is what showed it: the header cannot keep a response out of
+ * the cache — the platform serves the shared entry anyway — and the
+ * middleware's response headers are what the edge STORES, so the entry
+ * picked up `private, no-store` and every later visitor got it. The
+ * requester-independence of the artifact is checked where it can be
+ * checked: `scripts/check-cache-policy.mjs --live`, against production.
  */
 describe('the shared-cache contract (OOP-6757)', () => {
-  it('never answers a signed-in request from a shared cache', async () => {
+  it('does not mark a response private', async () => {
+    // Nothing the proxy sets may make the shared entry private for
+    // everybody: the middleware's response headers are what the edge
+    // stores.
+    const response = await proxy(request('/'));
+
+    expect(response.headers.get('cache-control')).toBeNull();
+    expect(response.headers.get('cdn-cache-control')).toBeNull();
+  });
+
+  it('does not mark a signed-in response private either', async () => {
     const response = await proxy(
       request('/', {
         headers: { cookie: 'sb-xsfbfqzmvjfxppvoxbze-auth-token=aaa.bbb' },
       }),
     );
-
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(response.headers.get('cdn-cache-control')).toBe('private, no-store');
-  });
-
-  it('recognises a chunked auth cookie', async () => {
-    // A large session is split into numbered cookies by @supabase/ssr.
-    const response = await proxy(
-      request('/', {
-        headers: { cookie: 'sb-xsfbfqzmvjfxppvoxbze-auth-token.0=aaa.bbb' },
-      }),
-    );
-
-    expect(response.headers.get('cdn-cache-control')).toBe('private, no-store');
-  });
-
-  it('leaves an anonymous response cacheable', async () => {
-    const response = await proxy(request('/'));
 
     expect(response.headers.get('cache-control')).toBeNull();
     expect(response.headers.get('cdn-cache-control')).toBeNull();

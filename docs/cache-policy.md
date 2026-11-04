@@ -2,7 +2,8 @@
 
 **Status:** decided, 2026-11-04 (OOP-6757).
 **Code:** `src/lib/cache-policy.ts` (the decision), `scripts/check-cache-policy.mjs`
-(the gate), `src/proxy.ts` (the belt).
+(the static gate and the live probe), `src/proxy.ts` (the analytics cookie, and
+the rule that keeps it off the stored copy).
 
 ## The question
 
@@ -52,33 +53,32 @@ Measured on production, 2026-11-04: three consecutive requests to the same
 already carried a cookie received **no** `Set-Cookie` at all — which is the
 proof that the stored entry holds none.
 
-### 3. A signed-in response is marked private, and the shared entry holds nothing private
+### 3. A signed-in requester gets exactly what an anonymous one gets
 
-The belt to the pair of braces above. `src/proxy.ts` marks any request that
-carries a Supabase session cookie `private, no-store` on **both** channels:
+A signed-in visitor is served the **same shared entry** as an anonymous
+one, and the same bytes: the shared copy is the prerendered artifact, and
+the auth state is resolved on the client (`<Nav deferAuth />`), so nothing
+private is in it. The live probe checks that identity — the `etag` and the
+body — on every gate run.
 
-- `Cache-Control` — for the browser, so it does not keep the response;
-- `CDN-Cache-Control` — for the platform.
+**An earlier version of this policy also marked a signed-in response
+`private, no-store` in the proxy. It was wrong, and the probe is what
+showed it.** Two reasons, both measured:
 
-**What that does and does not do, measured on production after the deploy:**
-Vercel still answers such a request from the shared entry — `x-vercel-cache:
-HIT`, the same `etag`. The header is an instruction, not the mechanism, and
-the platform's cache lookup has already happened by the time the response is
-marked.
+- the header cannot keep a response out of the cache — the platform
+  answers the signed-in request from the shared entry anyway;
+- worse, the middleware's response headers are what the edge **stores**,
+  so the entry picked up `private, no-store` and every later visitor got
+  it — and, with a `CDN-Cache-Control` in the entry, the platform stopped
+  normalising the client-facing `Cache-Control` for everyone.
 
-That is safe, and the reason is not the header but the artifact: the shared
-copy is the prerendered page, which is **byte-identical for every requester**
-— the live probe asserts exactly that, by diffing the body a signed-in
-request gets against the body an anonymous one gets. What the header buys is
-that no cache — the browser's, or a platform's that honours it — may *store*
-that response, which is what would matter if a route were ever made static
-by mistake and started rendering one visitor's state.
+The rule is therefore not "mark the response" but "**keep the artifact
+free of requester state**" — a property of the page, not of a header.
 
-The cost is small and bounded: a signed-in visitor's browser does not cache
-the response. The pages that matter for that visitor — `/settings`,
-`/purchases`, `/checkout/*`, `/create/*` — are per-request routes, which
-Next already serves `private, no-cache, no-store`, so nothing changes for
-them.
+The pages whose HTML *does* depend on the requester are per-request routes
+(`/settings`, `/purchases`, `/checkout/*`, `/create/*`, `/u/me`), and
+those are served `private, no-cache, no-store` by Next and never enter a
+shared cache. The probe asserts that too.
 
 ### 4. The rule that keeps the two apart
 
@@ -101,7 +101,7 @@ funnel events merged into a single session.
 | | What it checks | Where it runs |
 |---|---|---|
 | **The static gate** | every shared-cache directive is on a listed route, and none is on a per-request route; a listed route that no longer exists | `pnpm test` → `src/lib/cache-policy.test.ts` → `scripts/check-cache-policy.mjs` |
-| **The live probe** | one shared entry for every visitor; two visitors get two session ids; a visitor with a cookie gets no `Set-Cookie`; the body is identical for a signed-in and an anonymous requester; a signed-in response is marked `private, no-store`; a per-request route is `private, no-store` | the readiness gate (`scripts/readiness-gate.mjs`, daily at 02:20 HKT) and by hand: `node scripts/check-cache-policy.mjs --live` |
+| **The live probe** | one shared entry for every visitor; two visitors get two session ids; a visitor with a cookie gets no `Set-Cookie`; a signed-in requester gets the same entry and the same body as an anonymous one; a per-request route is `private, no-store` and is not a shared entry | the readiness gate (`scripts/readiness-gate.mjs`, daily at 02:20 HKT) and by hand: `node scripts/check-cache-policy.mjs --live` |
 
 The static half fails the build; the live half fails the daily gate and
 files a gap with a stable id (`cache-<check>-broken`), so the loop matches it

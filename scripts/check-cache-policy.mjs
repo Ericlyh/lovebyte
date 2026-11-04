@@ -14,8 +14,8 @@
  *      the readiness gate) — the properties that can only be measured
  *      against the deployed site: that the edge really does serve one
  *      shared entry to every visitor, that the entry carries nobody's
- *      analytics session id, and that a signed-in request is never
- *      answered from a shared entry.
+ *      analytics session id, that a signed-in requester gets exactly what
+ *      an anonymous one gets, and that a per-request route is private.
  *
  * Run the static half directly (`node scripts/check-cache-policy.mjs`) for
  * a report.
@@ -239,10 +239,10 @@ export function findCachePolicyViolations({ routes } = {}) {
  *   2. the shared entry carries nobody's analytics session id — two
  *      visitors get two different session ids, and a visitor who already
  *      has one gets no `Set-Cookie` at all;
- *   3. a signed-in response is marked `private, no-store`, the shared
- *      entry is the same for a signed-in and an anonymous requester (a
- *      byte-identical body — which is WHY sharing it is safe), and a
- *      per-request route is served `private, no-store`.
+ *   3. a signed-in requester gets the same entry, and the same body, as
+ *      an anonymous one — a byte-identical response, which is WHY
+ *      sharing the entry is safe — and a per-request route is served
+ *      `private, no-store`.
  *
  * Returns `{ ok, checks }` — `checks` is what the readiness gate reports.
  */
@@ -329,16 +329,24 @@ export async function probeSharedCache(baseUrl) {
         : 'no Set-Cookie on the response',
     );
 
-    // 3. A signed-in response is marked private, and the route it lands on
-    // does not depend on who asked.
+    // 3. A signed-in requester must get exactly what an anonymous one
+    // gets. The shared entry is the prerendered artifact, which is
+    // request-independent — and THAT, not a cache header, is what makes
+    // sharing it safe.
+    //
+    // An earlier version of this probe asserted the response was marked
+    // `private, no-store` for a signed-in request. That was wrong twice
+    // over: the header cannot keep a response out of the cache (the
+    // platform serves the entry anyway), and setting it LEAKS — the
+    // middleware's response headers are what the edge stores, so the
+    // entry picked up `private, no-store` and every later visitor got it.
     const signedIn = await get('/', {
       cookie: 'sb-xsfbfqzmvjfxppvoxbze-auth-token=probe.probe',
     });
     add(
-      'signed-in-marked-private',
-      (signedIn.cacheControl ?? '').includes('private') &&
-        (signedIn.cacheControl ?? '').includes('no-store'),
-      `cache-control: ${signedIn.cacheControl ?? 'none'}`,
+      'signed-in-gets-the-same-entry',
+      Boolean(signedIn.etag) && signedIn.etag === second.etag,
+      `etag ${signedIn.etag ?? 'none'} vs the anonymous ${second.etag ?? 'none'}`,
     );
 
     // The body a signed-in requester gets must be the body an anonymous

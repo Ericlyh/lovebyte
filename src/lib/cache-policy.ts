@@ -47,15 +47,20 @@
  *
  * ── A signed-in request ───────────────────────────────────────────────
  *
- * `src/proxy.ts` marks any request that carries a Supabase session cookie
- * `private, no-store` on both the browser channel (`Cache-Control`) and
- * the platform channel (`CDN-Cache-Control`), so no cache may STORE that
- * response. Vercel still answers such a request from the shared entry —
- * the header is an instruction, not the mechanism, and the lookup has
- * already happened — and that is safe, because the shared copy is the
- * prerendered artifact, which is byte-identical for every requester. The
- * live probe checks that identity, and the static gate below keeps a
- * per-request route from ever becoming shared-cached.
+ * A signed-in visitor gets the SAME shared entry as an anonymous one,
+ * and the same bytes: the shared copy is the prerendered artifact, and
+ * the auth state is resolved on the client (`<Nav deferAuth />`), so
+ * nothing private is in it. The live probe checks that identity — the
+ * etag and the body — on every gate run.
+ *
+ * An earlier version of this policy also marked a signed-in RESPONSE
+ * `private, no-store` in the proxy. That was wrong, and the probe is
+ * what showed it: the header cannot keep a response out of the cache
+ * (the platform serves the entry anyway), and the middleware's response
+ * headers are what the edge STORES, so the entry picked up
+ * `private, no-store` and every later visitor got it. The rule is
+ * therefore not "mark the response" but "keep the artifact free of
+ * requester state" — which is a property of the page, not of a header.
  *
  * ── The rule ──────────────────────────────────────────────────────────
  *

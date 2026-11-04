@@ -39,30 +39,6 @@ import {
 const VARY_LOCALE = 'Cookie, Accept-Language';
 
 /**
- * The Supabase session cookie (OOP-6757).
- *
- * `@supabase/ssr` stores the session under `sb-<project-ref>-auth-token`,
- * and splits it into numbered chunks when it is too large for one cookie
- * (`sb-<project-ref>-auth-token.0`, `.1`, …). The default name comes from
- * the Supabase URL's host (`sb-${hostname.split('.')[0]}-auth-token`), and
- * a project can override it with `cookieOptions.name`, so the pattern
- * matches the shape rather than one literal name.
- *
- * The proxy only needs to know that a session IS present — not whether it
- * is valid. The page-level `getUser()` decides that; the proxy's job is
- * to make sure a request that carries a session is never answered from a
- * shared cache.
- */
-const AUTH_COOKIE = /^sb-[a-z0-9-]+-auth-token(\.\d+)?$/i;
-
-/**
- * True when the request carries a Supabase session cookie.
- */
-function hasAuthCookie(request: NextRequest): boolean {
-  return request.cookies.getAll().some((cookie) => AUTH_COOKIE.test(cookie.name));
-}
-
-/**
  * Lovorithm proxy — locale resolution + Supabase auth cookie refresh.
  *
  * Next.js 16 renamed `middleware.ts` → `proxy.ts`. Functionality is the
@@ -190,34 +166,6 @@ export async function proxy(request: NextRequest) {
   // toggle can override the detected language, and the toggle writes it
   // itself (src/app/actions.ts → `setLocale`). We keep READING it here.
   response.headers.set('Vary', VARY_LOCALE);
-
-  // OOP-6757 — a signed-in response is marked private, on both channels.
-  //
-  // The rule the site runs on: a page whose HTML depends on the requester
-  // reads the auth cookie, which makes the route dynamic, and Next serves
-  // a dynamic route `private, no-cache, no-store, max-age=0,
-  // must-revalidate` — it never enters a shared cache. A page that
-  // resolves auth on the client (`<Nav deferAuth />`) renders
-  // byte-identical HTML for everybody, so sharing it leaks nothing.
-  //
-  // This is the belt to that pair of braces: if a route were ever made
-  // static by mistake, the edge would share it for a year and one
-  // visitor's page would be replayed to the next. So a request that
-  // carries a session cookie is marked `private, no-store` on BOTH
-  // channels — `Cache-Control` for the browser, `CDN-Cache-Control` for
-  // the platform — and the browser is told not to keep it either.
-  //
-  // MEASURED on production after the deploy: Vercel still answers such a
-  // request from the shared entry (`x-vercel-cache: HIT`, the same etag).
-  // That is safe, and the reason is not the header but the artifact: the
-  // shared copy is the prerendered page, which is byte-identical for every
-  // requester — the readiness gate's cache probe asserts exactly that, by
-  // diffing the body a signed-in request gets against the body an
-  // anonymous one gets.
-  if (hasAuthCookie(request)) {
-    response.headers.set('Cache-Control', 'private, no-store');
-    response.headers.set('CDN-Cache-Control', 'private, no-store');
-  }
 
   // OOP-6716 — mint the analytics session cookie on the visitor's first
   // page request. `httpOnly` so no page script can read it; the
