@@ -99,6 +99,25 @@ export default async function LocaleLayout({
   params,
 }: LayoutProps<'/[locale]'>) {
   const { locale } = await params;
+  // OOP-6737 — the diagnostic trigger for the global error boundary.
+  //
+  // Next does not let a segment's `error.tsx` catch a throw in that
+  // segment's own layout, so the root layout's throw is what
+  // `src/app/global-error.tsx` exists for. Proving that needs a layout
+  // that actually throws — and the proof has to be made in a browser,
+  // because the boundary renders on the client.
+  //
+  // This is inert unless the env var is exactly '1', and it is read at
+  // runtime (not at build time), so a prerendered page keeps its
+  // artifact and only the per-request routes throw:
+  //
+  //   LOVEBYTE_FORCE_LAYOUT_ERROR=1 pnpm start
+  //   node scripts/check-global-error.mjs http://127.0.0.1:3000
+  //
+  // It is never set in production. The name is deliberately long.
+  if (process.env.LOVEBYTE_FORCE_LAYOUT_ERROR === '1') {
+    throw new Error('Lovorithm diagnostic: forced error in the root layout');
+  }
 
   if (!hasLocale(routing.locales, locale)) {
     notFound();
