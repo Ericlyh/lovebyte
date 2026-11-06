@@ -2,7 +2,9 @@
 
 import { useTranslations } from 'next-intl';
 import type { CatalogGift } from '@/lib/catalog';
+import { GIFT_KIND_META } from '@/lib/gifts/kinds';
 import { GiftCardView } from './GiftCardView';
+import { GiftPreviewButton } from './GiftPreviewButton';
 
 /**
  * Gift card for the client-fetched /browse grid (OOP-6710).
@@ -26,7 +28,13 @@ type Props = {
 export function GiftCardClient({ gift, headingLevel }: Props) {
   const t = useTranslations('Catalog.card');
   const tp = useTranslations('Catalog.price');
+  const tk = useTranslations('Catalog.kind');
   const creatorLabel = gift.owner.display_name ?? `@${gift.owner.handle}`;
+  // OOP-7451 — the kind of gift, e.g. "🎂 Birthday". Null for a listing
+  // written before the kind existed.
+  const kindLabel = gift.kind
+    ? `${GIFT_KIND_META[gift.kind].emoji} ${tk(gift.kind)}`
+    : null;
 
   return (
     <GiftCardView
@@ -34,7 +42,11 @@ export function GiftCardClient({ gift, headingLevel }: Props) {
       byText={t('by', { creator: creatorLabel })}
       likesLabel={t('likesLabel', { count: gift.like_count })}
       freeLabel={tp('free')}
+      kindLabel={kindLabel}
       headingLevel={headingLevel}
+      // OOP-7451 — the preview button sits outside the card's link, so
+      // it is its own control and not a nested one.
+      action={<GiftPreviewButton gift={gift} />}
     />
   );
 }

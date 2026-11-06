@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
     category: sp.get('category') ?? undefined,
     priceTier: sp.get('priceTier') ?? undefined,
     creator: sp.get('creator') ?? undefined,
+    kind: sp.get('kind') ?? undefined,
     sort: sp.get('sort') ?? undefined,
     cursor: sp.get('cursor') ?? undefined,
   };

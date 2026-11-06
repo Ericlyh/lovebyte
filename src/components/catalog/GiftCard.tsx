@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import type { CatalogGift } from '@/lib/catalog';
+import { GIFT_KIND_META } from '@/lib/gifts/kinds';
 import { GiftCardView } from './GiftCardView';
 
 /**
@@ -29,7 +30,13 @@ type Props = {
 export async function GiftCard({ gift, href, headingLevel }: Props) {
   const t = await getTranslations('Catalog.card');
   const tp = await getTranslations('Catalog.price');
+  const tk = await getTranslations('Catalog.kind');
   const creatorLabel = gift.owner.display_name ?? `@${gift.owner.handle}`;
+  // OOP-7451 — the kind of gift, e.g. "🎂 Birthday". Null for a listing
+  // written before the kind existed.
+  const kindLabel = gift.kind
+    ? `${GIFT_KIND_META[gift.kind].emoji} ${tk(gift.kind)}`
+    : null;
 
   return (
     <GiftCardView
@@ -37,6 +44,7 @@ export async function GiftCard({ gift, href, headingLevel }: Props) {
       byText={t('by', { creator: creatorLabel })}
       likesLabel={t('likesLabel', { count: gift.like_count })}
       freeLabel={tp('free')}
+      kindLabel={kindLabel}
       href={href}
       headingLevel={headingLevel}
     />

@@ -31,6 +31,16 @@ type Props = {
   /** Resolved "Free" label for the price badge. */
   freeLabel: string;
   /**
+   * The kind of gift, already resolved (e.g. "🎂 Birthday"), or null for
+   * a listing that has no kind (OOP-7451).
+   */
+  kindLabel?: string | null;
+  /**
+   * A control rendered under the card, OUTSIDE the link — the preview
+   * button on /browse (OOP-7451). Rendered only when provided.
+   */
+  action?: React.ReactNode;
+  /**
    * Where the card links to. Defaults to the listing's detail page.
    * Pass `null` for a listing with no public page — an unpublished
    * listing renders as a plain tile rather than a link to a 404
@@ -79,6 +89,8 @@ export function GiftCardView({
   freeLabel,
   href,
   headingLevel,
+  kindLabel,
+  action,
 }: Props) {
   const emoji = gift.category ? CATEGORY_EMOJI[gift.category] ?? '🎁' : '🎁';
 
@@ -110,6 +122,9 @@ export function GiftCardView({
       </div>
       <div className="lb-gift-card__body">
         <Heading className="lb-gift-card__title">{gift.title}</Heading>
+        {/* OOP-7451 — the kind of gift, so a catalogue of birthdays and
+            thank-yous reads as a catalogue of many kinds of gift. */}
+        {kindLabel ? <span className="lb-gift-card__kind">{kindLabel}</span> : null}
         <p className="lb-gift-card__creator">{byText}</p>
         <div className="lb-gift-card__meta">
           <PriceBadgeView priceCents={gift.price_cents} freeLabel={freeLabel} />
@@ -121,15 +136,28 @@ export function GiftCardView({
     </>
   );
 
+  // OOP-7451 — the card is a container and the link lives inside it.
+  // The preview button is a SIBLING of the link: a <button> inside an
+  // <a> is invalid HTML, and a nested control cannot be reached by
+  // keyboard. The `action` slot is where the caller puts it.
+  //
   // An unpublished listing has no public detail page, so the card
   // renders as a plain tile rather than a link to a 404 (OOP-6719).
   if (!target) {
-    return <div className="lb-gift-card">{body}</div>;
+    return (
+      <div className="lb-gift-card">
+        {body}
+        {action ? <div className="lb-gift-card__actions">{action}</div> : null}
+      </div>
+    );
   }
 
   return (
-    <Link href={target} className="lb-gift-card">
-      {body}
-    </Link>
+    <div className="lb-gift-card">
+      <Link href={target} className="lb-gift-card__link">
+        {body}
+      </Link>
+      {action ? <div className="lb-gift-card__actions">{action}</div> : null}
+    </div>
   );
 }

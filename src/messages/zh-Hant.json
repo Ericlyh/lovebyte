@@ -476,6 +476,8 @@
       },
       "creatorLabel": "創作人 handle",
       "creatorPlaceholder": "@handle",
+      "kindLabel": "場合",
+      "kindAll": "任何場合",
       "sortLabel": "排序",
       "sort": {
         "published_desc": "最新",
@@ -486,6 +488,18 @@
     "card": {
       "by": "由 {creator}",
       "likesLabel": "{count} 個讚"
+    },
+    "kind": {
+      "just_because": "冇特別原因",
+      "birthday": "生日",
+      "anniversary": "週年",
+      "thank_you": "多謝你",
+      "apology": "講聲對唔住",
+      "encouragement": "打氣",
+      "graduation": "畢業",
+      "friendship": "友誼",
+      "new_baby": "新生命",
+      "long_distance": "遠距離戀"
     },
     "price": {
       "free": "免費"
@@ -508,7 +522,13 @@
       "error": "更新唔到，再試多次。"
     },
     "preview": {
-      "tag": "預覽"
+      "tag": "預覽",
+      "cta": "預覽",
+      "close": "閂咗佢",
+      "loading": "載入緊份禮物…",
+      "error": "載入唔到呢份禮物。",
+      "unavailable": "呢份禮物暫時冇得預覽。",
+      "openFull": "睇完整頁面"
     },
     "comments": {
       "heading": "{count, plural, =0 {仲未有留言} =1 {1 個留言} other {# 個留言}}",

@@ -108,6 +108,11 @@ export async function saveDragdropPuzzleDraftAction(
       title: input.title,
       payload,
       status: 'sent',
+      // OOP-7451 — the category is what /browse's filter reads, and it
+      // is denormalised from the type (migration 0002). Only the code
+      // action set it, so every other format listed a gift that no
+      // category filter could find.
+      category: 'dragdrop_puzzle',
     })
     .select('id')
     .single();

@@ -93,19 +93,21 @@ CACHE_CONTROL = 'public, max-age=31536000, immutable'
 # is the brightest highlight.
 
 CATALOGUE = {
-    # Mei — Our Sunday dim sum (memory_cards, two photos)
+    # Mei — Our Sunday dim sum (memory_cards, three photos)
     'aaaa1111-0000-0000-0000-000000000001': {
         'cover': 'dim-sum-1',
         'style': 'bokeh',
         'palette': ['#f6e3c5', '#e8b98a', '#4a2f18', '#fdf6e6'],
-        'payload': [('dim-sum-1', 'image'), ('dim-sum-2', 'image')],
+        'payload': [('dim-sum-1', 'image'), ('dim-sum-2', 'image'),
+                    ('dim-sum-3', 'image')],
     },
-    # Arjun — Match the Goa sunsets (memory_cards, two photos)
+    # Arjun — Match the Goa sunsets (memory_cards, three photos)
     'aaaa1111-0000-0000-0000-000000000002': {
         'cover': 'goa-sunset-1',
         'style': 'sunset',
         'palette': ['#f7b267', '#e8743b', '#c9455f', '#2f3e6e'],
-        'payload': [('goa-sunset-1', 'image'), ('goa-sunset-2', 'image')],
+        'payload': [('goa-sunset-1', 'image'), ('goa-sunset-2', 'image'),
+                    ('goa-sunset-3', 'image')],
     },
     # Arjun — Bangkok street photo puzzle (dragdrop_puzzle, one photo)
     'aaaa2222-0000-0000-0000-000000000001': {
@@ -510,9 +512,12 @@ def main():
                 continue
             style = plan['style']
             palette = plan['palette']
-            # The second photo of a pair gets a variation of the same scene,
-            # so the two cards are recognisably from the same afternoon.
-            variant = 1 if slug.endswith('-2') else 0
+            # The second and third photos of a set get variations of the
+            # same scene, so the cards are recognisably from the same
+            # afternoon. Each variant is a different seed, so each is a
+            # different picture — a duplicate would give two pairs the
+            # same photo_url, and the memory-cards schema rejects that.
+            variant = 1 if slug.endswith('-2') else (2 if slug.endswith('-3') else 0)
             img = render(style, palette, 1000 + index * 17 + variant * 5)
             buf = io.BytesIO()
             img.save(buf, 'JPEG', quality=84, optimize=True)

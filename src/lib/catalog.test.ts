@@ -165,6 +165,26 @@ function parseFilterExpression(expr: string): Condition {
 
 type Order = { column: string; ascending: boolean; nullsFirst: boolean };
 
+/**
+ * Resolve a column reference, including a JSON path.
+ *
+ * PostgREST reads `payload->>kind` as "the text value of the `kind`
+ * key of the `payload` column", and the catalogue's kind filter is
+ * exactly that (OOP-7451). The fake has to understand the path, or the
+ * filter would silently match nothing and the test would pass for the
+ * wrong reason.
+ */
+function resolveColumn(row: Row, column: string): unknown {
+  const path = column.split('->>');
+  if (path.length === 1) return row[column];
+  let value: unknown = row[path[0]];
+  for (const key of path.slice(1)) {
+    if (!value || typeof value !== 'object') return undefined;
+    value = (value as Record<string, unknown>)[key];
+  }
+  return value;
+}
+
 class FakeQueryBuilder {
   private readonly filters: Condition[] = [];
   private readonly orders: Order[] = [];
@@ -181,7 +201,7 @@ class FakeQueryBuilder {
   }
 
   eq(column: string, value: unknown) {
-    this.filters.push((r) => r[column] === value);
+    this.filters.push((r) => resolveColumn(r, column) === value);
     return this;
   }
 
@@ -724,5 +744,75 @@ describe('feed pagination (OOP-6730)', () => {
     expect(gifts[gifts.length - 1].published_at).toBe(
       '2026-08-01T07:41:25.954751+00:00',
     );
+  });
+});
+
+// ─── The kind of gift (OOP-7451) ───────────────────────────────────────────
+
+describe('catalog gift kinds (OOP-7451)', () => {
+  /**
+   * The kind lives in the gift's PAYLOAD, not in a column: `gifts.type`
+   * is a Postgres enum and `gifts.category` is a CHECK-constrained text
+   * column, so neither can take a new value without DDL — and there is
+   * no DDL path from the agent host to this project. So the filter is a
+   * JSON path filter, `payload->>kind`, which PostgREST reads as the
+   * text value of that key.
+   *
+   * The fake engine above understands the path (see `resolveColumn`).
+   */
+  async function idsForKind(kind: string): Promise<string[]> {
+    const result = await getCatalogFeed({ kind });
+    return result.gifts.map((g) => g.id).sort();
+  }
+
+  it('filters the catalogue by the kind in the payload', async () => {
+    const birthday = toRow({ id: 'kind-birthday', payload: { kind: 'birthday' } });
+    const thanks = toRow({ id: 'kind-thanks', payload: { kind: 'thank_you' } });
+    const legacy = toRow({ id: 'kind-none', payload: { questions: [] } });
+    ROWS.push(birthday, thanks, legacy);
+    try {
+      expect(await idsForKind('birthday')).toEqual(['kind-birthday']);
+      expect(await idsForKind('thank_you')).toEqual(['kind-thanks']);
+      // A gift with no kind is not in every kind's bucket.
+      expect(await idsForKind('graduation')).toEqual([]);
+    } finally {
+      ROWS.splice(ROWS.indexOf(birthday), 1);
+      ROWS.splice(ROWS.indexOf(thanks), 1);
+      ROWS.splice(ROWS.indexOf(legacy), 1);
+    }
+  });
+
+  it('reports the kind on the listing, so the card can label it', async () => {
+    const row = toRow({ id: 'kind-report', payload: { kind: 'graduation' } });
+    ROWS.push(row);
+    try {
+      const result = await getCatalogFeed({});
+      expect(result.gifts.find((g) => g.id === 'kind-report')?.kind).toBe(
+        'graduation',
+      );
+    } finally {
+      ROWS.splice(ROWS.indexOf(row), 1);
+    }
+  });
+
+  it('reports no kind for a payload with none, or with one it does not know', async () => {
+    const none = toRow({ id: 'kind-none-2', payload: { questions: [] } });
+    const bogus = toRow({ id: 'kind-bogus', payload: { kind: 'fireworks' } });
+    ROWS.push(none, bogus);
+    try {
+      const result = await getCatalogFeed({});
+      expect(result.gifts.find((g) => g.id === 'kind-none-2')?.kind).toBeNull();
+      expect(result.gifts.find((g) => g.id === 'kind-bogus')?.kind).toBeNull();
+    } finally {
+      ROWS.splice(ROWS.indexOf(none), 1);
+      ROWS.splice(ROWS.indexOf(bogus), 1);
+    }
+  });
+
+  it('ignores a kind it does not know rather than listing everything', async () => {
+    // The feed's query schema validates the kind, so an unknown one is
+    // rejected and the feed comes back empty — it must never fall
+    // through to "no filter", which would show the whole catalogue.
+    expect(await idsForKind('fireworks')).toEqual([]);
   });
 });

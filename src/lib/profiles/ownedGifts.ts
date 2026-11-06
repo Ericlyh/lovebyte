@@ -2,6 +2,7 @@ import 'server-only';
 import { createClient } from '@/lib/supabase/server';
 import { SETTLEMENT_CURRENCY } from '@/lib/money';
 import { resolveCoverUrl } from '@/lib/catalog';
+import { giftKindFromPayload, type GiftKind } from '@/lib/gifts/kinds';
 
 /**
  * Owner-only "my gifts" collection for /u/[handle] (OOP-5685).
@@ -56,6 +57,11 @@ export type OwnedGift = {
   cover_media_id: string | null;
   /** Absolute URL of the cover photo, or null when there is none (OOP-6717). */
   cover_url: string | null;
+  /**
+   * The kind of gift (OOP-7451) — a birthday quiz, an apology letter.
+   * Read out of the payload; null for a gift that has no kind.
+   */
+  kind: GiftKind | null;
   created_at: string;
   owner: {
     id: string;
@@ -175,6 +181,8 @@ export async function getOwnedGifts(handle: string): Promise<OwnedGift[]> {
       // category tile when there is not — same resolution as the
       // catalogue feed (OOP-6717).
       cover_url: resolveCoverUrl(supabase, r),
+      // OOP-7451 — the kind of gift, read out of the payload.
+      kind: giftKindFromPayload(r.payload),
       created_at: r.created_at,
       owner: {
         id: owner?.id ?? profile.id,

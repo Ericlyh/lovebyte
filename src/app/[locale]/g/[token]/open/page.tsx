@@ -21,6 +21,7 @@ import { DragdropPuzzleGame } from '@/features/dragdrop-puzzle/recipient/Dragdro
 import { MultimediaCollageView } from '@/features/multimedia-collage/recipient/MultimediaCollageView';
 import { QuizGame } from '@/features/quiz/recipient/QuizGame';
 import { CodeGiftView } from '@/features/code/recipient/CodeGiftView';
+import { LetterView } from '@/features/letter/recipient/LetterView';
 
 /**
  * /g/[shareToken]/open — in-experience view (Phase 3 envelope + Phase 4
@@ -196,38 +197,19 @@ async function AnimatedLetter({
   senderName: string;
 }) {
   const t = await getTranslations('Open');
-  const paragraphs = letter.markdown.split(/\n{2,}/);
 
+  // The letter's markup lives in `LetterView` so the catalogue preview
+  // can show the same letter a recipient will read (OOP-7451). The
+  // strings are passed in because the preview is a client component and
+  // this one is a server component.
   return (
     <main className="lb-letter-page">
-      <article className={`lb-letter lb-letter--paper-${letter.paper}`}>
-        <header className="lb-letter__head">
-          <span className="lb-tag">{t('letterTag')}</span>
-          <p className="lb-letter__from">{t('fromLine', { name: senderName })}</p>
-        </header>
-        <div className="lb-letter__body">
-          {paragraphs.map((p, i) => (
-            <p key={i} className="lb-letter__paragraph">
-              {p}
-            </p>
-          ))}
-        </div>
-        {letter.inline_media.length > 0 && (
-          <ul className="lb-inline-media">
-            {letter.inline_media.map((m, i) => (
-              <li key={i} className="lb-inline-media__item">
-                <span aria-hidden="true">
-                  {m.type === 'photo' ? '📷' : m.type === 'voice' ? '🎙️' : m.type === 'music' ? '🎵' : '✨'}
-                </span>
-                {m.caption ?? m.url}
-              </li>
-            ))}
-          </ul>
-        )}
-        <footer className="lb-letter__foot">
-          {t('letterFoot')}
-        </footer>
-      </article>
+      <LetterView
+        letter={letter}
+        tag={t('letterTag')}
+        fromLine={t('fromLine', { name: senderName })}
+        foot={t('letterFoot')}
+      />
     </main>
   );
 }

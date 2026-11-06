@@ -36,6 +36,11 @@ export function QuizGame({
   senderName: string;
 }) {
   const t = useTranslations('Open.quiz');
+  // OOP-7451 — `fromLine` lives in the PARENT namespace (`Open.fromLine`),
+  // not in `Open.quiz`, so asking this namespace for it rendered the raw
+  // key "Open.quiz.fromLine" on the page. The catalogue preview renders
+  // this same component, so the bug was on screen there too.
+  const tOpen = useTranslations('Open');
 
   // -1 = not started; 0..N-1 = current question; N = done screen.
   const [step, setStep] = useState<number>(-1);
@@ -94,9 +99,12 @@ export function QuizGame({
         <article className="lb-quiz lb-quiz--intro">
           <header className="lb-quiz__head">
             <span className="lb-tag">{t('tag')}</span>
-            <p className="lb-quiz__from">{t('fromLine', { name: senderName })}</p>
+            <p className="lb-quiz__from">{tOpen('fromLine', { name: senderName })}</p>
           </header>
-          <h1 className="lb-quiz__heading">{t('introHeading')}</h1>
+          {/* OOP-7451 — the heading interpolates {name}; asking for it
+              without the value rendered the literal "{name} made you a
+              quiz" on the page. */}
+          <h1 className="lb-quiz__heading">{t('introHeading', { name: senderName })}</h1>
           <p className="lb-quiz__lede">
             {t('introLede', { count: total })}
           </p>
@@ -119,7 +127,7 @@ export function QuizGame({
         <article className="lb-quiz lb-quiz--done">
           <header className="lb-quiz__head">
             <span className="lb-tag">{t('tag')}</span>
-            <p className="lb-quiz__from">{t('fromLine', { name: senderName })}</p>
+            <p className="lb-quiz__from">{tOpen('fromLine', { name: senderName })}</p>
           </header>
           <h1 className="lb-quiz__heading">{t('winHeading')}</h1>
           <p className="lb-quiz__score">
@@ -149,7 +157,7 @@ export function QuizGame({
       <article className="lb-quiz">
         <header className="lb-quiz__head">
           <span className="lb-tag">{t('tag')}</span>
-          <p className="lb-quiz__from">{t('fromLine', { name: senderName })}</p>
+          <p className="lb-quiz__from">{tOpen('fromLine', { name: senderName })}</p>
         </header>
 
         <p className="lb-quiz__progress" aria-live="polite">

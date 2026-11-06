@@ -9,6 +9,7 @@ import {
   type BrowseParams,
 } from './browseParams';
 import { trackClientEvent } from '@/lib/analytics/client';
+import { GIFT_KINDS } from '@/lib/gifts/kinds';
 
 /**
  * Browse controls — search input + sort + category pills (M-C, OOP-4275).
@@ -46,7 +47,7 @@ const SORTS = ['published_desc', 'most_liked', 'price_asc'] as const;
  * identifies a person, so the report learns that the creator filter was
  * used without learning whose handle was typed.
  */
-const FILTER_NAMES = ['category', 'priceTier', 'creator', 'sort'] as const;
+const FILTER_NAMES = ['category', 'priceTier', 'creator', 'kind', 'sort'] as const;
 type FilterName = (typeof FILTER_NAMES)[number];
 
 function isFilterName(value: string): value is FilterName {
@@ -76,6 +77,9 @@ function reportFilterChange(next: Record<string, string | null>) {
 
 export function BrowseControls() {
   const t = useTranslations('Catalog.controls');
+  // The kind labels live in their own namespace so the card chip and
+  // this filter read the same words (OOP-7451).
+  const tk = useTranslations('Catalog.kind');
 
   const [params, setParams] = useState<BrowseParams>({});
   const [query, setQuery] = useState('');
@@ -123,6 +127,17 @@ export function BrowseControls() {
     pushParams({ creator: handle.trim() || null });
   }
 
+  /**
+   * The occasion filter (OOP-7451) — "show me the birthday ones".
+   *
+   * A `<select>` rather than a row of pills: there are ten kinds and
+   * they are a secondary axis, so a compact dropdown keeps the control
+   * row readable on a phone.
+   */
+  function setKindFilter(kind: string) {
+    pushParams({ kind: kind || null });
+  }
+
   function setSort(sort: string) {
     pushParams({ sort: sort === 'published_desc' ? null : sort });
   }
@@ -142,6 +157,7 @@ export function BrowseControls() {
 
   const currentCategory = params.category ?? '';
   const currentPriceTier = params.priceTier ?? '';
+  const currentKind = params.kind ?? '';
   const currentSort = params.sort ?? 'published_desc';
 
   return (
@@ -217,6 +233,23 @@ export function BrowseControls() {
             {SORTS.map((s) => (
               <option key={s} value={s}>
                 {t(`sort.${s}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* The kind of gift — the occasion (OOP-7451). */}
+        <label className="lb-browse-controls__kind">
+          <span>{t('kindLabel')}</span>
+          <select
+            className="lb-select lb-select--inline"
+            value={currentKind}
+            onChange={(e) => setKindFilter(e.target.value)}
+          >
+            <option value="">{t('kindAll')}</option>
+            {GIFT_KINDS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {tk(k.value)}
               </option>
             ))}
           </select>

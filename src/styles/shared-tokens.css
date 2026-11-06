@@ -1341,7 +1341,8 @@ a.lb-btn:hover { text-decoration: none; }
   align-items: center;
 }
 .lb-browse-controls__creator,
-.lb-browse-controls__sort {
+.lb-browse-controls__sort,
+.lb-browse-controls__kind {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1350,7 +1351,8 @@ a.lb-btn:hover { text-decoration: none; }
   color: var(--lb-ink-soft);
 }
 .lb-browse-controls__creator .lb-input--inline,
-.lb-browse-controls__sort .lb-select--inline {
+.lb-browse-controls__sort .lb-select--inline,
+.lb-browse-controls__kind .lb-select--inline {
   width: auto;
   padding: 6px 10px;
   font-size: 13px;
@@ -5046,3 +5048,158 @@ a.lb-btn:hover { text-decoration: none; }
 .lb-multimedia__item--video {
   background: #000;
 }
+
+/* === Catalogue preview + gift kinds (OOP-7451) ==========================
+ *
+ * Two things land here:
+ *
+ *   1. The card became a CONTAINER with the link inside it. The preview
+ *      button is a sibling of the link, not a child: a <button> inside
+ *      an <a> is invalid HTML and a nested control cannot be reached by
+ *      keyboard.
+ *   2. The preview modal itself — a panel that shows the gift the
+ *      recipient will actually play with.
+ */
+
+/* The link inside the card. It carries the card's own layout so the
+   body's `margin-top: auto` still pushes the price row to the bottom. */
+.lb-gift-card__link {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+.lb-gift-card__link:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The row under the card that holds the preview button. */
+.lb-gift-card__actions {
+  display: flex;
+  gap: 8px;
+  padding: 0 var(--lb-space-4) var(--lb-space-4);
+}
+.lb-gift-card__actions:empty { display: none; }
+.lb-preview-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* The kind of gift — "🎂 Birthday" — on the card (OOP-7451). */
+.lb-gift-card__kind {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--lb-radius-pill);
+  background: var(--lb-blush);
+  color: var(--lb-ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+}
+
+/* The preview modal. Fixed to the viewport, so it is portalled to
+   <body> — a `backdrop-filter` on an ancestor would collapse a
+   `position: fixed` child's `inset: 0` to the ancestor's box. */
+.lb-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--lb-space-4);
+  background: rgba(26, 16, 16, 0.62);
+  overflow-y: auto;
+}
+.lb-preview__panel {
+  position: relative;
+  width: min(460px, 100%);
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: var(--lb-surface);
+  border-radius: var(--lb-radius-lg);
+  box-shadow: var(--lb-shadow-lg);
+  overflow: hidden;
+}
+.lb-preview__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--lb-space-3);
+  padding: var(--lb-space-4);
+  border-bottom: 1px solid #f3e6e3;
+}
+.lb-preview__heading { min-width: 0; }
+.lb-preview__eyebrow {
+  margin: 0 0 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lb-ink-soft);
+}
+.lb-preview__title {
+  margin: 0;
+  font-family: var(--lb-font-display);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--lb-ink);
+}
+.lb-preview__close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e8d8d2;
+  border-radius: 50%;
+  background: var(--lb-surface-raised);
+  color: var(--lb-ink);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.lb-preview__close:hover { background: var(--lb-blush); }
+.lb-preview__frame {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--lb-surface);
+}
+.lb-preview__note {
+  margin: 0;
+  padding: var(--lb-space-6) var(--lb-space-4);
+  text-align: center;
+  font-size: 14px;
+  color: var(--lb-ink-soft);
+}
+.lb-preview__foot {
+  display: flex;
+  justify-content: center;
+  padding: var(--lb-space-3) var(--lb-space-4) var(--lb-space-4);
+  border-top: 1px solid #f3e6e3;
+}
+
+/* The recipient surfaces are full-page layouts — `min-height: 100vh`
+   and their own page padding. Inside the preview panel they have to
+   behave like a panel instead. */
+.lb-preview__frame .lb-letter-page,
+.lb-preview__frame .lb-memory-page,
+.lb-preview__frame .lb-puzzle-page,
+.lb-preview__frame .lb-quiz-page,
+.lb-preview__frame .lb-multimedia-page,
+.lb-preview__frame .lb-code-page {
+  min-height: 0;
+  padding: var(--lb-space-4);
+}
+.lb-preview__frame .lb-letter {
+  padding: 28px 22px;
+  font-size: 17px;
+}
+.lb-preview__frame .lb-code-gift__frame { height: 340px; }

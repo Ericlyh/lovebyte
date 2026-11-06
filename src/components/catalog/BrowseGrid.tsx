@@ -48,6 +48,7 @@ async function fetchFeed(
   if (params.category) query.set('category', params.category);
   if (params.priceTier) query.set('priceTier', params.priceTier);
   if (params.creator) query.set('creator', params.creator);
+  if (params.kind) query.set('kind', params.kind);
   if (params.sort && params.sort !== 'published_desc') query.set('sort', params.sort);
   if (cursor) query.set('cursor', cursor);
 

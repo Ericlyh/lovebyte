@@ -19,6 +19,7 @@ export type BrowseParams = {
   category?: string;
   priceTier?: string;
   creator?: string;
+  kind?: string;
   sort?: string;
   q?: string;
   cursor?: string;
@@ -30,6 +31,7 @@ export function readBrowseParams(search: string): BrowseParams {
     category: sp.get('category') ?? undefined,
     priceTier: sp.get('priceTier') ?? undefined,
     creator: sp.get('creator') ?? undefined,
+    kind: sp.get('kind') ?? undefined,
     sort: sp.get('sort') ?? undefined,
     q: sp.get('q') ?? undefined,
     cursor: sp.get('cursor') ?? undefined,

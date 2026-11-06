@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isUuidLike } from '@/lib/uuid';
+import { GiftKindSchema } from '@/lib/gifts/kinds';
 
 /**
  * Zod schemas for gifts.payload — one per gift type.
@@ -27,8 +28,23 @@ export const GiftTypeSchema = z.enum([
 ]);
 export type GiftType = z.infer<typeof GiftTypeSchema>;
 
+/**
+ * The `kind` field every gift payload carries (OOP-7451).
+ *
+ * `type` says which FORMAT a gift is (a quiz, a letter); `kind` says
+ * what KIND of gift it is (a birthday quiz, an apology letter). It is
+ * optional everywhere, so a gift written before this shipped still
+ * validates — it simply has no kind, and the catalogue shows no chip.
+ *
+ * The field is declared once and spread into the six payload schemas so
+ * the six cannot drift. See `src/lib/gifts/kinds.ts` for why the kind
+ * lives in the payload rather than in the `gift_type` enum.
+ */
+const kindField = { kind: GiftKindSchema.optional() };
+
 // ─── animated_letter ──────────────────────────────────────────────────────
 export const AnimatedLetterPayloadSchema = z.object({
+  ...kindField,
   markdown: z.string().min(1),
   paper: z.enum(['cream', 'kraft', 'lined']).default('cream'),
   envelope_color: z.enum(['honey', 'blush', 'sky']).default('honey'),
@@ -58,6 +74,7 @@ export type AnimatedLetterPayload = z.infer<typeof AnimatedLetterPayloadSchema>;
 //                Safari/iOS gate the autoplay on a user gesture so we only
 //                start the audio after the first flip.
 export const MemoryCardsPayloadSchema = z.object({
+  ...kindField,
   pairs: z
     .array(
       z.object({
@@ -85,6 +102,7 @@ export type MemoryCardsPayload = z.infer<typeof MemoryCardsPayloadSchema>;
 //   reveal_message: shown when the recipient completes the puzzle.
 //                   Acts as the gift's "message in a bottle".
 export const DragdropPuzzlePayloadSchema = z.object({
+  ...kindField,
   photo_url: z.string().url(),
   grid: z.union([z.literal(3), z.literal(4), z.literal(5)]),
   reveal_message: z.string().min(1).max(500),
@@ -103,6 +121,7 @@ export type DragdropPuzzlePayload = z.infer<typeof DragdropPuzzlePayloadSchema>;
 //   ≥ 1 question keeps a quiz a quiz; ≤ 30 keeps the recipient's session
 //   reasonable (≈10 min at 20s per question).
 export const QuizPayloadSchema = z.object({
+  ...kindField,
   questions: z
     .array(
       z.object({
@@ -177,6 +196,7 @@ export const MultimediaMediaItemSchema = z
 export type MultimediaMediaItem = z.infer<typeof MultimediaMediaItemSchema>;
 
 export const MultimediaCollagePayloadSchema = z.object({
+  ...kindField,
   template: z.string().trim().min(1).max(64),
   media: z
     .array(MultimediaMediaItemSchema)
@@ -204,6 +224,7 @@ export const CODE_GIFT_MAX_CSS = 50_000;
 export const CODE_GIFT_MAX_JS = 50_000;
 
 export const CodeGiftPayloadSchema = z.object({
+  ...kindField,
   html: z.string().max(CODE_GIFT_MAX_HTML),
   css: z.string().max(CODE_GIFT_MAX_CSS),
   js: z.string().max(CODE_GIFT_MAX_JS),

@@ -11,6 +11,7 @@ import {
   SETTLEMENT_CURRENCY_SYMBOL,
 } from '@/lib/money';
 import { isOptimizableMediaUrl } from '@/lib/media';
+import { DEFAULT_GIFT_KIND, GIFT_KINDS, type GiftKind } from '@/lib/gifts/kinds';
 
 export type GiftMediaItem = {
   id: string;
@@ -110,6 +111,10 @@ export function PublishToMarketplaceCard({
       ? (defaultPriceCents / 100).toFixed(2)
       : '',
   );
+  // What KIND of gift this is (a birthday quiz, an apology letter).
+  // It rides along in the payload — see src/lib/gifts/kinds.ts — and the
+  // catalogue filters and labels on it.
+  const [kind, setKind] = useState<GiftKind>(DEFAULT_GIFT_KIND);
   const [error, setError] = useState<string | null>(null);
 
   // Derived
@@ -127,6 +132,7 @@ export function PublishToMarketplaceCard({
         coverMediaId,
         priceCents: isFree ? null : effectivePriceCents,
         platformFeeBps,
+        kind,
         publishAfterStripe: opts.afterStripe,
       });
 
@@ -152,6 +158,7 @@ export function PublishToMarketplaceCard({
       isFree,
       effectivePriceCents,
       platformFeeBps,
+      kind,
       router,
     ],
   );
@@ -233,6 +240,25 @@ export function PublishToMarketplaceCard({
         >
           {descriptionLength}/500
         </small>
+      </div>
+
+      {/* Kind of gift — the occasion this gift is for (OOP-7451). The
+          catalogue filters and labels on it, so a "birthday quiz" and a
+          "graduation quiz" are two different things to browse. */}
+      <div className="lb-field">
+        <span>What kind of gift is this?</span>
+        <select
+          className="lb-select"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as GiftKind)}
+        >
+          {GIFT_KINDS.map((k) => (
+            <option key={k.value} value={k.value}>
+              {k.emoji} {k.label}
+            </option>
+          ))}
+        </select>
+        <small>Buyers filter the catalogue by this.</small>
       </div>
 
       {/* Cover media picker */}

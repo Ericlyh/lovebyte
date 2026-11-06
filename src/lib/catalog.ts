@@ -10,6 +10,11 @@ import {
   SETTLEMENT_CURRENCY_DB,
 } from '@/lib/money';
 import { BRAND } from '@/lib/brand';
+import {
+  GiftKindSchema,
+  giftKindFromPayload,
+  type GiftKind,
+} from '@/lib/gifts/kinds';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -88,6 +93,16 @@ export type CatalogGift = {
    * and /browse drew an emoji tile for every gift.
    */
   cover_url: string | null;
+  /**
+   * What KIND of gift this is (OOP-7451) — a birthday quiz, an apology
+   * letter. It lives in the gift's payload, because `gifts.type` is a
+   * Postgres enum and `gifts.category` is a CHECK-constrained column,
+   * so neither can take a new value without DDL.
+   *
+   * Null for every gift written before the kind existed, and for a
+   * payload whose kind is not one we know.
+   */
+  kind: GiftKind | null;
   owner: {
     id: string;
     handle: string;
@@ -137,6 +152,16 @@ export type CatalogListing = {
    * already in the select).
    */
   cover_url: string | null;
+  /**
+   * What KIND of gift this is (OOP-7451) — a birthday quiz, an apology
+   * letter. It lives in the gift's payload, because `gifts.type` is a
+   * Postgres enum and `gifts.category` is a CHECK-constrained column,
+   * so neither can take a new value without DDL.
+   *
+   * Null for every gift written before the kind existed, and for a
+   * payload whose kind is not one we know.
+   */
+  kind: GiftKind | null;
   owner: {
     id: string;
     handle: string;
@@ -172,6 +197,13 @@ export const FeedQuerySchema = z.object({
   category: giftCategoryEnum.optional(),
   priceTier: priceTierEnum.optional(),
   creator: z.string().trim().min(1).max(40).optional(),
+  /**
+   * Filter by the kind of gift (OOP-7451) — "a birthday one", "a thank
+   * you one". The kind lives in the payload, so this is a JSONB path
+   * filter (`payload->>kind`), which PostgREST supports without any
+   * schema change.
+   */
+  kind: GiftKindSchema.optional(),
   sort: feedSortEnum.default('published_desc'),
   /**
    * The opaque cursor. Its length is NOT free-form — it is base64url of
@@ -362,6 +394,12 @@ export async function getCatalogFeed(
     .limit(pageSize + 1);
 
   if (params.category) query = query.eq('category', params.category);
+  if (params.kind) {
+    // The kind is a field in the JSONB payload, so this is a JSON path
+    // filter rather than a column comparison. PostgREST reads
+    // `payload->>kind` as the text value of that key.
+    query = query.eq('payload->>kind', params.kind);
+  }
   if (params.priceTier) {
     // Separate filters — PostgREST ANDs them together. See priceTierRange.
     const band = priceTierRange(params.priceTier);
@@ -490,6 +528,7 @@ function hydrateFeedRow(supabase: SupabaseClient, row: any): CatalogGift {
     published_at: row.published_at,
     like_count: likeCount,
     cover_url: coverUrl,
+    kind: giftKindFromPayload(row.payload),
     owner: {
       id: owner?.id ?? '',
       handle: owner?.handle ?? '',
@@ -665,6 +704,7 @@ async function fetchListingDetail(
     // The `cover` embed is already in the select, so the cover URL
     // costs no extra round trip (OOP-6728).
     cover_url: resolveCoverUrl(supabase, data),
+    kind: giftKindFromPayload(data.payload),
     owner: {
       id: owner?.id ?? '',
       handle: owner?.handle ?? '',

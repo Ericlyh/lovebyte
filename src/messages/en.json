@@ -476,6 +476,8 @@
       },
       "creatorLabel": "Creator handle",
       "creatorPlaceholder": "@handle",
+      "kindLabel": "Occasion",
+      "kindAll": "Any occasion",
       "sortLabel": "Sort",
       "sort": {
         "published_desc": "Newest",
@@ -486,6 +488,18 @@
     "card": {
       "by": "by {creator}",
       "likesLabel": "{count} likes"
+    },
+    "kind": {
+      "just_because": "Just because",
+      "birthday": "Birthday",
+      "anniversary": "Anniversary",
+      "thank_you": "Thank you",
+      "apology": "Sorry",
+      "encouragement": "Encouragement",
+      "graduation": "Graduation",
+      "friendship": "Friendship",
+      "new_baby": "New baby",
+      "long_distance": "Long distance"
     },
     "price": {
       "free": "Free"
@@ -508,7 +522,13 @@
       "error": "Couldn't update. Try again."
     },
     "preview": {
-      "tag": "Preview"
+      "tag": "Preview",
+      "cta": "Preview",
+      "close": "Close",
+      "loading": "Loading the gift…",
+      "error": "This gift could not be loaded.",
+      "unavailable": "This gift has nothing to preview yet.",
+      "openFull": "See the full listing"
     },
     "comments": {
       "heading": "{count, plural, =0 {No comments yet} =1 {1 comment} other {# comments}}",

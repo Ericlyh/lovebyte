@@ -135,7 +135,7 @@ export const EVENT_PROP_SCHEMAS = {
   }),
 
   filter_used: z.object({
-    filter: z.enum(['category', 'priceTier', 'creator', 'sort']),
+    filter: z.enum(['category', 'priceTier', 'creator', 'kind', 'sort']),
     // Absent for `creator`: a handle identifies a person, so the
     // filter is recorded but not what was typed into it.
     value: shortText.optional(),

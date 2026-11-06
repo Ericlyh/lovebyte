@@ -55,6 +55,7 @@ export function MemoryCardsGame({
   senderName,
   giftId,
   nextPath,
+  showWriteBack = true,
 }: {
   payload: MemoryCardsPayload;
   senderName: string;
@@ -62,6 +63,12 @@ export function MemoryCardsGame({
   giftId: string | null;
   /** Where a visitor returns to after signing in from the composer. */
   nextPath: string;
+  /**
+   * False in the catalogue preview (OOP-7451). A visitor browsing the
+   * catalogue is not the recipient, and the write-back composer would
+   * ask them to reply to a gift that is not theirs.
+   */
+  showWriteBack?: boolean;
 }) {
   const t = useTranslations('Open.memoryCards');
 
@@ -234,12 +241,17 @@ export function MemoryCardsGame({
             composer lives HERE, in the win state, because that is where
             the prompt is — and it carries the "Make one too →" link out
             of the recipient surface into the creator funnel.
+
+            The catalogue preview hides it (OOP-7451): a browser of the
+            catalogue is not the recipient.
           */}
-          <RecipientWriteBack
-            giftId={giftId}
-            senderName={senderName}
-            nextPath={nextPath}
-          />
+          {showWriteBack ? (
+            <RecipientWriteBack
+              giftId={giftId}
+              senderName={senderName}
+              nextPath={nextPath}
+            />
+          ) : null}
         </section>
       )}
 

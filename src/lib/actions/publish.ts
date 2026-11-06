@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { startConnectOnboardingAction } from '@/lib/actions/checkout';
 import { stripe } from '@/lib/stripe';
 import { SETTLEMENT_CURRENCY_DB } from '@/lib/money';
+import { GiftKindSchema } from '@/lib/gifts/kinds';
 
 /**
  * PublishToMarketplaceResult — returned by publishToMarketplaceAction.
@@ -35,6 +36,15 @@ const publishInputSchema = z.object({
   coverMediaId: z.string().uuid().nullable().optional(),
   priceCents: z.number().int().min(0).nullable().optional(),
   platformFeeBps: z.number().int().min(500).max(10000).default(1000),
+  /**
+   * What KIND of gift this is — a birthday quiz, an apology letter
+   * (OOP-7451). It is written into the gift's payload, not into a
+   * column: `gifts.type` is a Postgres enum and `gifts.category` is a
+   * CHECK-constrained text column, so neither can take a new value
+   * without DDL. The payload is JSONB, so the kind ships with the
+   * content it describes.
+   */
+  kind: GiftKindSchema.optional(),
   /**
    * Set to true when re-calling after completing Stripe onboarding.
    *
@@ -114,7 +124,7 @@ export async function publishToMarketplaceAction(
       error: parsed.error.issues[0]?.message ?? 'Invalid input.',
     };
   }
-  const { giftId, title, description, coverMediaId, priceCents, platformFeeBps, publishAfterStripe } =
+  const { giftId, title, description, coverMediaId, priceCents, platformFeeBps, kind, publishAfterStripe } =
     parsed.data;
 
   const supabase = await createClient();
@@ -170,6 +180,14 @@ export async function publishToMarketplaceAction(
   // written twice: once onto the draft row when the creator is sent to
   // Stripe (so the listing survives the round-trip), and once with
   // is_listed + published_at when the publish actually lands.
+  //
+  // The payload rides along so the KIND (OOP-7451) is written with the
+  // listing. A gift with no kind keeps its payload exactly as it was —
+  // the merge is skipped rather than writing `kind: undefined`, which
+  // Postgres would store as a null key.
+  const existingPayload = (gift.payload ?? {}) as Record<string, unknown>;
+  const payloadWithKind = kind ? { ...existingPayload, kind } : gift.payload;
+
   const listingFields = {
     title,
     description: description ?? null,
@@ -180,6 +198,7 @@ export async function publishToMarketplaceAction(
     // catalogue, the filters and the platform fee all share a unit.
     currency: SETTLEMENT_CURRENCY_DB,
     platform_fee_bps: platformFeeBps,
+    payload: payloadWithKind,
   };
 
   // Stripe gating: a paid gift needs a connected account that can take

@@ -92,7 +92,7 @@ insert into public.gifts (
    'memory_cards',
    'Our Sunday dim sum',
    'Flip the cards and remember the mornings we spent at the corner table.',
-   '{"pairs":[{"photo_url":"https://placehold.co/600x600?text=dim+sum+1","caption":"first visit"},{"photo_url":"https://placehold.co/600x600?text=dim+sum+2","caption":"your favourite"}],"difficulty":"medium","card_back":"cream","music_url":null}'::jsonb,
+   '{"pairs":[{"photo_url":"https://placehold.co/600x600?text=dim+sum+1","caption":"first visit"},{"photo_url":"https://placehold.co/600x600?text=dim+sum+2","caption":"your favourite"},{"photo_url":"https://placehold.co/600x600?text=dim+sum+3","caption":"the last one"}],"difficulty":"medium","music_url":null}'::jsonb,
    'memory_cards', NULL, 'HKD', 1000, true, now() - interval '2 days', 'draft'),
 
   ('aaaa1111-0000-0000-0000-000000000002',
@@ -100,7 +100,7 @@ insert into public.gifts (
    'memory_cards',
    'Match the Goa sunsets',
    'Twelve sunsets, six pairs. Can you find them all?',
-   '{"pairs":[{"photo_url":"https://placehold.co/600x600?text=goa+1","caption":"anao"},{"photo_url":"https://placehold.co/600x600?text=goa+2","caption":"palolem"}],"difficulty":"hard","card_back":"kraft","music_url":null}'::jsonb,
+   '{"pairs":[{"photo_url":"https://placehold.co/600x600?text=goa+1","caption":"anao"},{"photo_url":"https://placehold.co/600x600?text=goa+2","caption":"palolem"},{"photo_url":"https://placehold.co/600x600?text=goa+3","caption":"the last light"}],"difficulty":"hard","music_url":null}'::jsonb,
    'memory_cards', 4800, 'HKD', 1000, true, now() - interval '5 days', 'draft'),
 
   -- dragdrop_puzzle x2 (Arjun + Sofia)
@@ -143,7 +143,7 @@ insert into public.gifts (
    'multimedia_collage',
    'A weekend in Lisbon',
    'Photos, voice notes, and the song that was playing at the miradouro.',
-   '{"template":"grid-2x2","media":[{"type":"photo","url":"https://placehold.co/600x600?text=lisbon+1","caption":"tram 28","position":{"x":0,"y":0,"w":50,"h":50}},{"type":"audio","url":"https://placehold.co/600x600?text=audio","position":{"x":50,"y":50,"w":50,"h":50}}],"music_url":null}'::jsonb,
+   '{"template":"grid-2x2","media":[{"type":"photo","url":"https://placehold.co/600x600?text=lisbon+1","caption":"tram 28","position":{"x":0,"y":0,"w":0.5,"h":0.5}},{"type":"audio","url":"https://placehold.co/600x600?text=audio","position":{"x":0.5,"y":0.5,"w":0.5,"h":0.5}}],"music_url":null}'::jsonb,
    'multimedia_collage', 2500, 'EUR', 1000, true, now() - interval '4 days', 'draft'),
 
   -- animated_letter x1 (Mei) — search smoke test (M-C, OOP-4275) uses

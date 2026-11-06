@@ -45,6 +45,7 @@ export const ROOT_SCOPES = ['Common'] as const;
 export const ROUTE_SCOPES: Record<string, readonly string[]> = {
   '/': [
     'Catalog.card',
+    'Catalog.kind',
     'Catalog.price',
     'Landing',
     'Landing.nav',
@@ -60,6 +61,15 @@ export const ROUTE_SCOPES: Record<string, readonly string[]> = {
     'Common.error',
     'Landing.nav',
     'Nav',
+    // OOP-7451 — the catalogue preview renders the gift itself, so this
+    // route now ships the recipient surfaces' strings and the recipient
+    // composer the memory-cards game imports.
+    'Open',
+    'Open.memoryCards',
+    'Open.multimediaCollage',
+    'Open.puzzle',
+    'Open.quiz',
+    'Recipient',
   ],
   '/checkout/[giftId]': [
     'Catalog.price',
@@ -175,6 +185,7 @@ export const ROUTE_SCOPES: Record<string, readonly string[]> = {
   '/terms': ['Terms', 'Terms.footer'],
   '/u/[handle]': [
     'Catalog.card',
+    'Catalog.kind',
     'Catalog.price',
     'Common.error',
     'Common.loading',

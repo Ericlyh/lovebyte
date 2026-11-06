@@ -53,6 +53,10 @@ export function MultimediaCollageView({
   senderName: string;
 }) {
   const t = useTranslations('Open.multimediaCollage');
+  // OOP-7451 — `fromLine` lives in the PARENT namespace (`Open.fromLine`),
+  // not in `Open.multimediaCollage`, so asking this namespace for it
+  // rendered the raw key "Open.multimediaCollage.fromLine" on the page.
+  const tOpen = useTranslations('Open');
 
   const [musicStarted, setMusicStarted] = useState(false);
   const [musicPaused, setMusicPaused] = useState(false);
@@ -89,7 +93,7 @@ export function MultimediaCollageView({
       <article className="lb-multimedia">
         <header className="lb-multimedia__head">
           <span className="lb-tag">{t('tag')}</span>
-          <p className="lb-multimedia__from">{t('fromLine', { name: senderName })}</p>
+          <p className="lb-multimedia__from">{tOpen('fromLine', { name: senderName })}</p>
         </header>
         <h1 className="lb-multimedia__heading">{t('heading', { name: senderName })}</h1>
         <p className="lb-multimedia__lede">{t('lede')}</p>

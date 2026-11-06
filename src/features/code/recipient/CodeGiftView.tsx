@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { composeCodeGiftDocument } from '@/lib/gifts/code-render';
+import { CodeGiftFrame } from '@/features/code/recipient/CodeGiftFrame';
 import type { CodeRecipientPayload } from '@/features/code/schemas';
 
 /**
@@ -38,12 +39,7 @@ export async function CodeGiftView({
         <p className="lb-letter__from">{t('fromLine', { name: senderName })}</p>
       </header>
 
-      <iframe
-        className="lb-code-gift__frame"
-        title={t('codeFrameTitle')}
-        sandbox="allow-scripts"
-        srcDoc={document}
-      />
+      <CodeGiftFrame document={document} title={t('codeFrameTitle')} />
 
       <footer className="lb-code-page__foot">{t('codeFoot')}</footer>
     </main>
