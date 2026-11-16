@@ -64,6 +64,10 @@ function titleFor(gap) {
   if (gap.scope === 'data') return `Data layer is not serving: ${gap.id}`;
   if (gap.scope === 'http') return `Route gap: ${gap.id}`;
   if (gap.scope === 'lighthouse') return `Quality regression: ${gap.id}`;
+  // The instrument's own gap (OOP-7572): the perf dimension was NOT
+  // MEASURED, so this is explicitly not a site regression and must not
+  // read like one on the board.
+  if (gap.scope === 'instrument') return `Measurement gap: ${gap.id} — perf was not measured`;
   return `Launch gap: ${gap.id}`;
 }
 

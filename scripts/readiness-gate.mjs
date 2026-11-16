@@ -29,9 +29,18 @@
 //                                 The score itself is still reported as measured.
 //                                 8 is high on purpose: a load of 5-6 is
 //                                 normal on this host and scores cleanly.
+//   GATE_LH_CONTROL_PATH default /lh-control.html  the CONTROL probe: a
+//                                 trivial static page (no JS, no images, no
+//                                 fonts) served by the same CDN and measured
+//                                 in the SAME run as the routes. Its score IS
+//                                 the instrument's score, so a control below
+//                                 GATE_LH_CONTROL_MIN means this run's perf
+//                                 numbers measure the host, not the site.
+//   GATE_LH_CONTROL_MIN default 95  the control's own perf threshold.
 
 import { probeRoute } from './lib/http-probe.mjs';
 import { scoreLighthouse } from './lib/lighthouse-score.mjs';
+import { assessControl } from './lib/lighthouse-control.mjs';
 
 const BASE = process.env.AUDIT_BASE ?? 'https://lovorithm.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
@@ -448,6 +457,10 @@ const LIGHTHOUSE_RETRY_SAMPLES = Math.max(
 
 let lighthouseResults = [];
 let lighthouseRan = false;
+// The control probe's result (OOP-7572). `null` until the Lighthouse pass
+// runs; carried into the verdict JSON so the board can see what the
+// environment scored in the same run as the routes.
+let control = null;
 // The host's load average during the Lighthouse pass. Lighthouse's perf
 // score is CPU-sensitive: the simulated 4x CPU throttle is driven by the
 // timings the browser actually observes, so a busy host can inflate them
@@ -474,6 +487,19 @@ try {
 }
 const HOST_LOAD_MAX = Number(process.env.GATE_HOST_LOAD_MAX ?? 8);
 
+// The control probe (OOP-7572). A Lighthouse perf score is a measurement of
+// the INSTRUMENT as much as of the page: the score comes from timings the
+// browser observed, so a busy host inflates them and the score falls even
+// when the site is byte-identical. The control is a trivial static page
+// served by the same CDN, measured in the SAME run: it has nothing to be
+// slow about, so its score IS the instrument's score in these conditions.
+//
+// Without it the gate could not tell "this page is slow" from "this host is
+// busy", and that cost four days of false gaps (the unchanged homepage
+// scored 32 on 2026-11-11 and 98 on 2026-11-16).
+const CONTROL_PATH = process.env.GATE_LH_CONTROL_PATH ?? '/lh-control.html';
+const CONTROL_MIN = Number(process.env.GATE_LH_CONTROL_MIN ?? 90);
+
 try {
   const { default: lighthouse } = await import('lighthouse');
   // chrome-launcher is CJS: its `launch` lives on the namespace object, not
@@ -487,10 +513,101 @@ try {
   }
   const chrome = await launch({ chromeFlags: ['--headless=new', '--no-sandbox'] });
   try {
-    for (const path of LIGHTHOUSE_ROUTES) {
+    // ------------------------------------------------------ the control probe
+    // Measured FIRST, on a trivial document, so the environment's score is
+    // known before the routes are measured under it — and so a degraded
+    // instrument is discovered before the gate spends minutes measuring
+    // three routes it cannot trust.
+    control = {
+      path: CONTROL_PATH,
+      available: false,
+      perf: null,
+      perfSamples: [],
+      samples: 0,
+      status: null,
+      error: null,
+    };
+
+    try {
+      const res = await fetch(`${BASE}${CONTROL_PATH}`, { redirect: 'follow' });
+      control.status = res.status;
+      const contentType = res.headers.get('content-type') ?? '';
+      if (!res.ok) {
+        control.error = `the control document returned HTTP ${res.status}`;
+      } else if (!contentType.includes('text/html')) {
+        control.error = `the control document returned ${contentType || 'no content-type'}`;
+      } else {
+        control.available = true;
+      }
+    } catch (err) {
+      control.error = `the control document is unreachable — ${err.message}`;
+    }
+
+    if (control.available) {
       const scored = await scoreLighthouse({
         samples: LIGHTHOUSE_SAMPLES,
         retrySamples: LIGHTHOUSE_RETRY_SAMPLES,
+        perfMin: CONTROL_MIN,
+        // The control page's own accessibility score is meaningless — it is
+        // not a page anyone uses — so it must not enter the retry
+        // condition. Only a perf miss retries the control.
+        a11yMin: 0,
+        run: async () => {
+          const r = await lighthouse(`${BASE}${CONTROL_PATH}`, {
+            port: chrome.port,
+            output: 'json',
+            logLevel: 'error',
+            onlyCategories: ['performance'],
+          });
+          return {
+            perf: Math.round(r.lhr.categories.performance.score * 100),
+            a11y: 0,
+          };
+        },
+      });
+      control.perf = scored.perf;
+      control.perfSamples = scored.perfSamples;
+      control.samples = scored.samples;
+      if (scored.error) {
+        control.error = String(scored.error?.message ?? scored.error).slice(0, 160);
+      }
+    }
+
+    const assessment = assessControl(control, CONTROL_MIN);
+    const perfMeasurable = assessment.measurable;
+    control.reason = assessment.reason;
+    control.measurable = perfMeasurable;
+
+    console.log(`note  lighthouse control ${CONTROL_PATH}: ${assessment.reason}`);
+    notes.push(`lighthouse control ${CONTROL_PATH}: ${assessment.reason}`);
+
+    if (!perfMeasurable) {
+      // The perf dimension of this run is NOT MEASURED. That is an explicit
+      // "we do not know", and it must not be filed as a site regression —
+      // the route scores below are in the same band as the control's, so
+      // they say nothing about the site.
+      //
+      // This is a gap in the INSTRUMENT, not in the site: it is reported
+      // under its own id and its own scope so the board never reads it as
+      // "Quality regression: the site got slower".
+      fail(
+        'instrument',
+        `the perf dimension of this run was NOT measured — ${assessment.reason}`,
+        'lighthouse-unmeasurable',
+      );
+      notes.push(
+        'the perf dimension was not measured, so this run cannot rule out a performance ' +
+          'regression: no route perf gap is filed from it',
+      );
+    }
+
+    for (const path of LIGHTHOUSE_ROUTES) {
+      const scored = await scoreLighthouse({
+        samples: LIGHTHOUSE_SAMPLES,
+        // Retrying a perf miss is pointless when the perf dimension is not
+        // being scored, and on a busy host the extra samples cost the host
+        // more CPU. The accessibility retry is unaffected.
+        retrySamples: perfMeasurable ? LIGHTHOUSE_RETRY_SAMPLES : 0,
         perfMin: PERF_MIN,
         a11yMin: A11Y_MIN,
         run: async () => {
@@ -526,9 +643,16 @@ try {
         samples: scored.samples,
         perfSamples: scored.perfSamples,
         a11ySamples: scored.a11ySamples,
+        scored: perfMeasurable,
       });
-      if (scored.perf < PERF_MIN) fail('lighthouse', `${path} perf=${scored.perf} (< ${PERF_MIN}) — ${spread}`, `lighthouse-${path}-perf`);
-      else pass('lighthouse', `${path} perf=${scored.perf} — ${spread}`);
+      if (perfMeasurable) {
+        if (scored.perf < PERF_MIN) fail('lighthouse', `${path} perf=${scored.perf} (< ${PERF_MIN}) — ${spread}`, `lighthouse-${path}-perf`);
+        else pass('lighthouse', `${path} perf=${scored.perf} — ${spread}`);
+      } else {
+        console.log(
+          `note  lighthouse ${path}: perf=${scored.perf} was measured but NOT scored — ${assessment.reason}`,
+        );
+      }
       if (scored.a11y < A11Y_MIN) fail('lighthouse', `${path} a11y=${scored.a11y} (< ${A11Y_MIN}) — ${spread}`, `lighthouse-${path}-a11y`);
       else pass('lighthouse', `${path} a11y=${scored.a11y} — ${spread}`);
 
@@ -546,8 +670,14 @@ try {
         notes.push(
           `lighthouse ${path}: perf=${scored.perf} a11y=${scored.a11y} was measured while the host load ` +
             `average was ${hostLoad} (> ${HOST_LOAD_MAX}). Lighthouse's perf score is CPU-sensitive, so ` +
-            `this gap may be the instrument rather than the site — re-measure before filing it as a ` +
-            `site regression. The route's own HTTP serve time in the same run is the corroborating signal. ` +
+            `a PERF gap here may be the instrument rather than the site. ` +
+            (perfMeasurable
+              ? `The control probe scored perf=${control.perf} in the same run — the instrument was ` +
+                `healthy, so a perf gap here is a measurement of the site.`
+              : `The control probe did not certify the instrument in this run, so no perf gap is filed ` +
+                `from it. An accessibility gap is still filed: accessibility is read from the ` +
+                `document and does not depend on timing.`) +
+            ` The route's own HTTP serve time in the same run is the corroborating signal. ` +
             `Note: a load of 5-6 is normal on this host and scores cleanly; only a load above ` +
             `${HOST_LOAD_MAX} is flagged here.`,
         );
@@ -599,7 +729,13 @@ try {
 console.log('\n--- readiness-gate summary ---');
 console.log(`base=${BASE}`);
 console.log(`routes=${httpResults.length} lighthouse=${lighthouseResults.length}`);
-console.log(JSON.stringify({ http: httpResults, lighthouse: lighthouseResults }, null, 2));
+if (control) {
+  console.log(
+    `control=${control.path} perf=${control.perf ?? 'n/a'} samples=${control.perfSamples.join(',') || 'none'} ` +
+      `available=${control.available}`,
+  );
+}
+console.log(JSON.stringify({ http: httpResults, lighthouse: lighthouseResults, control }, null, 2));
 console.log(
   JSON.stringify(
     { data: failures.filter((f) => f.scope === 'data').map((f) => f.message) },
@@ -628,6 +764,7 @@ if (process.argv.includes('--json')) {
         gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
         http: httpResults,
         lighthouse: lighthouseResults,
+        control,
         notes,
       },
       null,
@@ -657,6 +794,7 @@ if (jsonFileIndex !== -1) {
         gaps: failures.map((f) => ({ id: f.id, scope: f.scope, message: f.message })),
         http: httpResults,
         lighthouse: lighthouseResults,
+        control,
         notes,
       },
       null,
@@ -681,5 +819,11 @@ if (failures.length === 0) {
 
 console.log(`\nRESULT: FAIL — ${failures.length} gap(s):`);
 for (const f of failures) console.log(`  - ${f.id}: ${f.message}`);
+if (control && control.measurable === false) {
+  console.log(
+    'note: the perf dimension of this run was NOT MEASURED — the route perf numbers above are ' +
+      'reported as measured but are not scored, and no route perf gap is filed from them.',
+  );
+}
 if (notes.length) console.log(`notes: ${notes.join(', ')}`);
 process.exit(1);

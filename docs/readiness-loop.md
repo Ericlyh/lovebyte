@@ -121,6 +121,31 @@ The gate checks, against `https://lovorithm.vercel.app`:
   so a low threshold would flag most runs as suspect and suppress real
   regressions. The score itself is still reported exactly as measured —
   the gate does not second-guess its own threshold.
+- **Every Lighthouse pass measures a CONTROL** (OOP-7572): `/lh-control.html`,
+  a static page with a fixed amount of main-thread work, served by the same
+  CDN and measured in the same run as the routes. Its score IS the
+  instrument's score under the current host conditions, so it decides
+  whether the run's perf numbers are measurements of the site at all.
+  - If the control scores ≥ `GATE_LH_CONTROL_MIN` (default 90), the
+    instrument was healthy and the route scores are scored as usual.
+  - If it scores below, **the perf dimension of the run is NOT MEASURED**:
+    no route perf gap is filed, and the run reports the gap
+    `lighthouse-unmeasurable` instead. That is an explicit "we do not
+    know", not a claim that the site got slower.
+  - Accessibility is unaffected — it is read from the document and does not
+    depend on timing — so an a11y gap is still filed in an unmeasurable run.
+
+  Why the control exists: on 2026-11-16 the **unchanged homepage scored 32
+  on one day and 98 on another**, with no deploy in between, and every
+  route failed together on the loaded days. A gap that cannot be told apart
+  from host contention is a gap the board cannot act on. Measured on this
+  host, a *trivial* static control scores 100 under contention while the
+  real homepage scores 66 — a page with no main-thread work has nothing to
+  starve — so the control carries a fixed workload (a 4,000-cell grid plus
+  a fixed arithmetic loop) and measured 100 when quiet and 63 under the
+  same contention. It is static on purpose: a site-wide regression must
+  not be able to drag the control down, or the gate would hide the very
+  regression it exists to catch.
 
   The bigger lesson from 2026-11-04: the same commit measured `/browse`
   at **83, 87, 92, 93** in four launchd runs and **98, 99, 99, 99** in
@@ -158,7 +183,14 @@ An issue claims a gap by containing the marker `gap:<id>` in its title
 or description. The gate's gap ids are stable, so the marker is stable:
 `data-status-unknown`, `data-catalog-empty`,
 `lighthouse-browse-perf`, `http-browse-slow`, `og-missing-og-image`,
-and so on. Today `OOP-6154` claims the two data-layer gaps.
+`lighthouse-unmeasurable`, and so on. Today `OOP-6154` claims the two
+data-layer gaps.
+
+`lighthouse-unmeasurable` is the one gap id that is **not** about the
+site: it means the perf dimension of that run could not be measured, so
+the board learns "we do not know" instead of a regression it cannot
+support. It carries the `instrument` scope, so it is titled
+`Measurement gap: …` and never reads as a quality regression.
 
 This step exists so the loop does not fill the board with one duplicate
 issue per gap per day — a loop that spams is a loop nobody reads.
@@ -180,6 +212,12 @@ Order by blast radius, not by how easy it is to fix:
 Skip anything triage marked `already-tracked` — it is not a gap you
 can close this firing. Exactly **one** gap per firing. The loop is a
 loop, not a batch.
+
+`lighthouse-unmeasurable` is not in that list. It says the perf
+dimension of that run could not be measured — a statement about the
+instrument, not a defect in the site — so the loop records the run's
+numbers on it and moves on instead of trying to "fix" the site against
+a measurement the host produced.
 
 ## 4. Fix it
 

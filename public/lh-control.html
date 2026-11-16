@@ -1,0 +1,88 @@
+<!doctype html>
+<!--
+  The Lighthouse control probe (OOP-7572).
+
+  This page is the gate's environment reference. It is measured in the SAME
+  run as the site's routes, and its score decides whether the run's perf
+  numbers can be believed: a perf gap may only be filed when the control
+  was healthy, because then the route's score is a measurement of the site
+  rather than of the host.
+
+  It has two deliberate properties, and the second one was measured, not
+  guessed:
+
+  1. It is STATIC — no app shell, no bundle, no database, no request
+     beyond this document. A site-wide regression (a shell that got
+     heavier) must not be able to make the control look bad, or the gate
+     would hide the very regression it exists to catch.
+
+  2. It carries a FIXED amount of main-thread work: a 4,000-cell grid
+     built and laid out by script, plus a fixed arithmetic loop. The work
+     is fixed rather than wall-clock, so it cannot shrink when the host is
+     slow — the whole point is that it grows.
+
+  Why the work is there at all: a page with no JavaScript cannot see this
+  host's failure mode. Measured on 2026-11-16, under the same CPU
+  contention, a trivial static page scored perf=100 while the real
+  homepage scored 66 — the degradation is CPU starvation hitting
+  main-thread work, and a page with no main-thread work has nothing to
+  starve, so it reports "healthy" exactly when the host is busiest. This
+  page's own layout work is what makes it sensitive: measured 100 when
+  the host was quiet and 63 under the same contention that took the
+  homepage to 66.
+
+  Do not add anything else to this file, and do not make the workload
+  depend on anything variable. A stylesheet, an image, a font or a second
+  request would change what the control measures.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>lh control</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 2px;
+      }
+      .cell {
+        height: 24px;
+        background: #eee;
+        border-radius: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="lh-control-grid" class="grid"></div>
+    <p id="lh-control-out">lh control</p>
+    <script>
+      // A fixed amount of main-thread work: build and lay out a 4,000-cell
+      // grid, then do a fixed number of square roots. The counts are fixed
+      // rather than the elapsed time, so the work does not shrink when the
+      // host is slow — under starvation it stretches, and the score falls
+      // with the routes'. The result is written to the DOM so none of it
+      // can be optimised away.
+      (function () {
+        var frag = document.createDocumentFragment();
+        for (var i = 0; i < 4000; i++) {
+          var cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.textContent = 'cell ' + i;
+          frag.appendChild(cell);
+        }
+        document.getElementById('lh-control-grid').appendChild(frag);
+
+        var x = 0;
+        for (var j = 0; j < 8000000; j++) {
+          x += Math.sqrt(j + 1);
+        }
+        document.getElementById('lh-control-out').textContent = 'lh control ' + x;
+      })();
+    </script>
+  </body>
+</html>
