@@ -139,13 +139,22 @@ The gate checks, against `https://lovorithm.vercel.app`:
   on one day and 98 on another**, with no deploy in between, and every
   route failed together on the loaded days. A gap that cannot be told apart
   from host contention is a gap the board cannot act on. Measured on this
-  host, a *trivial* static control scores 100 under contention while the
-  real homepage scores 66 — a page with no main-thread work has nothing to
-  starve — so the control carries a fixed workload (a 4,000-cell grid plus
-  a fixed arithmetic loop) and measured 100 when quiet and 63 under the
-  same contention. It is static on purpose: a site-wide regression must
-  not be able to drag the control down, or the gate would hide the very
-  regression it exists to catch.
+  host over the CDN, a *trivial* static control scores 100 under contention
+  while the real homepage scores 66 — a page with no main-thread work has
+  nothing to starve — so the control carries a fixed workload (a
+  4,000-cell grid plus a fixed arithmetic loop). Measured the same way:
+  the control scored **99–100 when the host was quiet and 62–66 under
+  contention**, against the real homepage's **99 quiet and 61–67 loaded**:
+  the control falls with the routes. It is static on purpose — a
+  site-wide regression must not be able to drag the control down, or the
+  gate would hide the very regression it exists to catch.
+
+  The threshold is 90 rather than the routes' 95 because the control's
+  healthy score is 99–100, and a 95 threshold would leave only a
+  four-point margin: a control that scored 94 on a mildly busy host
+  would declare the perf dimension unmeasurable and mask a real
+  regression. At 90 the margin is ~9 points on the healthy side and ~28
+  on the degraded side.
 
   The bigger lesson from 2026-11-04: the same commit measured `/browse`
   at **83, 87, 92, 93** in four launchd runs and **98, 99, 99, 99** in
