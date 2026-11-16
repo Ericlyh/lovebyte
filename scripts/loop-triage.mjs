@@ -92,16 +92,42 @@ async function loadIssues() {
       'PAPERCLIP_API_KEY and PAPERCLIP_COMPANY_ID are required to read the board',
     );
   }
-  const res = await fetch(
-    `${API_BASE}/api/companies/${COMPANY_ID}/issues?limit=300`,
-    { headers: { Authorization: `Bearer ${API_KEY}` } },
-  );
-  if (!res.ok) {
-    throw new Error(`board read failed: ${res.status} ${await res.text()}`);
+  // Query each open status separately rather than fetching one big list and
+  // filtering it here (OOP-7572).
+  //
+  // The unfiltered list endpoint does not return the NEWEST issues: on
+  // 2026-11-16 `?limit=300` and `?limit=1000` both topped out at
+  // OOP-7570, so OOP-7571 and OOP-7572 were invisible to this tool even
+  // though both were `todo`. The per-status queries reach them
+  // (`?status=todo` returns OOP-7572). That matters because of what this
+  // tool is FOR: it matches a gap id against the open issues so the loop
+  // does not file the same gap every morning. A gap filed today must be
+  // VISIBLE to tomorrow's triage, and it was not — the exact case the
+  // duplicate rule exists to handle was the one case it failed.
+  //
+  // Per-status also costs less: only the open issues are fetched (942 on
+  // 2026-11-16) instead of a 1000-row window that had to be filtered down
+  // to the same set.
+  const issues = [];
+  const seen = new Set();
+  for (const status of OPEN_STATUSES) {
+    const res = await fetch(
+      `${API_BASE}/api/companies/${COMPANY_ID}/issues?status=${status}&limit=1000`,
+      { headers: { Authorization: `Bearer ${API_KEY}` } },
+    );
+    if (!res.ok) {
+      throw new Error(`board read failed: ${res.status} ${await res.text()}`);
+    }
+    const body = await res.json();
+    const rows = Array.isArray(body) ? body : (body.issues ?? body.data ?? []);
+    for (const issue of rows) {
+      if (issue?.id && !seen.has(issue.id)) {
+        seen.add(issue.id);
+        issues.push(issue);
+      }
+    }
   }
-  const body = await res.json();
-  const issues = Array.isArray(body) ? body : (body.issues ?? body.data ?? []);
-  return issues.filter((i) => OPEN_STATUSES.has(i.status));
+  return issues;
 }
 
 /** Does this issue claim this gap? */
