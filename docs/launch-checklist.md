@@ -41,6 +41,57 @@ environment (`vercel env ls production`).
 > own inbox, which is enough for a smoke test and NOT enough for real
 > customers. There is no in-between: an unverified `RESEND_FROM` makes
 > `deliverEmail` refuse to send at all.
+>
+> **`lovorithm.app` is not usable either** (verified 2026-11-19: NXDOMAIN,
+> no NS/SOA — the domain does not exist), and `lovebyte.app` is a parked
+> GoDaddy lander with no MX. So a `RESEND_FROM` domain has to come from
+> somewhere new: either a domain the team acquires and verifies in Resend,
+> or `onboarding@resend.dev` for a smoke test only.
+
+### 1.0 — Applying the four values (the handoff route)
+
+`scripts/check-env.mjs` audits whether the vars are present in production.
+`scripts/apply-money-env.mjs` is the write side: it reads the four values
+out of a file, sets them in the Vercel production env, mirrors them into
+`.env.local`, and deletes the file.
+
+The file route exists so live keys never touch the issue thread, the repo
+or a shell history — the same pattern as
+`~/.paperclip/lovebyte-incident-admin-token`.
+
+```sh
+# one KEY=value per line, no quoting, no `export`
+cat > ~/.paperclip/lovebyte-money-env <<'EOF'
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RESEND_API_KEY=re_...
+RESEND_FROM="Lovorithm <hello@your-verified-domain>"
+EOF
+chmod 600 ~/.paperclip/lovebyte-money-env
+
+node scripts/apply-money-env.mjs ~/.paperclip/lovebyte-money-env
+```
+
+It refuses a file that is readable by others, refuses any key outside the
+four, never prints a value, and keeps the file if a var fails so a retry
+does not need re-supplying everything. It needs `VERCELTOKEN` in the
+environment.
+
+Setting the vars is **not** the end of it — the running deploy still has
+the old environment baked in, so:
+
+```sh
+vercel redeploy <current-deployment-id> --environment production
+node scripts/check-env.mjs    # must now PASS
+node scripts/readiness-gate.mjs
+```
+
+> **Project name (OOP-6168):** the Vercel project is **`lovorithm`**
+> (`prj_C9TIIEni96mFmt7WIF1gfh4Nq8dj`). There is a *separate* project also
+> named `lovebyte-five` (`prj_hi3yzlOCKbzgpBkGJA0HWbYZZxEj`) whose
+> production target is in `ERROR` state — setting the vars there does
+> nothing. `lovorithm.vercel.app` and `lovebyte-five.vercel.app` are both
+> aliases of the **lovorithm** project.
 
 ### 1.1 — Stripe account setup (beyond the keys)
 
