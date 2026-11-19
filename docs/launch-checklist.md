@@ -174,6 +174,38 @@ be true in the Stripe account:
 >   key string, so **no redeploy is needed** — the value already in the
 >   Vercel env stays valid.
 
+> **A RESTRICTED key can never finish a creator's onboarding
+> (OOP-6168, 2026-11-20).** Widening the scopes on `rk_live_…` clears
+> `more_permissions_required` but it cannot clear the wall above it.
+> Probed live on `acct_1UdZNKAUGZ34T1PB` with the deployed key:
+>
+> | call | answer |
+> |---|---|
+> | `POST /v1/accounts/{id}` + `tos_acceptance[date]`/`[ip]` | `oauth_not_supported` — *"does not have the required permissions for the parameter 'tos_acceptance'"* |
+> | `POST /v1/accounts/{id}/external_accounts` (bank account) | `oauth_not_supported` — same wording, *"for this endpoint"* |
+> | `POST /v1/accounts/{id}/bank_accounts` (legacy route) | `oauth_not_supported` |
+> | `POST /v1/accounts/{id}/tos_acceptance` | *"Unrecognized request URL"* — the route no longer exists |
+> | `POST /v2/core/accounts` (Accounts v2) | *"This key lacks access to Accounts v2"* |
+>
+> `oauth_not_supported` is **not** a scope you can tick off: those
+> endpoints are reserved for full secret keys (`sk_live_…`) and OAuth
+> tokens, so a restricted key is refused however wide its scope list is.
+> The agent holds a full key for **test** mode (`sk_test_…`) and it does
+> create Accounts v2 accounts there — so the only missing credential is
+> the platform's full **live** secret key.
+>
+> **What the requirement actually gates (also 2026-11-20).** The
+> remaining step is not paperwork: an unconfirmed destination PaymentIntent
+> against the not-yet-onboarded account is refused with
+> `insufficient_capabilities_for_transfer` — *"Your destination account
+> needs to have at least one of the following capabilities enabled:
+> transfers, crypto_transfers, or legacy_payments"*. Until the connected
+> account holds the `transfers` capability, checkout cannot route a
+> payment to a creator at all, so `/api/readiness` reporting
+> `{"ok":true,"missing":[]}` is **not** evidence that the money path
+> works. The gate checks deploy state; the money path's last mile is
+> account state.
+
 
 > **Note (OOP-4894):** The legacy `eyJ…service_role…` JWT is now
 > 401-rejected at the Supabase gateway because "Disable service role
@@ -223,10 +255,30 @@ the money path needs do not exist:
 | `purchases.stripe_session_id` | `/checkout/success` | a paid order cannot be matched back to the purchase row |
 | `stripe_webhook_events` | the webhook handler | the dedup table is missing (PostgREST `PGRST205`) |
 
+**STATUS 2026-11-19: applied.** The paste ran; every object above is
+present in production. Verified **by the agent, not by a paste**, with the
+`sb_secret_…` key from the secret store against PostgREST
+(`GET /rest/v1/profiles?select=id,stripe_account_id` →
+`stripe_account_id` present and populated;
+`GET /rest/v1/purchases?select=id,stripe_session_id` → column present;
+`stripe_webhook_events` → table present). The steps below are kept as the
+runbook for a **future** migration, not as pending work.
+
 **There is no DDL path from the agent host**: the Supabase personal access
 token in the secret store answers `401 Invalid access token`, there is no
 database password on this machine, and the project exposes no `exec_sql`
 RPC. So this paste is a human action — but there are two ways to do it.
+
+> **What the `sb_secret_…` key can and cannot do (OOP-6168, 2026-11-20).**
+> The secret key is a service-role equivalent for **DML and reads** —
+> PostgREST `SELECT`/`INSERT`/`UPDATE`/`DELETE` and GoTrue `/auth/v1/admin/*`
+> all authenticate with it, so the agent can verify a migration landed
+> without asking anyone. It cannot run **DDL**: `CREATE`/`ALTER` needs the
+> Management API (`POST /v1/projects/{ref}/database/query`), which
+> authenticates with a dashboard **personal access token** (`sbp_…`), and
+> the one in the secret store is dead (`401 Invalid access token`, version
+> 1, never rotated). So: *verification never needs a human; applying new
+> DDL does, until a fresh PAT is put in the secret store.*
 
 #### Route A — paste it into the Dashboard SQL editor (no new credential)
 
