@@ -140,6 +140,17 @@ be true in the Stripe account:
 > the key), and the gate raises `stripe-secret-key-test-mode` for a
 > test key. **Copy the LIVE key (`sk_live_…`), not the test one.**
 >
+> **The key's KIND matters too (OOP-7913, 2026-11-20).** A **restricted**
+> key (`rk_live_…`) is live-mode, so `stripeKeyMode` reads it as `live`
+> and the gate used to go green on it — while Stripe refuses the
+> Connect onboarding endpoints for restricted keys however wide their
+> scope list (see the `oauth_not_supported` wall below).
+> `/api/readiness` therefore also reports `stripeKeyKind`
+> (`full` / `restricted` / `unknown`, again derived from the key
+> PREFIX — never the key), and the gate raises
+> `stripe-secret-key-restricted` for a restricted key. **Copy the FULL
+> live key (`sk_live_…`), not the restricted one (`rk_live_…`).**
+>
 > Two related traps, both hit on 2026-11-19:
 >
 > - **The webhook endpoint can be created by the agent.** With a secret
