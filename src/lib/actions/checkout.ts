@@ -495,13 +495,29 @@ export async function startConnectOnboardingAction(
   let accountId = profile?.stripe_account_id ?? null;
   try {
     if (!accountId) {
+      // OOP-6168 — `type` and `controller` are MUTUALLY EXCLUSIVE on
+      // `stripe.accounts.create`. Sending both is rejected with
+      // "You may not provide the `type` parameter and `controller`
+      // parameters simultaneously." The old call sent both, so EVERY
+      // creator's Connect onboarding died on the API call and the
+      // action answered "Could not start Stripe onboarding." — no
+      // creator could ever reach `charges_enabled`, so no listing could
+      // be sold. (The key's scope and Connect being enabled were both
+      // fine; the call was never valid.)
+      //
+      // `type: 'express'` ALONE already carries the intent the
+      // `controller` block was spelling out. A live probe of the
+      // platform account returns:
+      //   controller = { fees: { payer: 'application_express' },
+      //                   losses: { payments: 'application' },
+      //                   requirement_collection: 'stripe',
+      //                   stripe_dashboard: { type: 'express' } }
+      // and `application_express` is the legacy Express spelling of
+      // `fees.payer: 'application'` — which is what a destination
+      // charge with `application_fee_amount` requires. So the
+      // `controller` block was redundant as well as fatal.
       const account = await stripe.accounts.create({
         type: 'express',
-        controller: {
-          fees: { payer: 'application' },
-          losses: { payments: 'application' },
-          requirement_collection: 'stripe',
-        },
         email: user.email ?? undefined,
         metadata: { profile_id: user.id },
       });

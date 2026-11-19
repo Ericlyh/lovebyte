@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   startCheckoutSessionAction,
+  startConnectOnboardingAction,
   startFreeGiftAction,
 } from './checkout';
 import { SETTLEMENT_CURRENCY } from '@/lib/money';
@@ -55,6 +56,12 @@ const { state, fakeFrom } = vi.hoisted(() => {
     stripeSessionsCreated: 0,
     /** The parameters of every Stripe Checkout Session we created. */
     stripeSessionParams: [] as Record<string, unknown>[],
+    /** The parameters of every connected account we created (OOP-6168). */
+    stripeAccountParams: [] as Record<string, unknown>[],
+    /** The parameters of every Stripe Account Link we minted (OOP-6168). */
+    stripeAccountLinkParams: [] as Record<string, unknown>[],
+    /** Every `profiles` row the action updated. */
+    profileUpdates: [] as Record<string, unknown>[],
     /** Every analytics event the action recorded (OOP-6716). */
     events: [] as { event: string; props: Record<string, unknown> }[],
   };
@@ -80,6 +87,20 @@ const { state, fakeFrom } = vi.hoisted(() => {
     insert: async (row: Record<string, unknown>) => {
       state.insertedShares.push(row);
       return { error: state.shareInsertError };
+    },
+    /**
+     * OOP-6168 — the Connect onboarding action also UPDATES `profiles`
+     * (it persists `stripe_account_id`). The builder is a thenable so
+     * `await ....update(row).eq('id', user.id)` resolves to
+     * `{ data: null, error: null }`, exactly like the real client.
+     */
+    update: (row: Record<string, unknown>) => {
+      state.profileUpdates.push(row);
+      const builder: Record<string, unknown> = {};
+      builder.eq = () => builder;
+      builder.then = (resolve: (value: unknown) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve);
+      return builder;
     },
   });
 
@@ -116,6 +137,30 @@ vi.mock('@/lib/stripe', () => ({
           state.stripeSessionParams.push(params);
           return { id: 'cs_test', url: 'https://checkout.stripe.test/session' };
         },
+      },
+    },
+    /**
+     * OOP-6168 — the fake enforces the SAME rule the real API does:
+     * `type` and `controller` are mutually exclusive on
+     * `stripe.accounts.create`. Without this, the regression test would
+     * pass against a mock that accepts a call Stripe rejects, and the
+     * failure would only ever show up in production.
+     */
+    accounts: {
+      create: async (params: Record<string, unknown>) => {
+        if (params.type && params.controller) {
+          throw new Error(
+            'You may not provide the `type` parameter and `controller` parameters simultaneously. They are mutually exclusive.',
+          );
+        }
+        state.stripeAccountParams.push(params);
+        return { id: 'acct_created_123' };
+      },
+    },
+    accountLinks: {
+      create: async (params: Record<string, unknown>) => {
+        state.stripeAccountLinkParams.push(params);
+        return { url: 'https://connect.stripe.test/setup/e/secret-token' };
       },
     },
   },
@@ -165,6 +210,9 @@ beforeEach(() => {
   state.emailResult = { ok: true, id: 'stub-1' };
   state.stripeSessionsCreated = 0;
   state.stripeSessionParams = [];
+  state.stripeAccountParams = [];
+  state.stripeAccountLinkParams = [];
+  state.profileUpdates = [];
   state.events = [];
 });
 
@@ -490,5 +538,104 @@ describe('startCheckoutSessionAction — the amount charged (OOP-6736)', () => {
     // No session, so no money moves.
     expect(state.stripeSessionsCreated).toBe(0);
     expect(state.stripeSessionParams).toHaveLength(0);
+  });
+});
+
+/**
+ * Regression tests for the Connect onboarding path (OOP-6168).
+ *
+ * The bug: `stripe.accounts.create` was called with BOTH `type:
+ * 'express'` AND a `controller` block. Those two parameters are
+ * mutually exclusive on Stripe's side — the API answers 400
+ * "You may not provide the `type` parameter and `controller`
+ * parameters simultaneously." — so the call ALWAYS failed. Every
+ * creator who pressed "Connect payouts" got "Could not start Stripe
+ * onboarding.", no connected account was ever created, and
+ * `profiles.stripe_charges_enabled` never became true. That is the
+ * step that makes a listing sellable, so the money path was dead even
+ * with all four env vars live and Connect enabled on the account.
+ *
+ * The fix: send `type: 'express'` alone. It already yields the
+ * controller semantics the old block was spelling out —
+ * `fees.payer: 'application_express'` (the legacy Express spelling of
+ * `'application'`, which is what `application_fee_amount` requires),
+ * `losses.payments: 'application'`, `requirement_collection: 'stripe'`
+ * and an Express dashboard.
+ *
+ * What these tests pin:
+ *   - the account is created at all (the fake Stripe enforces the same
+ *     mutual exclusion the real API does)
+ *   - `controller` is NOT sent alongside `type`
+ *   - the account id is persisted to `profiles.stripe_account_id`
+ *   - the account link points back at the app's onboarding routes
+ *   - an existing account is reused, not duplicated
+ *   - an unauthenticated caller is refused
+ */
+describe('startConnectOnboardingAction (OOP-6168)', () => {
+  const CREATOR_ID = '22222222-2222-2222-2222-222222222222';
+
+  beforeEach(() => {
+    state.user = { id: CREATOR_ID };
+    state.profile = { stripe_account_id: null };
+  });
+
+  it('creates the connected account without the mutually exclusive controller block', async () => {
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    expect(state.stripeAccountParams).toHaveLength(1);
+
+    const params = state.stripeAccountParams[0];
+    expect(params.type).toBe('express');
+    // The regression itself: `type` + `controller` is a 400 from Stripe.
+    expect(params.controller).toBeUndefined();
+    expect(params.metadata).toEqual({ profile_id: CREATOR_ID });
+  });
+
+  it('persists the new account id on the creator profile', async () => {
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    expect(state.profileUpdates).toHaveLength(1);
+    expect(state.profileUpdates[0]).toEqual({
+      stripe_account_id: 'acct_created_123',
+    });
+  });
+
+  it('mints an account link that returns to the onboarding routes', async () => {
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.url).toBe('https://connect.stripe.test/setup/e/secret-token');
+
+    expect(state.stripeAccountLinkParams).toHaveLength(1);
+    const link = state.stripeAccountLinkParams[0];
+    expect(link.account).toBe('acct_created_123');
+    expect(link.type).toBe('account_onboarding');
+    expect(String(link.return_url)).toContain('/onboarding?stripe=return');
+    expect(String(link.refresh_url)).toContain('/onboarding?stripe=refresh');
+  });
+
+  it('reuses an existing connected account instead of creating a second one', async () => {
+    state.profile = { stripe_account_id: 'acct_already_there' };
+
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    expect(state.stripeAccountParams).toHaveLength(0);
+    expect(state.profileUpdates).toHaveLength(0);
+    expect(state.stripeAccountLinkParams[0].account).toBe('acct_already_there');
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    state.user = null;
+
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe('unauthenticated');
+    expect(state.stripeAccountParams).toHaveLength(0);
   });
 });
