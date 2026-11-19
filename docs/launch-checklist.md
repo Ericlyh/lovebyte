@@ -164,6 +164,15 @@ be true in the Stripe account:
 >   connected account the charge has to be routed to. Check the scope
 >   before assuming a key is enough: a key that passes every presence
 >   check can still be unable to reach the whole money path.
+>
+>   **Resolved on the platform account 2026-11-19** (OOP-6168): the
+>   deployed key is still the same `rk_live_…` value, but its permissions
+>   were widened in Stripe → Developers → API keys, and Connect was
+>   enabled. `POST /v1/accounts` now answers **200** (it used to answer
+>   403 `more_permissions_required`), so creator onboarding can create a
+>   connected account. Widening a key's permissions does not change the
+>   key string, so **no redeploy is needed** — the value already in the
+>   Vercel env stays valid.
 
 
 > **Note (OOP-4894):** The legacy `eyJ…service_role…` JWT is now
@@ -198,6 +207,78 @@ be true in the Stripe account:
 > rejected and no row is inserted. Do not set the secret key without
 > the site key — the widget would not render and every submission
 > would be rejected.
+
+---
+
+### 1.2 — Applying the Stripe Connect schema (the one DDL paste)
+
+Copying the keys is not the last step. Migration `0006_stripe_connect.sql`
+is still **unapplied** on project `xsfbfqzmvjfxppvoxbze`, so four objects
+the money path needs do not exist:
+
+| object | needed by | symptom while missing |
+|---|---|---|
+| `profiles.stripe_account_id` | `/onboarding` | onboarding cannot save the connected account id |
+| `profiles.stripe_charges_enabled` | checkout | every listing is refused — "This creator is not set up to receive payouts yet" |
+| `purchases.stripe_session_id` | `/checkout/success` | a paid order cannot be matched back to the purchase row |
+| `stripe_webhook_events` | the webhook handler | the dedup table is missing (PostgREST `PGRST205`) |
+
+**There is no DDL path from the agent host**: the Supabase personal access
+token in the secret store answers `401 Invalid access token`, there is no
+database password on this machine, and the project exposes no `exec_sql`
+RPC. So this paste is a human action — but there are two ways to do it.
+
+#### Route A — paste it into the Dashboard SQL editor (no new credential)
+
+`supabase/PENDING_PASTE.sql` is the whole bundle — migrations 0006, 0011,
+0012 and 0013 concatenated, every statement idempotent, so running it
+twice is safe. It is generated; regenerate it with
+`node scripts/build-pending-paste.mjs`.
+
+1. Open the SQL editor:
+   <https://supabase.com/dashboard/project/xsfbfqzmvjfxppvoxbze/sql>
+2. Open the bundle:
+   <https://raw.githubusercontent.com/Ericlyh/lovebyte/main/supabase/PENDING_PASTE.sql>
+3. Select all of it, paste it into the editor, press **Run**.
+
+Verify in the same editor:
+
+```sql
+select column_name from information_schema.columns
+ where table_name in ('profiles','purchases') and column_name like 'stripe%';
+```
+
+Two `stripe%` rows (`stripe_account_id`, `stripe_charges_enabled`) plus a
+`stripe_session_id` on `purchases` means 0006 landed.
+
+#### Route B — hand the agent a token and let it apply the paste
+
+If you would rather not paste SQL by hand, generate a Supabase personal
+access token and leave it in a file on the agent host:
+
+1. <https://supabase.com/dashboard/account/tokens> → **Generate new token**
+   (name it `lovebyte-migrations`). Copy the `sbp_…` value.
+2. One line, no quoting, no `export`:
+
+   ```sh
+   cat > ~/.paperclip/lovebyte-money-env <<'EOF'
+   SUPABASE_ACCESS_TOKEN=sbp_...
+   EOF
+   chmod 600 ~/.paperclip/lovebyte-money-env
+   ```
+
+3. Reply **"done"** on the issue. The agent then applies and verifies:
+
+   ```sh
+   set -a; . ~/.paperclip/lovebyte-money-env; set +a
+   node scripts/apply-migration.mjs supabase/PENDING_PASTE.sql
+   ```
+
+   The bundle has no inline foreign keys and no `do $$` blocks, so it
+   survives the Management API's simple-query parser.
+
+Keep the token out of the issue thread — that is permanent storage, and
+this is exactly the reason the file route exists.
 
 ---
 
