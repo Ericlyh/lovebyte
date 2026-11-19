@@ -5,8 +5,8 @@
  * Why this exists: there is no SQL path from the agent host to the
  * Supabase project (the Management API PAT is dead, there is no database
  * password, and PostgREST cannot run DDL), so a human has to run these
- * in the Dashboard SQL Editor. Three files means three pastes; this is
- * one.
+ * in the Dashboard SQL Editor. Several files means several pastes; this
+ * is one.
  *
  *   https://supabase.com/dashboard/project/xsfbfqzmvjfxppvoxbze/sql
  *
@@ -28,6 +28,11 @@ const root = join(here, '..');
 
 /** The migrations that have not been applied to the project yet. */
 const PENDING = [
+  // OOP-6752 — the Stripe Connect migration. Without it the paid checkout
+  // page cannot load a listing (`profiles.stripe_account_id` does not
+  // exist, so PostgREST rejects the whole query) and the webhook cannot
+  // write the purchase row.
+  '0006_stripe_connect.sql',
   '0011_code_gift_type.sql',
   '0012_settlement_currency_hkd.sql',
   '0013_gifts_status_published.sql',

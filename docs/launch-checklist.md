@@ -102,7 +102,9 @@ be true in the Stripe account:
 
 1. **Connect must be enabled** for the platform account
    (Stripe → Settings → Connect). Without it, `stripe.accounts.create`
-   and every destination charge fail with an opaque permissions error.
+   and every destination charge fail with an opaque permissions error —
+   the literal one is *"You can only create new accounts if you've signed
+   up for Connect"*.
 2. **The webhook endpoint must subscribe to THREE events**, not one:
 
    | Event | What breaks without it |
@@ -151,6 +153,17 @@ be true in the Stripe account:
 >   TEST-mode endpoint, which does not fire for live-mode charges. When
 >   the key is swapped to `sk_live_…`, the endpoint must be re-created
 >   in live mode and its new `whsec_…` copied in.
+> - **A RESTRICTED key (`rk_live_…`) is not a full secret key.** It can
+>   take payments — `checkout.sessions.create` is allowed — but Stripe
+>   scopes it, and the two calls that make creator onboarding work are
+>   usually not in the scope: `POST /v1/accounts` answers **403
+>   `more_permissions_required`** ("Enabling Accounts Write
+>   ('connected_account_write') permissions on this key would allow
+>   this") and `POST /v1/account_links` is refused the same way. So the
+>   key can charge a customer while `/onboarding` cannot create the
+>   connected account the charge has to be routed to. Check the scope
+>   before assuming a key is enough: a key that passes every presence
+>   check can still be unable to reach the whole money path.
 
 
 > **Note (OOP-4894):** The legacy `eyJ…service_role…` JWT is now
