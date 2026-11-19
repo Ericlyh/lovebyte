@@ -350,6 +350,40 @@ try {
   } else {
     pass('money', `the deployed Stripe key is a ${mode}-mode key`);
   }
+
+  // The Stripe key's KIND (OOP-7913).
+  //
+  // The mode probe above says whether the key can move REAL money; it
+  // says nothing about whether the key can do everything a money path
+  // needs. Stripe reserves the Connect onboarding endpoints — ToS
+  // acceptance, external accounts — for FULL secret keys (`sk_…`) and
+  // OAuth tokens. A RESTRICTED key (`rk_…`) is refused with
+  // `oauth_not_supported` HOWEVER WIDE its scope list (OOP-6168), so a
+  // restricted LIVE key passes every mode check and still has the
+  // creator destination-charge path closed.
+  //
+  // That is the same false green as a test key, one step further in: a
+  // green gate on a dead money path is worse than a red one, because it
+  // silences the alarm. The kind gets its own gap id so the board can
+  // read "money is live-mode but not Connect-capable" instead of green.
+  const kind = body?.stripeKeyKind;
+  if (kind === 'restricted') {
+    fail(
+      'money',
+      'the deployed STRIPE_SECRET_KEY is a RESTRICTED key — Stripe refuses the Connect onboarding endpoints for restricted keys, so the creator destination-charge path cannot work even in live mode',
+      'stripe-secret-key-restricted',
+    );
+  } else if (kind === 'full') {
+    pass('money', 'the deployed Stripe key is a full secret key (Connect-capable)');
+  } else if (kind === 'unknown') {
+    // Either the key is absent or its prefix is not one Stripe issues.
+    // Both are already covered by `stripe-secret-key-missing` and
+    // `stripe-secret-key-mode-unknown` above — no third id needed.
+  } else {
+    // `undefined`: the deployed `/api/readiness` predates the kind
+    // probe, so the kind cannot be read. The mode check above still
+    // applied; this resolves as soon as the route is deployed.
+  }
 } catch (err) {
   fail('env', `/api/readiness unreachable — ${err.message}`, 'readiness-probe-unreachable');
 }

@@ -50,6 +50,7 @@ describe('GET /api/readiness', () => {
       ok: true,
       missing: [],
       stripeKeyMode: 'live',
+      stripeKeyKind: 'full',
     });
   });
 
@@ -100,5 +101,59 @@ describe('GET /api/readiness', () => {
     const body = await res.json();
 
     expect(body.stripeKeyMode).toBe('unknown');
+    expect(body.stripeKeyKind).toBe('unknown');
+  });
+
+  // OOP-7913: a RESTRICTED key (`rk_…`) is live-mode, so the mode
+  // probe alone cannot tell it from a full key — and Stripe refuses the
+  // Connect onboarding endpoints for restricted keys, so the money path
+  // is closed even though the key is live (OOP-6168). The kind is
+  // reported separately so the gate can catch that false green.
+  it('tells a restricted key from a full one, and never leaks either', async () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'rk_live_someRestrictedKey');
+
+    let res = await GET();
+    let raw = JSON.stringify(await res.json());
+
+    expect(raw).not.toContain('rk_live_someRestrictedKey');
+    expect(JSON.parse(raw).stripeKeyMode).toBe('live');
+    expect(JSON.parse(raw).stripeKeyKind).toBe('restricted');
+
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_secret_value');
+
+    res = await GET();
+    raw = JSON.stringify(await res.json());
+
+    expect(raw).not.toContain('sk_live_secret_value');
+    expect(JSON.parse(raw).stripeKeyMode).toBe('live');
+    expect(JSON.parse(raw).stripeKeyKind).toBe('full');
+  });
+
+  it('reports the kind independently of the mode', async () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'rk_test_someRestrictedTestKey');
+
+    let res = await GET();
+    let body = await res.json();
+
+    expect(body.stripeKeyMode).toBe('test');
+    expect(body.stripeKeyKind).toBe('restricted');
+
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_someFullTestKey');
+
+    res = await GET();
+    body = await res.json();
+
+    expect(body.stripeKeyMode).toBe('test');
+    expect(body.stripeKeyKind).toBe('full');
+  });
+
+  it('reports an unrecognised prefix as unknown on both axes', async () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'pk_live_publishableKey');
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(body.stripeKeyMode).toBe('unknown');
+    expect(body.stripeKeyKind).toBe('unknown');
   });
 });
