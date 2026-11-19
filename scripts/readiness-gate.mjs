@@ -316,6 +316,40 @@ try {
       );
     }
   }
+
+  // The Stripe key's MODE (OOP-6168).
+  //
+  // "The var is present" stopped being the same claim as "the money
+  // path works" the moment a TEST key landed in the production env: a
+  // test key satisfies every presence check, the webhook rejects a
+  // bogus signature perfectly well, and `missing` comes back empty —
+  // so the gate would read the money path as READY while checkout
+  // could not take a single real payment, because a test key never
+  // moves money.
+  //
+  // That is the same false green as the 400-vs-503 webhook branch
+  // above, one level up: a green gate on a dead money path is worse
+  // than a red one, because it silences the alarm. So the mode is
+  // probed separately and reported under its own gap id.
+  const mode = body?.stripeKeyMode;
+  if (mode === 'test') {
+    fail(
+      'money',
+      'the deployed STRIPE_SECRET_KEY is a TEST-mode key — every charge is simulated, so checkout cannot take real money',
+      'stripe-secret-key-test-mode',
+    );
+  } else if (mode === 'unknown' && missing?.includes('STRIPE_SECRET_KEY')) {
+    // The key is absent, so its mode cannot be read. The
+    // `stripe-secret-key-missing` gap above already covers that.
+  } else if (mode === 'unknown') {
+    fail(
+      'money',
+      'the deployed STRIPE_SECRET_KEY has no recognisable Stripe prefix — the gate cannot confirm it can take real money',
+      'stripe-secret-key-mode-unknown',
+    );
+  } else {
+    pass('money', `the deployed Stripe key is a ${mode}-mode key`);
+  }
 } catch (err) {
   fail('env', `/api/readiness unreachable — ${err.message}`, 'readiness-probe-unreachable');
 }

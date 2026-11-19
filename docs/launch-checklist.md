@@ -127,6 +127,31 @@ be true in the Stripe account:
 > are account state, not deploy state — check them by hand in the
 > Stripe dashboard after the keys land.
 
+> **The key's MODE matters as much as its presence (OOP-6168,
+> 2026-11-19).** A **test** key (`sk_test_…`) satisfies every presence
+> check: the webhook verifies signatures against it perfectly well and
+> `/api/readiness` reports no missing var. But a test key never moves
+> money, so a deployment carrying one passes every env check while
+> checkout cannot take a real payment — a green gate on a dead money
+> path. `/api/readiness` therefore also reports `stripeKeyMode`
+> (`live` / `test` / `unknown`, derived from the key PREFIX — never
+> the key), and the gate raises `stripe-secret-key-test-mode` for a
+> test key. **Copy the LIVE key (`sk_live_…`), not the test one.**
+>
+> Two related traps, both hit on 2026-11-19:
+>
+> - **The webhook endpoint can be created by the agent.** With a secret
+>   key in hand, `POST /v1/webhook_endpoints` creates the endpoint and
+>   returns the `whsec_…` signing secret in the response body — which
+>   the dashboard does NOT let you re-read later. If the endpoint is
+>   created by hand in the dashboard, the signing secret must be copied
+>   at creation time; there is no "fetch it later" for it.
+> - **A test-mode endpoint and a live-mode endpoint are different
+>   objects.** Creating the endpoint with a test key registers a
+>   TEST-mode endpoint, which does not fire for live-mode charges. When
+>   the key is swapped to `sk_live_…`, the endpoint must be re-created
+>   in live mode and its new `whsec_…` copied in.
+
 
 > **Note (OOP-4894):** The legacy `eyJ…service_role…` JWT is now
 > 401-rejected at the Supabase gateway because "Disable service role
