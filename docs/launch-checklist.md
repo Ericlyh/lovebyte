@@ -151,6 +151,14 @@ be true in the Stripe account:
 > `stripe-secret-key-restricted` for a restricted key. **Copy the FULL
 > live key (`sk_live_…`), not the restricted one (`rk_live_…`).**
 >
+> **Done on this platform 2026-11-20.** The prod env now carries a full
+> live key: `/api/readiness` reports `{"stripeKeyMode":"live",
+> "stripeKeyKind":"full"}` (deploy `dpl_8J3FXjPqqyXGdA4euCyy9sUpQE6P`).
+> A full key fixes the *credential* half of the money path — including
+> Accounts v2 in live mode — but **not** the requirement half; see the
+> correction below before treating "the key is full" as "the money path
+> works".
+>
 > Two related traps, both hit on 2026-11-19:
 >
 > - **The webhook endpoint can be created by the agent.** With a secret
@@ -184,6 +192,10 @@ be true in the Stripe account:
 >   connected account. Widening a key's permissions does not change the
 >   key string, so **no redeploy is needed** — the value already in the
 >   Vercel env stays valid.
+>
+>   **Superseded 2026-11-20:** the restricted key was replaced outright
+>   by a full live key in the Vercel env, which needed a redeploy
+>   (`dpl_8J3FXjPqqyXGdA4euCyy9sUpQE6P`) because the value changed.
 
 > **A RESTRICTED key can never finish a creator's onboarding
 > (OOP-6168, 2026-11-20).** Widening the scopes on `rk_live_…` clears
@@ -198,12 +210,62 @@ be true in the Stripe account:
 > | `POST /v1/accounts/{id}/tos_acceptance` | *"Unrecognized request URL"* — the route no longer exists |
 > | `POST /v2/core/accounts` (Accounts v2) | *"This key lacks access to Accounts v2"* |
 >
-> `oauth_not_supported` is **not** a scope you can tick off: those
-> endpoints are reserved for full secret keys (`sk_live_…`) and OAuth
-> tokens, so a restricted key is refused however wide its scope list is.
-> The agent holds a full key for **test** mode (`sk_test_…`) and it does
-> create Accounts v2 accounts there — so the only missing credential is
-> the platform's full **live** secret key.
+> **CORRECTION (2026-11-20, full live key in hand).** The hypothesis
+> above — *"those endpoints are reserved for full secret keys, so the
+> only missing credential is the platform's full `sk_live_…`"* — is
+> **wrong**, and was disproved on the live API with the full key
+> itself. The platform now runs a **full live key** (`stripeKeyKind:
+> full` in `/api/readiness`, deployed in `dpl_8J3FXjPqqyXGdA4euCyy9sUpQE6P`)
+> and the same calls answer **identically**:
+>
+> | call (full `sk_live_…`) | answer |
+> |---|---|
+> | `POST /v1/accounts/{id}` + `tos_acceptance[date]`/`[ip]` | 403 `oauth_not_supported` — same wording |
+> | `POST /v1/accounts/{id}/external_accounts` | 403 `oauth_not_supported` — *"for this endpoint"* |
+> | `POST /v1/accounts/{id}/tos_acceptance` | 404 — the route is gone (not a key problem) |
+> | `GET/POST /v2/core/accounts` | **200** — the full key *does* reach Accounts v2 in live mode |
+>
+> `oauth_not_supported` is therefore **platform policy, not key scope**.
+> With a test key the same call names the rule outright: *"You cannot
+> accept the Terms of Service on behalf of accounts where
+> `controller[requirement_collection]=stripe`, which includes Standard
+> and Express accounts."* Stripe refuses platform-side ToS acceptance
+> and platform-side bank attach because this platform's Connect profile
+> collects requirements with **Stripe**, not with us.
+>
+> **What the full key DID buy (2026-11-20):** Accounts v2 is reachable
+> in live mode (`GET /v2/core/accounts` → 200, `POST` → 200), so the
+> platform is no longer dependent on the grandfathered v1 path
+> (OOP-7903). The readiness gate's `gap:stripe-secret-key-restricted`
+> is closed: `/api/readiness` reports `stripeKeyKind: "full"`.
+>
+> **What no key can buy:** the representative's own ToS acceptance and
+> bank account. **Do not promise a key as the unblock.** The only ways
+> through are (a) the creator completes Stripe's hosted onboarding
+> themselves, or (b) the platform profile is switched to
+> `controller[requirement_collection]=application` — which moves
+> requirement collection onto us, costs creators their Express Stripe
+> dashboard, and needs a form that collects business details, the
+> representative's identity, the bank account and their agreement (with
+> IP capture) before the platform can submit it. Option (b) is a
+> product decision, not a credential fix.
+>
+> **The human procedure (option a) — ~2 minutes per creator:**
+>
+> 1. Sign in as the creator, open `/<locale>/onboarding`, press
+>    **Connect payouts**. The server action creates the connected
+>    account (or reuses the existing one) and Stripe-hosted onboarding
+>    opens.
+> 2. In Stripe's flow: accept the ToS and add a bank account. Those
+>    two are the representative's own legal act; an agent cannot do
+>    them, and the hosted flow is behind an hCaptcha by design.
+> 3. Back on Lovorithm, the account flips to `charges_enabled` and
+>    `payouts_enabled` via the `account.updated` webhook, and a
+>    destination charge with `application_fee_amount` is accepted.
+>
+> The `transfers` capability is the gate: until it is active the
+> destination charge is refused with
+> `insufficient_capabilities_for_transfer`.
 >
 > **What the requirement actually gates (also 2026-11-20).** The
 > remaining step is not paperwork: an unconfirmed destination PaymentIntent
