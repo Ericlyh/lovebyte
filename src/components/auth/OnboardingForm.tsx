@@ -258,6 +258,7 @@ export function OnboardingForm({
               accept={ACCEPTED_AVATAR}
               onChange={handleFileChange}
               disabled={avatar.kind === 'uploading'}
+              aria-label={tAvatar('label')}
               aria-describedby="lb-avatar-hint"
             />
             <small id="lb-avatar-hint" className="lb-field__hint">

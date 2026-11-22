@@ -90,6 +90,19 @@ finding — comment the fresh result on that issue instead of filing a
 second one. The same duplicate rule the readiness loop uses for its gap
 ids (see `scripts/loop-triage.mjs`).
 
+How an issue claims a violation: its title or description contains BOTH
+marker lines — `a11y-rule: <axe-rule-id>` and `a11y-route: <route>`
+(case-insensitive). Both are needed: a rule id alone does not claim a
+route, and a route alone does not claim a rule. The markers are what
+make the mapping stable across firings — the axe rule id and the route
+are stable, so the markers are too. File every new violation with both
+markers in its description.
+
+Search the OPEN issues only (`?status=todo`, `?status=in_progress`,
+`?status=blocked`, ...): the unfiltered list endpoint does not return
+the newest issues, so a violation filed yesterday can be invisible to
+today's triage — the exact case the duplicate rule exists to handle.
+
 The audit cannot run → file a `priority=medium` issue named
 `Accessibility gate could not run`, assigned to Claude Code (host), with
 the command and its output.
