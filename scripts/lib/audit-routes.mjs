@@ -27,51 +27,138 @@ import { chromium } from 'playwright';
  * /login. Those routes are only measured when the audit can sign in; an
  * unsigned audit reports them as "not measured" rather than pretending
  * the login page is the builder.
+ *
+ * `expect` (OOP-8160) is the element the route's INTENDED render
+ * carries. The audit asserts it once the page has settled: a route
+ * whose expectation is missing — or that bounced to another page — is
+ * reported as NOT MEASURED and fails the gate, instead of counting the
+ * wrong page as clean.
+ *
+ * The expectation has to be absent from the route's OWN error and
+ * empty renders, which is why it is a page-specific element and not
+ * something every page carries (a footer, a heading, the auth card).
+ * `expectAny` lists the elements that are all legitimate renders of
+ * that one route.
+ *
+ * `redirectsTo` declares where the route is allowed to bounce. A
+ * `:segment` in the pattern matches any one segment.
+ *
+ * `query` is appended to the url the audit visits — a route that only
+ * renders its own page when it is given a parameter.
  */
 export const AUDIT_ROUTES = [
   // --- public, no session needed -------------------------------------
-  { path: '/', label: 'landing' },
+  { path: '/', label: 'landing', expect: '.lb-landing-hero' },
   // OOP-6738 — the /browse grid is fetched in the browser, so its card
   // headings only exist once the feed lands. The audits wait for the
   // first card before they measure the page, or the measurement is
   // taken on a half-loaded page that has no card headings yet.
-  { path: '/browse', label: 'browse', waitFor: '.lb-gift-card' },
-  { path: '/gifts', label: 'gift-guides' },
-  { path: '/gifts/birthday-ideas', label: 'gift-guide-detail' },
-  { path: '/g/demo', label: 'recipient-demo' },
-  { path: '/g/:token', label: 'recipient-share' },
-  { path: '/g/:token/open', label: 'recipient-open' },
-  { path: '/l/:giftId', label: 'listing' },
-  { path: '/u/:handle', label: 'profile' },
-  { path: '/login', label: 'login' },
-  { path: '/signup', label: 'signup' },
-  { path: '/signup/check-email', label: 'signup-check-email' },
-  { path: '/support', label: 'support' },
-  { path: '/status', label: 'status' },
-  { path: '/privacy', label: 'privacy' },
-  { path: '/terms', label: 'terms' },
-  { path: '/checkout/cancel', label: 'checkout-cancel' },
-  { path: '/checkout/success', label: 'checkout-success' },
+  { path: '/browse', label: 'browse', waitFor: '.lb-gift-card', expect: '.lb-gift-card' },
+  { path: '/gifts', label: 'gift-guides', expect: '.lb-gift-card' },
+  { path: '/gifts/birthday-ideas', label: 'gift-guide-detail', expect: '.lb-gift-faq' },
+  { path: '/g/demo', label: 'recipient-demo', expect: '.lb-recipient__foot' },
+  { path: '/g/:token', label: 'recipient-share', expect: '.lb-recipient__foot' },
+  // The opened gift renders one view per gift type — a letter, a
+  // memory-cards game, a drag-and-drop puzzle, a quiz, a collage or a
+  // code gift. Every one of them is a legitimate render of this route;
+  // the "not shipped yet" branch renders none of them.
+  {
+    path: '/g/:token/open',
+    label: 'recipient-open',
+    expectAny: [
+      '.lb-letter__foot',
+      '.lb-memory-page',
+      '.lb-puzzle-page',
+      '.lb-quiz-page',
+      '.lb-multimedia-page',
+      '.lb-code-page',
+    ],
+  },
+  { path: '/l/:giftId', label: 'listing', expect: '.lb-listing' },
+  { path: '/u/:handle', label: 'profile', expect: '.lb-profile-handle' },
+  // No class is unique to the login page — it shares the auth card with
+  // /signup and /signup/check-email. The password field is.
+  { path: '/login', label: 'login', expect: 'input[autocomplete="current-password"]' },
+  { path: '/signup', label: 'signup', expect: '.lb-field__rules' },
+  { path: '/signup/check-email', label: 'signup-check-email', expect: '.lb-form__error-hint' },
+  { path: '/support', label: 'support', expect: '.lb-support-card' },
+  { path: '/status', label: 'status', expect: '.lb-status-page' },
+  { path: '/privacy', label: 'privacy', expect: '.lb-content-effective' },
+  { path: '/terms', label: 'terms', expect: '.lb-content-effective' },
+  { path: '/checkout/cancel', label: 'checkout-cancel', expect: '.lb-onboarding-card' },
+  // OOP-8160 — without a session_id this route redirects to /, so the
+  // audit was measuring the LANDING PAGE and reporting it as
+  // "checkout-success clean". With a session_id that matches no
+  // purchase it renders its own "processing" card, which is a real
+  // render of this route (the share-link card below it needs a real
+  // Stripe session).
+  {
+    path: '/checkout/success',
+    label: 'checkout-success',
+    query: 'session_id=audit-no-purchase',
+    expect: '.lb-onboarding-card',
+  },
   // A URL that matches no route. It is served by the app-wide 404
   // document — src/app/global-not-found.tsx (OOP-6762), which owns its
   // own <html lang> — so it is audited like any other page.
-  { path: '/random-404', label: 'not-found', notFound: true },
+  { path: '/random-404', label: 'not-found', notFound: true, expect: '.lb-landing-page' },
 
   // --- signed-in only (they redirect an anonymous visitor to /login) --
-  { path: '/create', label: 'create-picker', auth: true },
-  { path: '/create/quiz', label: 'builder-quiz', auth: true },
-  { path: '/create/memory-cards', label: 'builder-memory-cards', auth: true },
-  { path: '/create/animated-letter', label: 'builder-animated-letter', auth: true },
-  { path: '/create/dragdrop-puzzle', label: 'builder-dragdrop-puzzle', auth: true },
-  { path: '/create/multimedia-collage', label: 'builder-multimedia-collage', auth: true },
-  { path: '/create/code', label: 'builder-code', auth: true },
-  { path: '/create/:giftId/finish', label: 'create-finish', auth: true },
-  { path: '/checkout/:giftId', label: 'checkout', auth: true },
-  { path: '/settings', label: 'settings', auth: true },
-  { path: '/purchases', label: 'purchases', auth: true },
-  { path: '/u/me', label: 'profile-me', auth: true },
-  { path: '/u/:handle/edit', label: 'profile-edit', auth: true },
-  { path: '/onboarding', label: 'onboarding', auth: true },
+  { path: '/create', label: 'create-picker', auth: true, expect: '.lb-create-code' },
+  { path: '/create/quiz', label: 'builder-quiz', auth: true, expect: '.lb-quiz-builder' },
+  { path: '/create/memory-cards', label: 'builder-memory-cards', auth: true, expect: '.lb-memory-pair' },
+  { path: '/create/animated-letter', label: 'builder-animated-letter', auth: true, expect: '.lb-letter-builder' },
+  { path: '/create/dragdrop-puzzle', label: 'builder-dragdrop-puzzle', auth: true, expect: '.lb-puzzle-upload' },
+  { path: '/create/multimedia-collage', label: 'builder-multimedia-collage', auth: true, expect: '.lb-multimedia-collage' },
+  { path: '/create/code', label: 'builder-code', auth: true, expect: '.lb-code-builder' },
+  // The finish page shows the publish card to the draft's OWNER and a
+  // typed 404 to anyone else. The audit signs in as a throwaway user
+  // who does not own the catalogue gift it resolves, so the typed 404
+  // is the render it gets — a real render of this route.
+  {
+    path: '/create/:giftId/finish',
+    label: 'create-finish',
+    auth: true,
+    expectAny: ['.lb-publish-card', '.lb-finish-page'],
+  },
+  // A free gift, or a paid one whose creator can take payouts. A paid
+  // listing whose creator cannot take payouts yet renders an error
+  // card instead of the summary.
+  {
+    path: '/checkout/:giftId',
+    label: 'checkout',
+    auth: true,
+    expectAny: ['.lb-checkout-summary', '.lb-form__error'],
+  },
+  { path: '/settings', label: 'settings', auth: true, expect: '.lb-settings-current' },
+  // A buyer with purchases, or a buyer with an empty ledger.
+  {
+    path: '/purchases',
+    label: 'purchases',
+    auth: true,
+    expectAny: ['.lb-purchases-list', '.lb-purchases-bought'],
+  },
+  // OOP-8160 — /u/me is a redirect shim to the viewer's own profile.
+  // The expectation is the "my profile" section of that page, so the
+  // audit proves it landed on ITS OWN profile and not on a stranger's.
+  // A viewer with no profile yet is redirected to /onboarding.
+  {
+    path: '/u/me',
+    label: 'profile-me',
+    auth: true,
+    expectAny: ['#lb-profile-mine-title', '.lb-field--avatar'],
+    redirectsTo: ['/u/:handle', '/onboarding', '/login'],
+  },
+  // The edit page of somebody else's handle redirects to the edit page
+  // of the viewer's own profile.
+  {
+    path: '/u/:handle/edit',
+    label: 'profile-edit',
+    auth: true,
+    expect: '.lb-form__section-heading',
+    redirectsTo: '/u/:handle/edit',
+  },
+  { path: '/onboarding', label: 'onboarding', auth: true, expect: '.lb-field--avatar' },
 ];
 
 /**

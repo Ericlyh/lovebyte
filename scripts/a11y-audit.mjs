@@ -50,6 +50,20 @@
 // the heading outline of every route it reaches as well (WCAG 1.3.1):
 // a level that is skipped, or a page that does not have exactly one
 // h1, fails the run.
+//
+// OOP-8160 — a route that renders the WRONG page counted as measured and
+// clean. The audit recorded the url it ended on but never asserted it,
+// and it had no per-route content check, so /onboarding rendering its
+// error card instead of the onboarding form read as "clean" and hid a
+// real critical defect (a file input with no accessible name) for a
+// week.
+//
+// Every route now declares the element its intended render carries (the
+// `expect` selector in scripts/lib/audit-routes.mjs). A route whose
+// expectation is missing, or that bounces to another path, is reported
+// as NOT MEASURED — it counts in the skipped total, it never counts as
+// clean, and the run FAILS with a coverage gap, so "Measured 33 of 33"
+// means every route rendered the page it was supposed to.
 
 import AxeBuilder from '@axe-core/playwright';
 import {
@@ -60,6 +74,11 @@ import {
   resolveRouteParams,
   signInAsAuditUser,
 } from './lib/audit-routes.mjs';
+import {
+  expectationSelectors,
+  findRenderedExpectation,
+  isExpectedPath,
+} from './lib/audit-expectation.mjs';
 import { findHeadingProblems, readHeadingOutline } from './lib/heading-outline.mjs';
 
 const BASE = process.env.AUDIT_BASE ?? 'http://localhost:3100';
@@ -169,13 +188,27 @@ try {
 
 const results = [];
 
-for (const { path, label, auth, waitFor } of routes) {
-  if (auth && !session) {
-    results.push({ label, path, skipped: 'no session' });
-    continue;
-  }
+/**
+ * Visit one route and measure it.
+ *
+ * OOP-8160 — the visit answers THREE questions, and the third one used
+ * to be missing: did the route render the page it was supposed to?
+ *
+ *   1. did it load at all?
+ *   2. did it end on the url we asked for (or a declared redirect)?
+ *   3. does it carry the element its intended render has?
+ *
+ * A route that fails any of them is NOT MEASURED. It is never counted
+ * as clean.
+ */
+async function visitRoute(route) {
+  const { path, label, waitFor, query } = route;
   const page = await context.newPage();
-  const url = `${BASE}${path}`;
+  // OOP-8160 — a route may carry a query string. /checkout/success
+  // redirects to / when the request has no session_id, so the audit
+  // could only ever measure the LANDING page and report it as
+  // "checkout-success clean".
+  const url = `${BASE}${path}${query ? `?${query}` : ''}`;
   try {
     const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForTimeout(800); // let streaming settle
@@ -188,6 +221,30 @@ for (const { path, label, auth, waitFor } of routes) {
       await page.waitForSelector(waitFor, { timeout: 10000 }).catch(() => {});
     }
 
+    // OOP-8160 — did the route render the page we meant to audit?
+    //
+    // The url the browser ended on was recorded but never asserted, and
+    // the audit had no per-route content check. A route that renders an
+    // error card instead of its intended page therefore counted as
+    // measured and clean.
+    //
+    // Every route declares the element its intended render carries. If
+    // that element is absent — or the route bounced somewhere else —
+    // the route was NOT MEASURED: it is reported in the skipped total
+    // and it never counts as clean.
+    const finalPath = new URL(page.url()).pathname;
+    const expected = expectationSelectors(route);
+    if (expected.length === 0) {
+      return { label, path, skipped: 'no expectation declared', notMeasured: true };
+    }
+    if (!isExpectedPath(finalPath, route)) {
+      return { label, path, skipped: `redirected to ${finalPath}`, notMeasured: true };
+    }
+    const rendered = await findRenderedExpectation(page, expected);
+    if (!rendered.ok) {
+      return { label, path, skipped: rendered.reason, notMeasured: true };
+    }
+
     const audit = await new AxeBuilder({ page })
       .options(AXE_OPTIONS)
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -196,14 +253,14 @@ for (const { path, label, auth, waitFor } of routes) {
     // OOP-6738 — the heading outline. axe has no rule for it.
     const outline = await readHeadingOutline(page);
 
-    results.push({
+    return {
       label,
       path,
       status: resp?.status() ?? 0,
       // The URL axe actually measured. A route that bounced to /login
       // or to the not-found page was not the page we meant to audit, and
       // the summary says so instead of counting it as covered.
-      finalPath: new URL(page.url()).pathname,
+      finalPath,
       violations: audit.violations.map((v) => ({
         id: v.id,
         impact: v.impact,
@@ -235,11 +292,29 @@ for (const { path, label, auth, waitFor } of routes) {
         labels: outline.labels,
         problems: findHeadingProblems(outline.levels),
       },
-    });
+    };
   } catch (err) {
-    results.push({ label, path, error: err.message.slice(0, 100) });
+    return { label, path, error: err.message.slice(0, 100) };
+  } finally {
+    await page.close();
   }
-  await page.close();
+}
+
+for (const route of routes) {
+  const { path, label, auth } = route;
+  if (auth && !session) {
+    results.push({ label, path, skipped: 'no session' });
+    continue;
+  }
+  // OOP-8160 — a transport error is not a measurement, so the route is
+  // retried once before it is called a gap: ERR_NETWORK_CHANGED and
+  // friends are the network's fault, not the page's.
+  let result = await visitRoute(route);
+  if (result.error) {
+    console.log(`  (retrying ${label}: ${result.error})`);
+    result = await visitRoute(route);
+  }
+  results.push(result);
 }
 
 await browser.close();
@@ -254,14 +329,27 @@ let totalIncomplete = 0;
 let totalExcepted = 0;
 let measured = 0;
 let skipped = 0;
+// OOP-8160 — the routes that were VISITED but did not render the page
+// the audit meant to measure. They are not measured, so they are not
+// clean either: the run fails with a coverage gap.
+let wrongPage = 0;
+// The routes that were never visited because there was no session.
+let noSession = 0;
+// The routes that never loaded at all. They were not measured either.
+let errored = 0;
 for (const r of results) {
   if (r.skipped) {
     skipped++;
+    if (r.notMeasured) wrongPage++;
+    else noSession++;
     console.log(`– ${r.label.padEnd(20)} ${r.path.padEnd(50)} not measured (${r.skipped})`);
     continue;
   }
   if (r.error) {
-    measured++;
+    // OOP-8160 — a route that failed to load was NOT measured. It used
+    // to count as measured, so the summary could claim coverage of a
+    // page that never rendered.
+    errored++;
     console.log(`❌ ${r.label.padEnd(20)} ${r.path}  ERROR: ${r.error}`);
     continue;
   }
@@ -328,7 +416,11 @@ for (const r of results) {
 console.log(
   `\n=== Total: ${totalCritical} critical + ${totalSerious} serious, ${totalIncomplete} incomplete ===`
 );
-console.log(`=== Measured ${measured} of ${routes.length} routes (${skipped} skipped) ===`);
+console.log(
+  `=== Measured ${measured} of ${routes.length} routes ` +
+    `(${skipped} skipped [${noSession} no session, ${wrongPage} rendered the wrong page], ` +
+    `${errored} failed to load) ===`,
+);
 if (totalExcepted > 0) {
   console.log(
     `=== ${totalExcepted} known exception(s), tracked: ${KNOWN_EXCEPTIONS.map((e) => e.issue).join(', ')} ===`,
@@ -355,6 +447,21 @@ if (totalExcepted > 0) {
 // it names the rule, the route, the reason and the tracking issue, and
 // it must be deleted when the defect is fixed. The same is true of a
 // route in KNOWN_HEADING_EXCEPTIONS.
+//
+// OOP-8160 — a route that was VISITED but did not render its expected
+// page is a COVERAGE gap, not a violation: the audit did not measure
+// the page it claims to have measured. It cannot be reported as clean,
+// so the run fails on it. Without this the board read "audit ran clean"
+// while the page was never measured — and a real critical defect hid
+// behind it for a week.
+const coverageGaps = results
+  .filter((r) => r.notMeasured)
+  .map((r) => `${r.label} (${r.path}): ${r.skipped}`);
+// OOP-8160 — a route that never loaded is the same lie: the page was
+// not measured, so the run cannot claim it was.
+const failedLoads = results
+  .filter((r) => r.error)
+  .map((r) => `${r.label} (${r.path}): ${r.error}`);
 const contrastProblems = results.flatMap((r) =>
   (r.violations ?? [])
     .filter((v) => v.id === 'color-contrast' && !isExcepted(v.id, r.label))
@@ -389,12 +496,21 @@ if (unresolvedContrast.length) {
   );
 }
 
-if (totalCritical > 0 || totalSerious > 0 || contrastProblems.length > 0 || headingProblems.length > 0) {
+if (
+  totalCritical > 0 ||
+  totalSerious > 0 ||
+  contrastProblems.length > 0 ||
+  headingProblems.length > 0 ||
+  coverageGaps.length > 0 ||
+  failedLoads.length > 0
+) {
   console.error(
-    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ${contrastProblems.length} color-contrast problem(s), ${headingProblems.length} heading-outline problem(s)` +
+    `\n✗ FAIL — ${totalCritical} critical, ${totalSerious} serious, ${contrastProblems.length} color-contrast problem(s), ${headingProblems.length} heading-outline problem(s), ${coverageGaps.length} coverage gap(s), ${failedLoads.length} failed to load` +
       (contrastProblems.length ? `: ${contrastProblems.join(', ')}` : '') +
       (seriousProblems.length ? `; serious: ${seriousProblems.join(', ')}` : '') +
-      (headingProblems.length ? `; headings: ${headingProblems.join(', ')}` : ''),
+      (headingProblems.length ? `; headings: ${headingProblems.join(', ')}` : '') +
+      (coverageGaps.length ? `; not measured: ${coverageGaps.join(', ')}` : '') +
+      (failedLoads.length ? `; failed to load: ${failedLoads.join(', ')}` : ''),
   );
   process.exit(1);
 }
@@ -405,4 +521,4 @@ if (headingExceptions > 0) {
   );
 }
 
-console.log('\n✓ PASS — no critical, no serious, no colour-contrast violation.');
+console.log('\n✓ PASS — no critical, no serious, no colour-contrast violation, every route measured.');
