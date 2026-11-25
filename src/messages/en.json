@@ -310,8 +310,17 @@
     "connect": {
       "connectTitle": "Get paid for your gifts",
       "connectLede": "Connect a Stripe account so buyers can pay you.",
-      "pendingTitle": "Verification in progress",
-      "pendingLede": "Stripe is verifying your identity. Buyers can’t purchase your gifts until this finishes.",
+      "pendingTitle": "Finish setting up your payouts",
+      "pendingLede": "Stripe still needs a few things before buyers can pay you:",
+      "pendingNote": "Press the button below to pick up in Stripe exactly where you stopped — you can return to Stripe at any time.",
+      "pendingUnknownLede": "We couldn’t check what Stripe still needs from you right now.",
+      "pendingUnknownNote": "Open Stripe to see what’s left to do. You can return to it at any time.",
+      "requirement": {
+        "bank_account": "Add your bank account.",
+        "stripe_terms": "Accept Stripe’s terms.",
+        "identity": "Verify your identity.",
+        "other": "Finish the remaining checks in Stripe."
+      },
       "connectedTitle": "Payouts enabled",
       "connectedLede": "You’re ready to sell. Buyers can pay you directly through Lovorithm.",
       "ctaConnect": "Connect payouts",

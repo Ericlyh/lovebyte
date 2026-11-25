@@ -46,6 +46,15 @@ const { state, fakeFrom } = vi.hoisted(() => {
     updateError: null as { message: string; code?: string } | null,
     /** Whether Stripe currently says the connected account can charge. */
     stripeChargesEnabled: false,
+    /**
+     * Stripe's `requirements.currently_due` for the connected account
+     * (OOP-8359). The probe account's real set is
+     * `['external_account', 'tos_acceptance.date', 'tos_acceptance.ip']`
+     * — a bank account and the terms acceptance.
+     */
+    stripeRequirements: [] as string[],
+    /** When true, Stripe cannot be reached at all. */
+    stripeUnreachable: false,
     /** How many times Stripe's account was read. */
     stripeRetrieveCount: 0,
     /** How many onboarding links were created. */
@@ -103,10 +112,6 @@ vi.mock('@/lib/stripe', () => ({
   stripe: {
     accounts: {
       create: async () => ({ id: 'acct_test' }),
-      retrieve: async (id: string) => {
-        state.stripeRetrieveCount += 1;
-        return { id, charges_enabled: state.stripeChargesEnabled };
-      },
     },
     accountLinks: {
       create: async (params: {
@@ -119,6 +124,20 @@ vi.mock('@/lib/stripe', () => ({
         return { url: 'https://connect.stripe.test/setup/test-session' };
       },
     },
+  },
+  /**
+   * OOP-8359 — the live read of the connected account. It carries both
+   * `charges_enabled` and `requirements.currently_due`, so the publish
+   * card can say what Stripe is actually waiting for.
+   */
+  readConnectAccountState: async (accountId: string | null) => {
+    state.stripeRetrieveCount += 1;
+    if (!accountId || state.stripeUnreachable) return null;
+    return {
+      chargesEnabled: state.stripeChargesEnabled,
+      payoutsEnabled: state.stripeChargesEnabled,
+      currentlyDue: state.stripeRequirements,
+    };
   },
 }));
 
@@ -145,6 +164,8 @@ beforeEach(() => {
   state.profileUpdates = [];
   state.updateError = null;
   state.stripeChargesEnabled = false;
+  state.stripeRequirements = [];
+  state.stripeUnreachable = false;
   state.stripeRetrieveCount = 0;
   state.accountLinkCount = 0;
   state.accountLink = null;
@@ -230,8 +251,14 @@ describe('publishToMarketplaceAction — the paid round trip', () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok === false && result.needsStripe).toBe(false);
+    // OOP-8359 — the old copy here was "Stripe is still finishing
+    // setting up your payouts. Give it a few seconds…", which promised
+    // a background process that does not exist.
+    expect(result.ok === false && !result.needsStripe && result.error).not.toMatch(
+      /still finishing/,
+    );
     expect(result.ok === false && !result.needsStripe && result.error).toMatch(
-      /Stripe is still finishing/,
+      /Stripe hasn’t enabled payouts for your account/,
     );
 
     // No second onboarding link, and nothing was published.
@@ -239,6 +266,52 @@ describe('publishToMarketplaceAction — the paid round trip', () => {
     expect(state.stripeRetrieveCount).toBe(1);
     const last = state.giftUpdates[state.giftUpdates.length - 1];
     expect(last?.is_listed).toBeUndefined();
+  });
+
+  it('names what Stripe is waiting for instead of promising a background check (OOP-8359)', async () => {
+    state.stripeChargesEnabled = false;
+    // The probe account's real requirement set: a bank account and the
+    // acceptance of Stripe's terms.
+    state.stripeRequirements = [
+      'external_account',
+      'tos_acceptance.date',
+      'tos_acceptance.ip',
+    ];
+
+    const result = await publishToMarketplaceAction({
+      giftId: GIFT_ID,
+      title: 'A letter for you',
+      priceCents: 5000,
+      publishAfterStripe: true,
+    });
+
+    const error = result.ok === false && !result.needsStripe ? result.error : '';
+    expect(error).toMatch(/add your bank account/);
+    expect(error).toMatch(/accept Stripe’s terms/);
+    // The two `tos_acceptance.*` codes are ONE requirement, so the
+    // creator is not told to accept the terms twice.
+    expect(error.match(/accept Stripe’s terms/g)).toHaveLength(1);
+    // And nothing claims a verification is running in the background.
+    expect(error).not.toMatch(/verifying|still finishing|give it a few seconds/i);
+    // The creator can always go back and finish it themselves.
+    expect(error).toMatch(/return to it at any time/);
+  });
+
+  it('says it could not reach Stripe rather than inventing a state (OOP-8359)', async () => {
+    state.stripeChargesEnabled = false;
+    state.stripeUnreachable = true;
+
+    const result = await publishToMarketplaceAction({
+      giftId: GIFT_ID,
+      title: 'A letter for you',
+      priceCents: 5000,
+      publishAfterStripe: true,
+    });
+
+    const error = result.ok === false && !result.needsStripe ? result.error : '';
+    expect(error).toMatch(/couldn’t reach Stripe/);
+    expect(error).not.toMatch(/verifying|still finishing/i);
+    expect(error).toMatch(/return to it at any time/);
   });
 
   it('trusts the local flag when the webhook has already landed', async () => {

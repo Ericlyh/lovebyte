@@ -35,6 +35,43 @@ export function getStripe(): Stripe {
 }
 
 /**
+ * What Stripe is actually waiting for on a connected account (OOP-8359).
+ *
+ * `charges_enabled` is only half the answer. An account can be blocked
+ * on `requirements.currently_due`, and each code says what the CREATOR
+ * has to do — `external_account` means "add your bank account",
+ * `tos_acceptance.*` means "accept Stripe's terms". The onboarding page
+ * used to call that state "verification in progress", which described a
+ * background process that does not exist.
+ *
+ * Returns `null` when Stripe cannot be reached, so the caller falls back
+ * to copy that does not promise a background check.
+ */
+export type ConnectAccountState = {
+  chargesEnabled: boolean;
+  payoutsEnabled: boolean;
+  /** Stripe's requirement codes that are still outstanding. */
+  currentlyDue: string[];
+};
+
+export async function readConnectAccountState(
+  accountId: string | null | undefined,
+): Promise<ConnectAccountState | null> {
+  if (!accountId) return null;
+  try {
+    const account = await getStripe().accounts.retrieve(accountId);
+    return {
+      chargesEnabled: !!account.charges_enabled,
+      payoutsEnabled: !!account.payouts_enabled,
+      currentlyDue: account.requirements?.currently_due ?? [],
+    };
+  } catch (e) {
+    console.error('[stripe] connect account read failed', (e as Error).message);
+    return null;
+  }
+}
+
+/**
  * Convenience proxy: `stripe.checkout.sessions.create(...)` etc.
  * Reads through the lazy getter so call sites don't change.
  */

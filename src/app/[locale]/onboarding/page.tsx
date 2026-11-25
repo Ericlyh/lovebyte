@@ -8,6 +8,11 @@ import { ConnectPayoutsButton } from '@/components/onboarding/ConnectPayoutsButt
 import { createClient } from '@/lib/supabase/server';
 import { isUuidLike } from '@/lib/uuid';
 import { BRAND } from '@/lib/brand';
+import { readConnectAccountState } from '@/lib/stripe';
+import {
+  outstandingConnectRequirements,
+  type ConnectRequirementCategory,
+} from '@/lib/connect-requirements';
 
 export const metadata: Metadata = {
   title: `Set up your creator profile — ${BRAND.NAME}`,
@@ -131,6 +136,25 @@ export default async function OnboardingPage({ params,
       ? 'pending'
       : 'connected';
 
+  // OOP-8359 — "pending" is not a background check. Stripe is waiting
+  // for the CREATOR, and it says exactly what for in
+  // `requirements.currently_due`: on the probe account that is
+  // "add your bank account" and "accept Stripe's terms". Ask Stripe,
+  // so the page can name those instead of promising a verification
+  // nobody is running.
+  //
+  // `connectRequirementsKnown` is false when Stripe could not be
+  // reached. The copy then says so rather than inventing a state.
+  let connectRequirements: ConnectRequirementCategory[] = [];
+  let connectRequirementsKnown = false;
+  if (connectStatus === 'pending') {
+    const live = await readConnectAccountState(stripeAccountId);
+    if (live) {
+      connectRequirementsKnown = true;
+      connectRequirements = outstandingConnectRequirements(live.currentlyDue);
+    }
+  }
+
   // Resolve the avatar's public URL server-side (OOP-4310). The
   // `avatars/` prefix is publicly readable per
   // `media_avatars_public_select` in 0004_avatar_storage.sql, so
@@ -171,8 +195,36 @@ export default async function OnboardingPage({ params,
       </section>
 
       <section className="lb-onboarding-card lb-onboarding-card--connect">
-        <h2>{t(`connect.${connectStatus}Title`)}</h2>
-        <p className="lede">{t(`connect.${connectStatus}Lede`)}</p>
+        {connectStatus === 'pending' ? (
+          <>
+            <h2>{t('connect.pendingTitle')}</h2>
+            {connectRequirementsKnown ? (
+              <>
+                <p className="lede">{t('connect.pendingLede')}</p>
+                {connectRequirements.length > 0 ? (
+                  <ul className="lb-connect-requirements">
+                    {connectRequirements.map((requirement) => (
+                      <li key={requirement}>
+                        {t(`connect.requirement.${requirement}`)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <p className="lb-connect-note">{t('connect.pendingNote')}</p>
+              </>
+            ) : (
+              <>
+                <p className="lede">{t('connect.pendingUnknownLede')}</p>
+                <p className="lb-connect-note">{t('connect.pendingUnknownNote')}</p>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <h2>{t(`connect.${connectStatus}Title`)}</h2>
+            <p className="lede">{t(`connect.${connectStatus}Lede`)}</p>
+          </>
+        )}
         <ConnectPayoutsButton returnPath={publishReturnPath} />
       </section>
     </main>

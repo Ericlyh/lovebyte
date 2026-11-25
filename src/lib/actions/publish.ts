@@ -3,7 +3,12 @@
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { startConnectOnboardingAction } from '@/lib/actions/checkout';
-import { stripe } from '@/lib/stripe';
+import { readConnectAccountState } from '@/lib/stripe';
+import {
+  outstandingConnectRequirements,
+  payoutsNotReadyMessage,
+  type ConnectRequirementCategory,
+} from '@/lib/connect-requirements';
 import { SETTLEMENT_CURRENCY_DB } from '@/lib/money';
 import { GiftKindSchema } from '@/lib/gifts/kinds';
 
@@ -55,33 +60,6 @@ const publishInputSchema = z.object({
    */
   publishAfterStripe: z.boolean().optional().default(false),
 });
-
-/**
- * Ask Stripe whether the creator's connected account can take charges
- * RIGHT NOW.
- *
- * `profiles.stripe_charges_enabled` is written by the `account.updated`
- * webhook, and that webhook lands some seconds AFTER the creator
- * finishes onboarding. A creator who returns from Stripe and publishes
- * immediately reads the stale flag as "not enabled", gets bounced back
- * to onboarding, and loops forever — that was the paid-publish dead end
- * (OOP-6720). Stripe's API is the source of truth, so ask it directly
- * on the return leg.
- *
- * Fails closed: any error means "not enabled yet". Publishing a paid
- * listing whose creator cannot take payments is worse than asking them
- * to wait a few seconds.
- */
-async function stripeAccountIsChargesEnabled(accountId: string | null): Promise<boolean> {
-  if (!accountId) return false;
-  try {
-    const account = await stripe.accounts.retrieve(accountId);
-    return !!account.charges_enabled;
-  } catch (e) {
-    console.error('[publish] stripe account check failed', (e as Error).message);
-    return false;
-  }
-}
 
 /**
  * Publish a gift to the marketplace (M-F, OOP-4278).
@@ -211,14 +189,31 @@ export async function publishToMarketplaceAction(
       .maybeSingle();
 
     let stripeEnabled = profile?.stripe_charges_enabled ?? false;
+    // What Stripe is actually waiting for (OOP-8359). `null` means we
+    // could not reach Stripe, so we do not know — and say so.
+    let outstandingRequirements: ConnectRequirementCategory[] | null = null;
 
     // On the return leg the `account.updated` webhook may not have
     // landed yet, so ask Stripe for the live state instead of trusting
-    // the local flag.
+    // the local flag — a creator who returns from Stripe and publishes
+    // immediately reads the stale flag as "not enabled" and loops
+    // forever (OOP-6720).
+    //
+    // Fails closed: if Stripe cannot be reached we treat the account as
+    // not enabled. Publishing a paid listing whose creator cannot take
+    // payments is worse than asking them to come back.
+    //
+    // The live read also carries `requirements.currently_due`
+    // (OOP-8359), so the creator can be told what Stripe is actually
+    // waiting for instead of being told to wait.
     if (!stripeEnabled && publishAfterStripe) {
-      stripeEnabled = await stripeAccountIsChargesEnabled(
+      const live = await readConnectAccountState(
         (profile?.stripe_account_id as string | null) ?? null,
       );
+      if (live) {
+        stripeEnabled = live.chargesEnabled;
+        outstandingRequirements = outstandingConnectRequirements(live.currentlyDue);
+      }
     }
 
     if (!stripeEnabled) {
@@ -227,11 +222,15 @@ export async function publishToMarketplaceAction(
         // ready yet. Do NOT send them through onboarding a second time
         // — that is the loop that trapped every paid creator (OOP-6720).
         // The listing intent is already saved, so a retry publishes.
+        //
+        // OOP-8359: say what Stripe is waiting for. "Stripe is still
+        // finishing" described a background process that does not
+        // exist — on the probe account the creator is the one who has
+        // to add a bank account and accept Stripe's terms.
         return {
           ok: false,
           needsStripe: false,
-          error:
-            'Stripe is still finishing setting up your payouts. Give it a few seconds, then press Publish again.',
+          error: payoutsNotReadyMessage(outstandingRequirements),
         };
       }
 

@@ -2477,6 +2477,28 @@ a.lb-btn:hover { text-decoration: none; }
   margin-top: 16px;
 }
 
+/* OOP-8359 — what Stripe is still waiting for. This list replaced
+ * "Verification in progress": it names the bank account and the terms
+ * acceptance, because that is what Stripe is actually waiting for. */
+.lb-connect-requirements {
+  /* Tailwind's preflight strips list markers, so put this one back. */
+  list-style: disc;
+  margin: 0 0 var(--lb-space-4);
+  padding-left: var(--lb-space-5);
+  color: var(--lb-ink);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.lb-connect-requirements li {
+  margin-bottom: 4px;
+}
+.lb-connect-note {
+  color: var(--lb-ink-soft);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: var(--lb-space-3);
+}
+
 /* === Publish to marketplace card (M-F, OOP-4278) ====================== */
 
 .lb-publish-card {

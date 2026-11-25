@@ -310,8 +310,17 @@
     "connect": {
       "connectTitle": "喺 Lovorithm 出貨賺錢",
       "connectLede": "連接 Stripe 帳戶，等買家可以畀錢你。",
-      "pendingTitle": "驗證緊",
-      "pendingLede": "Stripe 正喺度核實你嘅身份。完成之後買家先可以買你嘅禮物。",
+      "pendingTitle": "仲要完成收款設定",
+      "pendingLede": "Stripe 仲有幾樣嘢要你做，先至買家可以畀錢你：",
+      "pendingNote": "撳下面個掣，就可以喺 Stripe 繼續做返未做完嗰步。你隨時可以返去 Stripe。",
+      "pendingUnknownLede": "我哋而家查唔到 Stripe 仲要你做啲乜。",
+      "pendingUnknownNote": "去 Stripe 睇下仲有咩要做。你隨時都可以返去。",
+      "requirement": {
+        "bank_account": "加返你嘅銀行戶口。",
+        "stripe_terms": "接受 Stripe 嘅條款。",
+        "identity": "喺 Stripe 核實你嘅身份。",
+        "other": "喺 Stripe 完成餘下嘅核實。"
+      },
       "connectedTitle": "已開通收款",
       "connectedLede": "準備好喇！買家可以直接透過 Lovorithm 畀錢你。",
       "ctaConnect": "連接收款",
