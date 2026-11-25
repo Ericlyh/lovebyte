@@ -47,6 +47,22 @@ import { NextResponse } from 'next/server';
  * kind is reported so the board can read "money is live-mode but not
  * Connect-capable" instead of green.
  *
+ * `resendSendingMode` is the EMAIL side of the same problem (OOP-8355).
+ * A deployment can carry every required var, pass every presence check,
+ * and still be unable to email a single customer: Resend refuses any
+ * send from a domain it has not verified, and its sandbox sender
+ * (`@resend.dev`) is accepted only for the ACCOUNT OWNER's inbox — so
+ * the gift-link email a buyer pays for never reaches the recipient.
+ * The domain that `RESEND_FROM` uses is compared against the verified
+ * domain list Resend itself reports.
+ *
+ * `resendDomain` is the DOMAIN part of `RESEND_FROM` — never the full
+ * address, never the local part, never the key. The domain is public
+ * (it is in every SPF/DKIM record and in the From header of every mail
+ * the site sends), and a verdict with no domain attached is not
+ * actionable: "the sender is not verified" cannot be turned into work
+ * without knowing WHICH domain to verify.
+ *
  * `ok` deliberately stays "every required var is present" — it is an
  * ENV claim, not a money claim. Connect being enabled and a creator
  * being onboarded are account state this route cannot see, so widening
@@ -111,8 +127,107 @@ function stripeKeyKind(): 'full' | 'restricted' | 'unknown' {
   return 'unknown';
 }
 
+/**
+ * Where the deployment's Resend sender sits.
+ *
+ *   'verified'   — the sender's domain is a VERIFIED domain in Resend,
+ *                  so customer email can actually leave the building.
+ *   'unverified' — Resend knows the domain but has not verified it (or
+ *                  does not know it at all). Every send to a customer is
+ *                  refused with a 403.
+ *   'sandbox'    — the sender is Resend's own sandbox address
+ *                  (`@resend.dev`). Resend accepts it ONLY for the
+ *                  account owner's inbox, so it is unverified for every
+ *                  real customer.
+ *   'unknown'    — the probe could not be completed: no key, no sender,
+ *                  or Resend could not be reached. This must never read
+ *                  as "no gaps" — a probe that could not run is not a
+ *                  probe that found nothing (OOP-8355).
+ */
+export type ResendSendingMode = 'verified' | 'unverified' | 'sandbox' | 'unknown';
+
+const RESEND_DOMAINS_URL = 'https://api.resend.com/domains';
+
+/** Give up on the domains call rather than hang a readiness probe. */
+const RESEND_PROBE_TIMEOUT_MS = 4000;
+
+/**
+ * The DOMAIN part of RESEND_FROM, lowercased — never the full address.
+ *
+ *   'Lovorithm <hello@lovebyte.app>' -> 'lovebyte.app'
+ *   'onboarding@resend.dev'          -> 'resend.dev'
+ *
+ * The local part and the display name are never reported.
+ */
+function senderDomain(resendFrom: string | undefined): string | null {
+  if (!resendFrom) return null;
+  const angled = resendFrom.match(/<([^>]+)>/);
+  const address = (angled ? angled[1] : resendFrom).trim();
+  const at = address.lastIndexOf('@');
+  if (at < 0) return null;
+  const domain = address.slice(at + 1).trim().toLowerCase();
+  return domain || null;
+}
+
+/**
+ * Ask Resend which domains it has verified, and compare that with the
+ * domain the site actually sends from.
+ *
+ * The API KEY is used for the call and never returned. The probe never
+ * throws: an unreachable Resend is reported as 'unknown', which the gate
+ * treats as a gap rather than as good news.
+ */
+async function probeResendSending(
+  resendFrom: string | undefined,
+  resendApiKey: string | undefined,
+): Promise<{ mode: ResendSendingMode; domain: string | null; domainStatus: string | null }> {
+  const domain = senderDomain(resendFrom);
+  const unknown: { mode: ResendSendingMode; domain: string | null; domainStatus: string | null } = {
+    mode: 'unknown',
+    domain,
+    domainStatus: null,
+  };
+
+  if (!domain || !resendApiKey) return unknown;
+
+  // Resend's own sandbox sender. No API call is needed to know this,
+  // and it is the one state that is ALWAYS wrong for a customer email.
+  if (domain === 'resend.dev' || domain.endsWith('.resend.dev')) {
+    return { mode: 'sandbox', domain, domainStatus: null };
+  }
+
+  let payload: { data?: Array<{ name?: string; status?: string }> } | null = null;
+  try {
+    const res = await fetch(RESEND_DOMAINS_URL, {
+      headers: { Authorization: `Bearer ${resendApiKey}` },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(RESEND_PROBE_TIMEOUT_MS),
+    });
+    if (!res.ok) return unknown;
+    payload = await res.json();
+  } catch {
+    // Network error, timeout, or a body that is not JSON.
+    return unknown;
+  }
+
+  const domains = Array.isArray(payload?.data) ? payload.data : [];
+  const mine = domains.find((d) => (d?.name ?? '').trim().toLowerCase() === domain);
+  const status = (mine?.status ?? '').trim().toLowerCase() || null;
+
+  if (status === 'verified') {
+    return { mode: 'verified', domain, domainStatus: status };
+  }
+  // Known but not verified (pending / failed / not_started), or unknown to
+  // Resend altogether — both mean no customer email gets out.
+  return { mode: 'unverified', domain, domainStatus: status };
+}
+
 export async function GET() {
   const missing = REQUIRED_VARS.filter((name) => !process.env[name]);
+  const resend = await probeResendSending(
+    process.env.RESEND_FROM,
+    process.env.RESEND_API_KEY,
+  );
 
   return NextResponse.json(
     {
@@ -120,6 +235,9 @@ export async function GET() {
       missing,
       stripeKeyMode: stripeKeyMode(),
       stripeKeyKind: stripeKeyKind(),
+      resendSendingMode: resend.mode,
+      resendDomain: resend.domain,
+      resendDomainStatus: resend.domainStatus,
     },
     { headers: { 'cache-control': 'no-store' } },
   );

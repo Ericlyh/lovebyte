@@ -1,18 +1,50 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from './route';
 
 /**
- * Tests for the env-readiness route (OOP-6168).
+ * Tests for the env-readiness route (OOP-6168, OOP-7913, OOP-8355).
  *
  * The route reports the NAMES of missing required env vars — never
  * values. That is the whole contract the readiness gate depends on, so
  * the tests pin the two properties that matter: a missing var is named,
  * and a present var is NOT reported (its value must never leak).
+ *
+ * It also reports MODES derived from the deployed configuration — the
+ * Stripe key's mode and kind, and the Resend sender's sending domain.
+ * A mode is no more revealing than the var name it is derived from: the
+ * Stripe prefix, or the DOMAIN half of the from address (a domain is
+ * public — it is in every SPF/DKIM record — while the local part is
+ * not, and only the domain is needed to act on the finding).
  */
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
+
+beforeEach(() => {
+  // Start every test from "no Resend configured" so the suite does not
+  // depend on whatever happens to be exported in the ambient
+  // environment. The probe calls Resend when BOTH of these are present.
+  vi.stubEnv('RESEND_API_KEY', '');
+  vi.stubEnv('RESEND_FROM', '');
+});
+
+/**
+ * Stub Resend's domain list. The probe calls `GET /domains` and reads
+ * `data[]`; each entry carries the domain name and its status.
+ */
+function stubResendDomains(domains: Array<{ name: string; status: string }>) {
+  const spy = vi.fn(
+    async () =>
+      new Response(JSON.stringify({ data: domains }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+  );
+  vi.stubGlobal('fetch', spy);
+  return spy;
+}
 
 describe('GET /api/readiness', () => {
   it('names every missing required var', async () => {
@@ -39,6 +71,7 @@ describe('GET /api/readiness', () => {
     vi.stubEnv('STRIPE_WEBHOOK_SECRET', 'whsec_secret_value');
     vi.stubEnv('RESEND_API_KEY', 're_secret_value');
     vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovorithm.app>');
+    stubResendDomains([{ name: 'lovorithm.app', status: 'verified' }]);
 
     const res = await GET();
     const raw = JSON.stringify(await res.json());
@@ -51,6 +84,9 @@ describe('GET /api/readiness', () => {
       missing: [],
       stripeKeyMode: 'live',
       stripeKeyKind: 'full',
+      resendSendingMode: 'verified',
+      resendDomain: 'lovorithm.app',
+      resendDomainStatus: 'verified',
     });
   });
 
@@ -105,7 +141,7 @@ describe('GET /api/readiness', () => {
   });
 
   // OOP-7913: a RESTRICTED key (`rk_…`) is live-mode, so the mode
-  // probe alone cannot tell it from a full key — and Stripe refuses the
+  // probe alone cannot tell it from a full one — and Stripe refuses the
   // Connect onboarding endpoints for restricted keys, so the money path
   // is closed even though the key is live (OOP-6168). The kind is
   // reported separately so the gate can catch that false green.
@@ -155,5 +191,119 @@ describe('GET /api/readiness', () => {
 
     expect(body.stripeKeyMode).toBe('unknown');
     expect(body.stripeKeyKind).toBe('unknown');
+  });
+
+  // OOP-8355: the presence of RESEND_API_KEY and RESEND_FROM is not
+  // the same claim as "customer email can be delivered". Resend refuses
+  // every send from a domain it has not verified, and its sandbox
+  // sender reaches the ACCOUNT OWNER's inbox only — so the gift-link
+  // email a buyer pays for never arrives while every presence check
+  // passes and the gate reads green.
+  describe('the Resend sending-domain probe', () => {
+    it('reads the sandbox sender as sandbox, without asking Resend', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'onboarding@resend.dev');
+
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('sandbox');
+      expect(body.resendDomain).toBe('resend.dev');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('reads a verified sender as verified', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      stubResendDomains([{ name: 'lovebyte.app', status: 'verified' }]);
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('verified');
+      expect(body.resendDomain).toBe('lovebyte.app');
+      expect(body.resendDomainStatus).toBe('verified');
+    });
+
+    it('reads a sender that is still pending as unverified', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      stubResendDomains([{ name: 'lovebyte.app', status: 'not_started' }]);
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('unverified');
+      expect(body.resendDomain).toBe('lovebyte.app');
+      expect(body.resendDomainStatus).toBe('not_started');
+    });
+
+    it('reads a sender Resend has never heard of as unverified', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      stubResendDomains([]);
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('unverified');
+      expect(body.resendDomain).toBe('lovebyte.app');
+      expect(body.resendDomainStatus).toBe(null);
+    });
+
+    // A probe that could not run must not read as a probe that found
+    // nothing: an unreachable Resend is 'unknown', and the gate treats
+    // that as a gap.
+    it('reports unknown when Resend cannot be reached', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          throw new Error('network down');
+        }),
+      );
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('unknown');
+      expect(body.resendDomain).toBe('lovebyte.app');
+    });
+
+    it('reports unknown when Resend answers with an error', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 500 })));
+
+      const body = await (await GET()).json();
+
+      expect(body.resendSendingMode).toBe('unknown');
+    });
+
+    it('reports unknown when the key or the sender is absent, without asking Resend', async () => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      let body = await (await GET()).json();
+      expect(body.resendSendingMode).toBe('unknown');
+      expect(body.resendDomain).toBe(null);
+
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+
+      body = await (await GET()).json();
+      expect(body.resendSendingMode).toBe('unknown');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('never leaks the key or the local part of the from address', async () => {
+      vi.stubEnv('RESEND_API_KEY', 're_secret_value');
+      vi.stubEnv('RESEND_FROM', 'Lovorithm <hello@lovebyte.app>');
+      stubResendDomains([{ name: 'lovebyte.app', status: 'verified' }]);
+
+      const raw = JSON.stringify(await (await GET()).json());
+
+      expect(raw).not.toContain('re_secret_value');
+      expect(raw).not.toContain('hello@');
+      expect(raw).toContain('lovebyte.app');
+    });
   });
 });

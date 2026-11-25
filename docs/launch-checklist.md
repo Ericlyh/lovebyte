@@ -34,19 +34,44 @@ environment (`vercel env ls production`).
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare → Turnstile → widget site key | waitlist CAPTCHA — **optional**, see the Phase 10 note below |
 | `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → widget secret key | waitlist CAPTCHA — **optional**, server-only |
 
-> **Note (OOP-6168):** `RESEND_FROM` must be a sender domain that is
-> **verified** in Resend. `lovebyte.app` is not acquired (§2), so until
-> it is, use a domain the team actually controls — Resend's onboarding
-> domain (`onboarding@resend.dev`) only delivers to the account owner's
-> own inbox, which is enough for a smoke test and NOT enough for real
-> customers. There is no in-between: an unverified `RESEND_FROM` makes
-> `deliverEmail` refuse to send at all.
+> **Note (OOP-6168, updated OOP-8355 on 2026-11-25):** `RESEND_FROM`
+> must be a sender domain that is **verified** in Resend. Resend's
+> onboarding domain (`onboarding@resend.dev`) only delivers to the
+> account owner's own inbox, which is enough for a smoke test and NOT
+> enough for real customers. There is no in-between: an unverified
+> `RESEND_FROM` makes `deliverEmail` refuse to send at all, and the
+> gift-link email a buyer pays for never arrives.
 >
-> **`lovorithm.app` is not usable either** (verified 2026-11-19: NXDOMAIN,
-> no NS/SOA — the domain does not exist), and `lovebyte.app` is a parked
-> GoDaddy lander with no MX. So a `RESEND_FROM` domain has to come from
-> somewhere new: either a domain the team acquires and verifies in Resend,
-> or `onboarding@resend.dev` for a smoke test only.
+> **Current state (2026-11-25).** `lovebyte.app` IS registered — RDAP
+> handle `E18DC6037-APP`, registrar GoDaddy, registered 2026-10-07,
+> delegated to `ns71/ns72.domaincontrol.com`, apex A → GoDaddy's parking
+> IPs. It has **no MX and no TXT**, and whether the team controls the
+> GoDaddy account is still unconfirmed. (`lovorithm.app` still does not
+> exist — RDAP 404.)
+>
+> The domain was added to Resend on 2026-11-25 (domain id
+> `f11186cb-c3f6-404d-88bd-eade58836d60`, status `not_started`) with a
+> sending subdomain of `outbound`, so the four records below are all
+> needed. Add them at the registrar and Resend verifies the domain on
+> its own — no further API call is required.
+>
+> | Type | Name | Value |
+> |---|---|---|
+> | TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDsnb03RHfY0Ot2CZXtDOPpPWIBEoyLXvPQQG65zI6vHf5KKQeOCUZdCY3TDts8MN0TqIQuzItHbEYo1iw3cqZeM33YlLjqHe4GQSDMB/uzNWruNX0dMB05vZb3+LdqL/jjSyBemwnjWn+qj9c7Bth2Gq3k4MJ04BtrgeSJkAveQwIDAQAB` |
+> | MX | `outbound` | `feedback-smtp.us-east-1.amazonses.com` (priority 10) |
+> | TXT | `outbound` | `v=spf1 include:amazonses.com ~all` |
+> | CNAME | `routbound` | `send.forge.rmta.net` |
+>
+> Then set `RESEND_FROM="Lovorithm <hello@lovebyte.app>"` in the Vercel
+> production env and redeploy. Until then the readiness gate reports
+> `gap:resend-domain-unverified` — see the OOP-8355 note under §1.1.
+>
+> **Do not use `dig` to check this.** It is broken in the agent sandbox
+> (it returns nothing even for `google.com`), which is how this section
+> came to say `lovebyte.app` had no NS records. Query DNS-over-HTTPS
+> instead — `https://dns.google/resolve?name=lovebyte.app&type=NS` or
+> `https://cloudflare-dns.com/dns-query?name=lovebyte.app&type=NS` with
+> `accept: application/dns-json`.
 
 ### 1.0 — Applying the four values (the handoff route)
 
@@ -158,6 +183,24 @@ be true in the Stripe account:
 > Accounts v2 in live mode — but **not** the requirement half; see the
 > correction below before treating "the key is full" as "the money path
 > works".
+>
+> **The sending DOMAIN matters as much as the email key (OOP-8355,
+> 2026-11-25).** The same false green, on the email side: a deployment
+> can carry a full-access `RESEND_API_KEY` and a `RESEND_FROM` and still
+> be unable to email a single customer, because Resend refuses every
+> send from a domain it has not verified, and its sandbox sender
+> (`@resend.dev`) is accepted only for the ACCOUNT OWNER's own inbox.
+> That is the gift-delivery path — `CheckoutForm` defaults
+> `deliveryMode` to `send_to_recipient`, so the buyer pays, the site
+> says it emailed the gift, and nothing arrives.
+> `/api/readiness` therefore also reports `resendSendingMode`
+> (`verified` / `unverified` / `sandbox` / `unknown`), `resendDomain`
+> (the DOMAIN half of `RESEND_FROM` — never the local part, never the
+> key) and `resendDomainStatus` (Resend's own status for that domain).
+> The gate raises **`resend-domain-unverified`** for a sandbox or
+> unverified sender, and **`resend-domain-unknown`** when the probe
+> could not read Resend at all — a probe that did not run must never
+> read as "no gaps".
 >
 > Two related traps, both hit on 2026-11-19:
 >
@@ -410,8 +453,9 @@ this is exactly the reason the file route exists.
 ## 2. Pre-deploy — DNS plan
 
 Production hostname: `lovorithm.vercel.app` (Vercel-generated).
-Future canonical: `lovebyte.app` (deferred; not yet acquired — see
-BRAND.TS §DOMAIN).
+Future canonical: `lovebyte.app` — registered (GoDaddy, 2026-10-07) but
+its apex still points at GoDaddy's parking IPs, not Vercel. See §1 for
+the Resend sending-domain records and BRAND.TS §DOMAIN.
 
 **What the on-call needs to know:**
 
@@ -424,8 +468,9 @@ BRAND.TS §DOMAIN).
    one — the canonical hostname is in `src/lib/brand.ts` →
    `PRODUCTION_URL`).
 3. **Domain decisions** for the launch are deferred per OOP-4211 §3:
-   `lovebyte.app` is **not acquired**. The Vercel subdomain
-   `lovorithm.vercel.app` is the live URL for the public beta.
+   `lovebyte.app` is registered but not yet pointed at Vercel. The
+   Vercel subdomain `lovorithm.vercel.app` is the live URL for the
+   public beta.
 
 ---
 

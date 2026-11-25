@@ -41,6 +41,7 @@
 import { probeRoute } from './lib/http-probe.mjs';
 import { scoreLighthouse } from './lib/lighthouse-score.mjs';
 import { assessControl } from './lib/lighthouse-control.mjs';
+import { assessResendSending } from './lib/resend-sending-gap.mjs';
 
 const BASE = process.env.AUDIT_BASE ?? 'https://lovorithm.vercel.app';
 const PERF_MIN = Number(process.env.GATE_PERF_MIN ?? 95);
@@ -384,6 +385,34 @@ try {
     // probe, so the kind cannot be read. The mode check above still
     // applied; this resolves as soon as the route is deployed.
   }
+
+  // The Resend SENDING DOMAIN (OOP-8355).
+  //
+  // Every check above this line is about PRESENCE: the key is set, the
+  // from address is set. Presence stopped being the same claim as "it
+  // works" for Stripe (a test key, then a restricted key) and it is
+  // the same failure here: a deployment can carry a full-access Resend
+  // key and still be unable to email a single customer, because
+  // Resend refuses any send from a domain it has not verified, and its
+  // sandbox sender (`@resend.dev`) only ever reaches the account
+  // owner's own inbox.
+  //
+  // That is the gift-delivery path: `CheckoutForm` defaults
+  // `deliveryMode` to `send_to_recipient`, so the buyer pays, the site
+  // says it emailed the gift, and nothing arrives. The gate read all of
+  // that as green because "the key is present" was the only question it
+  // asked.
+  //
+  // The decision lives in scripts/lib/resend-sending-gap.mjs so it can
+  // be unit-tested without the Lighthouse sweep.
+  const sending = assessResendSending(body, { missing });
+  if (sending.verdict === 'gap') {
+    fail('email', sending.message, sending.gapId);
+  } else if (sending.verdict === 'ok') {
+    pass('email', sending.message);
+  }
+  // 'skipped': the key or the sender is absent, and the missing-var
+  // gap above already covers it.
 } catch (err) {
   fail('env', `/api/readiness unreachable — ${err.message}`, 'readiness-probe-unreachable');
 }
