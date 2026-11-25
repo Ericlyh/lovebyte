@@ -516,11 +516,63 @@ export async function startConnectOnboardingAction(
       // `fees.payer: 'application'` — which is what a destination
       // charge with `application_fee_amount` requires. So the
       // `controller` block was redundant as well as fatal.
-      const account = await stripe.accounts.create({
-        type: 'express',
+      // OOP-8357 — the three settings that decide whether the creator's
+      // money moves, and what each side sees on a statement.
+      //
+      // `settings.payouts.schedule` makes the creator's payout
+      // automatic instead of a request nobody ever makes. Stripe's
+      // documented default for a new account is already
+      // {interval: 'daily', delay_days: 'minimum'} and the platform
+      // account's own schedule is NOT inherited by connected accounts —
+      // the live account list proves that, because every connected
+      // account reads daily while the platform reads manual — but it
+      // is pinned here so the behaviour is ours and not Stripe's
+      // default. Seven days leaves a dispute window between the sale
+      // and the payout.
+      //
+      // `settings.payouts.statement_descriptor` is the text on the
+      // CREATOR's bank statement when Stripe pays them out, and
+      // `settings.card_payments.statement_descriptor_prefix` is the
+      // text on the CUSTOMER's card statement for a charge on this
+      // account. Both are null on every account today. Both can only be
+      // set while the account is not yet activated — Stripe answers 400
+      // "You cannot change `settings[payouts][statement_descriptor]` via
+      // API once an account has been activated" — so they have to be
+      // set HERE, at creation, or never.
+      const accountParams = {
+        type: 'express' as const,
         email: user.email ?? undefined,
         metadata: { profile_id: user.id },
-      });
+        settings: {
+          card_payments: { statement_descriptor_prefix: 'LOVORITHM' },
+          payouts: {
+            statement_descriptor: 'LOVORITHM',
+            schedule: { interval: 'daily' as const, delay_days: 7 },
+          },
+        },
+      };
+
+      let account: Awaited<ReturnType<typeof stripe.accounts.create>>;
+      try {
+        account = await stripe.accounts.create(accountParams);
+      } catch (e) {
+        // A rejected branding block must not cost the creator their
+        // account: an onboarding that never starts is worse than one
+        // with a generic statement descriptor. Retry WITHOUT the
+        // branding — but only on a 400, which means Stripe created
+        // nothing. A network failure could mean the account WAS
+        // created, and retrying there would duplicate it.
+        if ((e as { statusCode?: number }).statusCode !== 400) throw e;
+        console.error(
+          '[checkout/connect] stripe rejected the payout settings, retrying without them',
+          (e as Error).message,
+        );
+        account = await stripe.accounts.create({
+          type: 'express',
+          email: user.email ?? undefined,
+          metadata: { profile_id: user.id },
+        });
+      }
       accountId = account.id;
 
       const { error: writeErr } = await supabase

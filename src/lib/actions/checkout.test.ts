@@ -58,6 +58,8 @@ const { state, fakeFrom } = vi.hoisted(() => {
     stripeSessionParams: [] as Record<string, unknown>[],
     /** The parameters of every connected account we created (OOP-6168). */
     stripeAccountParams: [] as Record<string, unknown>[],
+    /** OOP-8357 — when set, the fake Stripe refuses a settings block. */
+    rejectSettings: false,
     /** The parameters of every Stripe Account Link we minted (OOP-6168). */
     stripeAccountLinkParams: [] as Record<string, unknown>[],
     /** Every `profiles` row the action updated. */
@@ -153,6 +155,17 @@ vi.mock('@/lib/stripe', () => ({
             'You may not provide the `type` parameter and `controller` parameters simultaneously. They are mutually exclusive.',
           );
         }
+        // OOP-8357 — the fake can refuse a settings block the way
+        // Stripe refuses a parameter it will not accept, so the
+        // "onboarding still starts" path is exercised rather than
+        // merely asserted.
+        if (state.rejectSettings && params.settings) {
+          state.stripeAccountParams.push(params);
+          throw Object.assign(
+            new Error('Invalid value for `settings.card_payments.statement_descriptor_prefix`.'),
+            { statusCode: 400 },
+          );
+        }
         state.stripeAccountParams.push(params);
         return { id: 'acct_created_123' };
       },
@@ -211,6 +224,7 @@ beforeEach(() => {
   state.stripeSessionsCreated = 0;
   state.stripeSessionParams = [];
   state.stripeAccountParams = [];
+  state.rejectSettings = false;
   state.stripeAccountLinkParams = [];
   state.profileUpdates = [];
   state.events = [];
@@ -637,5 +651,69 @@ describe('startConnectOnboardingAction (OOP-6168)', () => {
     if (result.ok) return;
     expect(result.error).toBe('unauthenticated');
     expect(state.stripeAccountParams).toHaveLength(0);
+  });
+});
+
+/**
+ * The payout settings a new connected account is born with (OOP-8357).
+ *
+ * The defect: a creator's money sat in their Stripe balance until
+ * somebody requested a payout by hand, and the charge on the
+ * customer's statement did not say Lovorithm. Both are decided by
+ * settings on the connected account, and both can only be set while
+ * the account is not yet activated — Stripe answers 400 "You cannot
+ * change `settings[payouts][statement_descriptor]` via API once an
+ * account has been activated" — so they have to be set at CREATION.
+ *
+ * What these tests pin:
+ *   - the account is created with an automatic payout schedule
+ *   - the creator's own payout statement says LOVORITHM
+ *   - the customer's charge statement says LOVORITHM
+ *   - a Stripe refusal of the branding block still creates the account
+ */
+describe('startConnectOnboardingAction (OOP-8357 — payout settings)', () => {
+  const CREATOR_ID = '33333333-3333-3333-3333-333333333333';
+
+  beforeEach(() => {
+    state.user = { id: CREATOR_ID };
+    state.profile = { stripe_account_id: null };
+  });
+
+  it('creates the account with an automatic payout schedule', async () => {
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    expect(state.stripeAccountParams).toHaveLength(1);
+
+    const settings = state.stripeAccountParams[0].settings as {
+      payouts: { schedule: { interval: string; delay_days: number } };
+    };
+    expect(settings.payouts.schedule).toEqual({ interval: 'daily', delay_days: 7 });
+  });
+
+  it("sets both statement descriptors — the creator's payout and the customer's charge", async () => {
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    const settings = state.stripeAccountParams[0].settings as {
+      payouts: { statement_descriptor: string };
+      card_payments: { statement_descriptor_prefix: string };
+    };
+    expect(settings.payouts.statement_descriptor).toBe('LOVORITHM');
+    expect(settings.card_payments.statement_descriptor_prefix).toBe('LOVORITHM');
+  });
+
+  it('still creates the account when Stripe refuses the branding settings', async () => {
+    state.rejectSettings = true;
+
+    const result = await startConnectOnboardingAction();
+
+    expect(result.ok).toBe(true);
+    // The branded attempt, then the plain retry.
+    expect(state.stripeAccountParams).toHaveLength(2);
+    expect(state.stripeAccountParams[0].settings).toBeDefined();
+    expect(state.stripeAccountParams[1].settings).toBeUndefined();
+    expect(state.stripeAccountParams[1].type).toBe('express');
+    expect(state.profileUpdates).toEqual([{ stripe_account_id: 'acct_created_123' }]);
   });
 });
